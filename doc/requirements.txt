@@ -1,0 +1,4 @@
+numpy
+pyopencl
+loo.py
+sphinx==2.2.0

@@ -1,0 +1,26 @@
+name: pystella
+
+channels:
+- conda-forge
+- defaults
+
+dependencies:
+- python=3
+- pip
+- git
+- conda-forge::numpy
+- conda-forge::scipy
+- sympy
+- h5py
+- pyopencl
+- pocl
+- fftw
+- mpi4py
+- mpi4py-fft
+- clfft
+- Cython
+
+- pip:
+    - git+https://github.com/inducer/pymbolic.git
+    - git+https://github.com/inducer/loopy.git
+    - git+https://gitlab.com/zachjweiner/gpyfft.git

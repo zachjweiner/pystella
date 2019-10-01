@@ -1,0 +1,440 @@
+__copyright__ = "Copyright (C) 2019 Zachary J Weiner"
+
+__license__ = """
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+"""
+
+
+import numpy as np
+import pyopencl.array as cla
+
+__doc__ = """
+.. currentmodule:: pystella
+.. autofunction:: DFT
+.. currentmodule:: pystella.fourier
+.. autoclass:: pystella.fourier.dft.BaseDFT
+.. autoclass:: pDFT
+.. autoclass:: gDFT
+.. currentmodule:: pystella
+"""
+
+
+def DFT(decomp, context, queue, grid_shape, dtype, **kwargs):
+    """
+    A wrapper to the creation of various FFT class options which determines
+    whether to use :class:`pystella.fourier.gDFT` (for single-device, OpenCL-based
+    FFTs via :mod:`gpyfft`) or :class:`pystella.fourier.pDFT`
+    (for distributed, CPU FFTs via :class:`mpi4py_fft.PFFT`),
+    based on the processor shape ``proc_shape`` and a flag ``use_fftw``.
+
+    :arg decomp: A :class:`DomainDecomposition`.
+
+    :arg context: A :class:`pyopencl.Context`.
+
+    :arg queue: A :class:`pyopencl.CommandQueue`.
+
+    :arg grid_shape: A 3-:class:`tuple` specifying the shape of position-space arrays
+        to be transformed.
+
+    :arg dtype: The datatype of real arrays to be transformed. The complex
+        datatype is chosen to have the same precision.
+
+    The following keyword-only arguments are recognized:
+
+    :arg use_fftw: A :class:`bool` dictating whether to use
+        :class:`pystella.fourier.pDFT`.
+        Defaults to *False*, i.e., this flag must be set to *True* to override the
+        default choice to use :class:`pystella.fourier.gDFT` on a single rank.
+
+    Any remaining keyword arguments are passed to :class:`pystella.fourier.pDFT`,
+    should this function return such an object.
+    """
+
+    use_fftw = kwargs.pop('use_fftw', False)
+    proc_shape = decomp.proc_shape
+    if proc_shape == (1, 1, 1) and not use_fftw:
+        return gDFT(decomp, context, queue, grid_shape, dtype)
+    else:
+        # local_shape = tuple(N//P for N, P in zip(grid_shape, proc_shape))
+        # tmp = cla.zeros(queue, local_shape, dtype)
+        return pDFT(decomp, queue, grid_shape, proc_shape, dtype, **kwargs)
+
+
+def _transfer_array(a, b):
+    # set a = b
+    if isinstance(a, np.ndarray) and isinstance(b, cla.Array):
+        b.get(ary=a)
+    elif isinstance(a, cla.Array) and isinstance(b, np.ndarray):
+        a.set(b)
+    return a
+
+
+class BaseDFT:
+    """
+    Base class for all FFT options.
+
+    .. automethod:: shape
+    .. automethod:: dft
+    .. automethod:: idft
+    .. automethod:: zero_corner_modes
+    """
+
+    # pylint: disable=no-member
+    def shape(self, forward_output=True):
+        """
+        :arg forward_output: A :class:`bool` specifying whether to output the
+            shape for the result of the forward Fourier transform.
+
+        :returns: A 3-:class:`tuple` of the (per--MPI-rank) shape of the requested
+            array (as specified by ``forward_output``).
+        """
+
+        raise NotImplementedError
+
+    def forward_transform(self, fx, fk, **kwargs):
+        raise NotImplementedError
+
+    def backward_transform(self, fk, fx, **kwargs):
+        raise NotImplementedError
+
+    def dft(self, fx=None, fk=None, **kwargs):
+        """
+        Computes the forward Fourier transform.
+
+        :arg fx: The array to be transformed.
+            Can be a :class:`pyopencl.array.Array` with or without halo padding
+            (which will be removed by
+            :meth:`pystella.DomainDecomposition.remove_halos`
+            if needed) or a :class:`numpy.ndarray` without halo padding.
+            Arrays are copied as necessary.
+            Defaults to *None*, in which case :attr:`fx` (attached
+            to the transform) is used.
+
+        :arg fk: The array in which to output the result of the transform.
+            Can be a :class:`pyopencl.array.Array` or a :class:`numpy.ndarray`.
+            Arrays are copied as necessary.
+            Defaults to *None*, in which case :attr:`fk` (attached
+            to the transform) is used.
+
+        :returns: The forward Fourier transform of ``fx``.
+            Either ``fk`` if supplied or :attr:`fk`.
+
+        Any remaining keyword arguments are passed to :meth:`forward_transform`.
+
+        .. note::
+            If you need the result of multiple Fourier transforms, you must
+            either supply an ``fk`` array or copy the output.
+            Namely, without passing ``fk`` the same memory (attached to the
+            transform object) will be used as output, overwriting any prior
+            results.
+        """
+
+        if fx is not None:
+            if fx.shape != self.shape(False):
+                if isinstance(fx, cla.Array):
+                    queue = fx.queue
+                elif isinstance(self.fx, cla.Array):
+                    queue = self.fx.queue
+                else:
+                    queue = None
+                self.decomp.remove_halos(queue, fx, self.fx)
+                _fx = self.fx
+            elif not isinstance(fx, type(self.fx)):
+                _fx = _transfer_array(self.fx, fx)
+            else:
+                _fx = fx
+        else:
+            _fx = self.fx
+
+        if fk is not None:
+            if not isinstance(fk, type(self.fk)):
+                _fk = self.fk
+            else:
+                _fk = fk
+        else:
+            _fk = self.fk
+
+        _fk = self.forward_transform(_fx, _fk, **kwargs)
+
+        if fk is not None:
+            if not isinstance(fk, type(self.fk)):
+                _fk = _transfer_array(fk, _fk)
+            else:
+                _fk = fk
+        else:
+            _fk = _fk
+
+        return _fk
+
+    def idft(self, fk=None, fx=None, **kwargs):
+        """
+        Computes the backward Fourier transform.
+
+        :arg fk: The array to be transformed.
+            Can be a :class:`pyopencl.array.Array` or a :class:`numpy.ndarray`.
+            Arrays are copied as necessary.
+            Defaults to *None*, in which case :attr:`fk` (attached
+            to the transform) is used.
+
+        :arg fx: The array in which to output the result of the transform.
+            Can be a :class:`pyopencl.array.Array` with or without halo padding
+            (which will be restored by
+            :meth:`pystella.DomainDecomposition.restore_halos`
+            if needed) or a :class:`numpy.ndarray` without halo padding.
+            Arrays are copied as necessary.
+            Defaults to *None*, in which case :attr:`fx` (attached
+            to the transform) is used.
+
+        :returns: The forward Fourier transform of ``fx``.
+            Either ``fk`` if supplied or :attr:`fk`.
+
+        Any remaining keyword arguments are passed to :meth:`backward_transform`.
+
+        .. note::
+            If you need the result of multiple Fourier transforms, you must
+            either supply an ``fx`` array or copy the output.
+            Namely, without passing ``fx`` the same memory (attached to the
+            transform object) will be used as output, overwriting any prior
+            results.
+        """
+
+        if fk is not None:
+            if not isinstance(fk, type(self.fk)):
+                _fk = _transfer_array(self.fk, fk)
+            else:
+                _fk = fk
+        else:
+            _fk = self.fk
+
+        if fx is not None:
+            if fx.shape == self.shape(False) and isinstance(fx, type(self.fx)):
+                _fx = fx
+            else:
+                _fx = self.fx
+        else:
+            _fx = self.fx
+
+        _fx = self.backward_transform(_fk, _fx, **kwargs)
+
+        if fx is not None:
+            if fx.shape != self.shape(False):
+                if isinstance(fx, cla.Array):
+                    queue = fx.queue
+                elif isinstance(self.fx, cla.Array):
+                    queue = self.fx.queue
+                else:
+                    queue = None
+                self.decomp.restore_halos(queue, _fx, fx)
+                _fx = fx
+            elif not isinstance(fx, type(self.fx)):
+                _fx = _transfer_array(fx, _fx)
+            else:
+                _fx = _fx
+        else:
+            _fx = _fx
+
+        return _fx
+
+    def zero_corner_modes(self, array, only_imag=False):
+        """
+        Zeros the "corner" modes (modes where each component of its
+        integral wavenumber is either zero or the Nyquist along
+        that axis) of ``array`` (or just the imaginary part).
+
+        :arg array: The array to operate on.
+            May be a :class:`pyopencl.array.Array` or a :class:`numpy.ndarray`.
+
+        :arg only_imag: A :class:`bool` determining whether to only
+            set the imaginary part of the array to zero.
+            Defaults to *False*, i.e., setting the mode to ``0+0j``.
+        """
+
+        sub_k = list(x.get().astype('int') for x in self.sub_k.values())
+        shape = self.grid_shape
+
+        where_to_zero = []
+        for mu in range(3):
+            kk = sub_k[mu]
+            where_0 = np.argwhere(abs(kk) == 0).reshape(-1)
+            where_N2 = np.argwhere(abs(kk) == shape[mu]//2).reshape(-1)
+            where_to_zero.append(np.concatenate([where_0, where_N2]))
+
+        from itertools import product
+        for i, j, k in product(*where_to_zero):
+            if only_imag:
+                array[i, j, k] = array[i, j, k].real
+            else:
+                array[i, j, k] = 0.
+
+        return array
+
+
+_c_dtype_mapping = {'float32': 'complex64', 'float64': 'complex128',
+                    np.float32: 'complex64', np.float64: 'complex128'}
+
+
+class pDFT(BaseDFT):
+    """
+    A wrapper to :class:`mpi4py_fft.PFFT` to compute distributed Fast Fourier
+    transforms.
+
+    See :class:`pystella.fourier.dft.BaseDFT`.
+
+    .. automethod:: __init__
+    """
+
+    def __init__(self, decomp, queue, grid_shape, proc_shape, dtype, **kwargs):
+        """
+        :arg decomp: A :class:`pystella.DomainDecomposition`.
+
+        :arg queue: A :class:`pyopencl.CommandQueue`.
+
+        :arg grid_shape: A 3-:class:`tuple` specifying the shape of position-space
+            arrays to be transformed.
+
+        :arg proc_shape: A 3-:class:`tuple` specifying the shape of the MPI
+            processor grid.
+
+        :arg dtype: The datatype of real arrays to be transformed. The complex
+            datatype is chosen to have the same precision.
+
+        Any keyword arguments are passed to :meth:`mpi4py_fft.PFFT.__init__()`.
+        """
+
+        self.decomp = decomp
+        self.grid_shape = grid_shape
+        self.proc_shape = proc_shape
+        self.dtype = dtype
+        cdtype = _c_dtype_mapping[dtype]
+        self.cdtype = cdtype
+
+        if proc_shape[0] > 1 and proc_shape[1] == 1:
+            slab = True
+        else:
+            slab = False
+
+        from mpi4py_fft.pencil import Subcomm
+        default_kwargs = dict(
+            # FIXME: this is weird
+            axes=([0], [1], [2]), threads=16, backend='fftw', collapse=True,
+            )
+        default_kwargs.update(kwargs)
+        comm = decomp.comm if slab else Subcomm(decomp.comm, proc_shape)
+
+        from mpi4py_fft import PFFT
+        self.fft = PFFT(comm, grid_shape, dtype=dtype, slab=slab, **default_kwargs)
+
+        for transform in self.fft.xfftn:
+            transform.M = 1  # ensure normalization is not applied
+
+        self.fx = self.fft.forward.input_array
+        self.fk = self.fft.forward.output_array
+
+        from numpy.fft import fftfreq
+        k = [fftfreq(n, 1/n).astype(dtype) for n in grid_shape]
+
+        if dtype in ('float32', 'float64', np.float32, np.float64):
+            from numpy.fft import rfftfreq
+            k[-1] = rfftfreq(grid_shape[-1], 1/grid_shape[-1]).astype(dtype)
+
+        slc = self.fft.local_slice(True)
+        names = ('momenta_x', 'momenta_y', 'momenta_z')
+        self.sub_k = {direction: cla.to_device(queue, k_i[s_i])
+                      for direction, k_i, s_i in zip(names, k, slc)}
+
+    def shape(self, forward_output=True):
+        return self.fft.shape(forward_output=forward_output)
+
+    def forward_transform(self, fx, fk, **kwargs):
+        return self.fft.forward(input_array=fx, output_array=fk, **kwargs)
+
+    def backward_transform(self, fk, fx, **kwargs):
+        return self.fft.backward(input_array=fk, output_array=fx, **kwargs)
+
+
+class gDFT(BaseDFT):
+    """
+    A wrapper to :mod:`gpyfft` to compute real-to-complex and complex-to-real
+    Fast Fourier transforms.
+
+    See :class:`pystella.fourier.dft.BaseDFT`.
+
+    .. automethod:: __init__
+    """
+
+    def __init__(self, decomp, context, queue, grid_shape, dtype):
+        """
+        :arg decomp: A :class:`pystella.DomainDecomposition`.
+
+        :arg context: A :class:`pyopencl.Context`.
+
+        :arg queue: A :class:`pyopencl.CommandQueue`.
+
+        :arg grid_shape: A 3-:class:`tuple` specifying the shape of position-space
+            arrays to be transformed.
+
+        :arg dtype: The datatype of real arrays to be transformed. The complex
+            datatype is chosen to have the same precision.
+        """
+
+        self.decomp = decomp
+        self.grid_shape = grid_shape
+        self.dtype = dtype
+        cdtype = _c_dtype_mapping[dtype]
+        self.cdtype = cdtype
+
+        self.fx = cla.zeros(queue, grid_shape, dtype)
+        self.fk = cla.zeros(queue, self.shape(True), cdtype)
+        from gpyfft import FFT
+        self.forward = FFT(context, queue, self.fx, out_array=self.fk, real=True,
+                           scale_forward=1, scale_backward=1)
+        self.backward = FFT(context, queue, self.fk, out_array=self.fx, real=True,
+                            scale_forward=1, scale_backward=1)
+
+        from numpy.fft import fftfreq, rfftfreq
+        names = ('momenta_x', 'momenta_y', 'momenta_z')
+
+        slc = ((), (), (),)
+        k = [fftfreq(n, 1/n).astype(dtype) for n in grid_shape]
+        self.sub_k_c = {direction: cla.to_device(queue, k_i[s_i])
+                        for direction, k_i, s_i in zip(names, k, slc)}
+
+        k[-1] = rfftfreq(grid_shape[-1], 1/grid_shape[-1]).astype(dtype)
+        self.sub_k = {direction: cla.to_device(queue, k_i[s_i])
+                      for direction, k_i, s_i in zip(names, k, slc)}
+
+    def shape(self, forward_output=True):
+        if forward_output:
+            shape = list(self.grid_shape)
+            shape[-1] = shape[-1]//2+1
+            return tuple(shape)
+        else:
+            return self.grid_shape
+
+    def forward_transform(self, fx, fk, **kwargs):
+        event, = self.forward.enqueue_arrays(data=fx, result=fk, forward=True)
+        fx.add_event(event)
+        fk.add_event(event)
+        return fk
+
+    def backward_transform(self, fk, fx, **kwargs):
+        event, = self.backward.enqueue_arrays(data=fk, result=fx, forward=False)
+        fx.add_event(event)
+        fk.add_event(event)
+        return fx
