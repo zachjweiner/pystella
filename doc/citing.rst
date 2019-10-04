@@ -13,24 +13,26 @@ Here are Bibtex entries for your convenience:
 
 .. code-block:: latex
 
-    @article{Adshead:2019a,
-        author = "Adshead, Peter and Giblin, John T. and Pieroni, Mauro
-            and Weiner, Zachary J.",
-        title = "{Constraining axion inflation with gravitational waves across
-            29 decades in frequency}",
-        year = "2019",
-        note = "To appear.",
-        eprint = "1909.12843",
-        archivePrefix = "arXiv",
+    @article{Adshead:2019igv,
+        author         = "Adshead, Peter and Giblin, John T. and Pieroni, Mauro and
+                          Weiner, Zachary J.",
+        title          = "{Constraining axion inflation with gravitational waves
+                          across 29 decades in frequency}",
+        year           = "2019",
+        eprint         = "1909.12843",
+        archivePrefix  = "arXiv",
+        primaryClass   = "astro-ph.CO",
+        SLACcitation   = "%%CITATION = ARXIV:1909.12843;%%"
     }
 
-    @article{Adshead:2019b,
-        author = "Adshead, Peter and Giblin, John T. and Pieroni, Mauro
-            and Weiner, Zachary J.",
-        title = "{Constraining axion inflation with gravitational waves
-            from preheating}",
-        year = "2019",
-        note = "To appear.",
-        eprint = "1909.12842",
-        archivePrefix = "arXiv",
+    @article{Adshead:2019lbr,
+        author         = "Adshead, Peter and Giblin, John T. and Pieroni, Mauro and
+                            Weiner, Zachary J.",
+        title          = "{Constraining axion inflation with gravitational waves
+                            from preheating}",
+        year           = "2019",
+        eprint         = "1909.12842",
+        archivePrefix  = "arXiv",
+        primaryClass   = "astro-ph.CO",
+        SLACcitation   = "%%CITATION = ARXIV:1909.12842;%%"
     }
