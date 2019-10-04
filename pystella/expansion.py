@@ -80,6 +80,7 @@ class Expansion:
         shape = (1,) if self.is_low_storage else (3,)
         self.a = np.ones(shape, dtype=dtype)
         self.adot = self.adot_friedmann_1(self.a, energy)
+        self.hubble = self.adot / self.a
 
         from pystella import Field
         _a = Field('a', indices=[])[(0,) if self.is_low_storage else ()]
@@ -144,10 +145,6 @@ class Expansion:
 
         return 4 * np.pi * a**2 / 3 / self.mpl**2 * (energy - 3 * pressure) * a
 
-    @property
-    def hubble(self):
-        return self.adot / self.a
-
     def step(self, stage, energy, pressure, dt):
         """
         Executes one stage of the time stepper.
@@ -167,6 +164,7 @@ class Expansion:
             arg_dict['k_tmp'] = self.k_tmp
 
         self.stepper(stage, **arg_dict)
+        self.hubble[()] = self.adot / self.a
 
     def constraint(self, energy):
         """
