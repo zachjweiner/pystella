@@ -456,7 +456,7 @@ class LowStorageRKStepper(Stepper):
 
         return steps
 
-    def __call__(self, stage, queue=None, **kwargs):
+    def __call__(self, stage, *, k_tmp, queue=None, **kwargs):
         """
         Same as :meth:`Stepper.__call__`, but requires the
         following arguments:
@@ -477,7 +477,7 @@ class LowStorageRKStepper(Stepper):
             ...    stepper(stage, queue, k_tmp=k_tmp, ...)
         """
 
-        return super().__call__(stage, queue, **kwargs)
+        return super().__call__(stage, queue=queue, k_tmp=k_tmp, **kwargs)
 
 
 class LowStorageRK54(LowStorageRKStepper):
