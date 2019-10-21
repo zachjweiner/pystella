@@ -282,8 +282,8 @@ class PowerSpectra:
                 self.fft.dft(vector[s][mu], vec_k[mu])
 
             projector.vec_to_pol(queue, plus, minus, vec_k)
-            result[s][0] = self.bin_power(plus, queue, k_power, allocator)
-            result[s][1] = self.bin_power(minus, queue, k_power, allocator)
+            result[s][0] = self.bin_power(plus, queue, k_power, allocator=allocator)
+            result[s][1] = self.bin_power(minus, queue, k_power, allocator=allocator)
 
         return self.norm * result
 
@@ -326,7 +326,7 @@ class PowerSpectra:
         gw_spec = []
         projector.transverse_traceless(queue, hij_k)
         for mu in range(6):
-            spec = self.bin_power(hij_k[mu], queue, k_power, allocator)
+            spec = self.bin_power(hij_k[mu], queue, k_power, allocator=allocator)
             gw_spec.append(spec)
 
         gw_tot = sum(gw_spec[tensor_id(i, j)]
