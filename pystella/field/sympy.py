@@ -37,10 +37,14 @@ Sympy interoperability
 """
 
 
-class SympyField(sym.Symbol):
-    def __new__(cls, field, **assumptions):
-        symb = super().__new__(cls, field.child.name, **assumptions)
+class SympyField(sym.Indexed):
+    def __new__(cls, field, base, *args, subscript=None, **kwargs):
+        if subscript is None:
+            subscript = tuple()
+        symb = super().__new__(cls, base, *subscript, *args, **kwargs)
         symb.field = field
+        symb.subscript = subscript
+
         return symb
 
 
@@ -61,7 +65,18 @@ class PymbolicToSympyMapperWithField(PymbolicToSympyMapper):
             self.raise_conversion_error(expr)
 
     def map_field(self, expr):
-        return SympyField(expr)
+        indices = tuple(self.rec(i) for i in expr.indices)
+        return SympyField(expr, expr.child.name, *indices)
+
+    def map_subscript(self, expr):
+        from pystella import Field
+        if isinstance(expr.aggregate, Field):
+            f = expr.aggregate
+            subscript = tuple(self.rec(i) for i in expr.index_tuple)
+            indices = tuple(self.rec(i) for i in f.indices)
+            return SympyField(f, f.child.name, *indices, subscript=subscript)
+        else:
+            return super().map_subscript(expr)
 
     map_dynamic_field = map_field
 
@@ -92,7 +107,12 @@ class SympyToPymbolicMapperMathLookup(SympyToPymbolicMapper):
 
 class SympyToPymbolicMapperWithField(SympyToPymbolicMapperMathLookup):
     def map_SympyField(self, expr):
-        return expr.field
+        f = expr.field
+        if expr.subscript is not None:
+            subscript = tuple(self.rec(i) for i in expr.subscript)
+            return pp.Subscript(f, subscript)
+        else:
+            return f
 
 
 #: A mapper which converts :class:`pymbolic.primitives.Expression`'s into
@@ -103,6 +123,11 @@ class SympyToPymbolicMapperWithField(SympyToPymbolicMapperMathLookup):
 #:
 #: :arg expr: The :mod:`pymbolic` expression to be mapped.
 #:
+#: .. note::
+#:
+#:    Currently, :class:`~pystella.Field`'s of the form
+#:    ``Field('f[0]')`` will not be processed correctly.
+#:
 pymbolic_to_sympy = PymbolicToSympyMapperWithField()
 
 #: A mapper which converts :mod:`sympy` expressions into
@@ -110,6 +135,13 @@ pymbolic_to_sympy = PymbolicToSympyMapperWithField()
 #: type used to represent :class:`~pystella.Field`'s by :func:`pymbolic_to_sympy`.
 #:
 #: :arg expr: The :mod:`sympy` expression to be mapped.
+#:
+#: .. note::
+#:
+#:    Currently, any modifications to the indices of a :class:`SympyField`
+#:    will not be reflected when mapped back to a :class:`~pystella.Field`.
+#:    Use :class:`pymbolic.primitives.Subscript` instead (i.e., process
+#:    :class:`~pystella.Field`'s with :class:`~pystella.Indexer` first).
 #:
 sympy_to_pymbolic = SympyToPymbolicMapperWithField()
 

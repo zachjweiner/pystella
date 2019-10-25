@@ -44,7 +44,7 @@ def parse_if_str(expr):
     return parse(expr) if isinstance(expr, str) else expr
 
 
-class Field(pp.Expression):
+class Field(pp.AlgebraicLeaf):
     """
     A :class:`pymbolic.primitives.Expression` designed to mimic an array by carrying
     information about indexing. Kernel generators (:class:`Reduction`,
