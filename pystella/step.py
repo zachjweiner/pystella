@@ -420,23 +420,14 @@ class LowStorageRKStepper(Stepper):
 
         rhs = var('rhs')
         dt = var('dt')
-        # filter out indices for zero axes
-        # FIXME: Field.indices should never include offset, so that this can just
-        # replicate test_field.indices (rename to index_tuple?)
-        test_field = list(self.rhs_dict.keys())[0]
-        from pymbolic.primitives import Subscript
-        if isinstance(test_field, Field):
-            num_indices = len(test_field.indices)
-        elif isinstance(test_field, Subscript):
-            if isinstance(test_field.aggregate, Field):
-                num_indices = len(test_field.aggregate.indices)
-            else:
-                num_indices = len(test_field.index_tuple)
-        else:
-            num_indices = 0
 
-        indices = ('i', 'j', 'k')[:num_indices]
-        k = Field('k_tmp', indices=indices)
+        # filter out indices for zero axes
+        test_array = list(self.rhs_dict.keys())[0]
+        from pymbolic.primitives import Subscript
+        if isinstance(test_array, Subscript):
+            if isinstance(test_array.aggregate, Field):
+                test_array = test_array.aggregate
+        k = Field('k_tmp', indices=test_array.indices)
 
         rhs_statements = {rhs[i]: Indexer(value)
                           for i, value in enumerate(self.rhs_dict.values())}

@@ -65,7 +65,7 @@ class PymbolicToSympyMapperWithField(PymbolicToSympyMapper):
             self.raise_conversion_error(expr)
 
     def map_field(self, expr):
-        indices = tuple(self.rec(i) for i in expr.indices)
+        indices = tuple(self.rec(i) for i in expr.index_tuple)
         return SympyField(expr, expr.child.name, *indices)
 
     def map_subscript(self, expr):
@@ -73,7 +73,7 @@ class PymbolicToSympyMapperWithField(PymbolicToSympyMapper):
         if isinstance(expr.aggregate, Field):
             f = expr.aggregate
             subscript = tuple(self.rec(i) for i in expr.index_tuple)
-            indices = tuple(self.rec(i) for i in f.indices)
+            indices = tuple(self.rec(i) for i in f.index_tuple)
             return SympyField(f, f.child.name, *indices, subscript=subscript)
         else:
             return super().map_subscript(expr)
@@ -123,7 +123,7 @@ class SympyToPymbolicMapperWithField(SympyToPymbolicMapperMathLookup):
 #:
 #: :arg expr: The :mod:`pymbolic` expression to be mapped.
 #:
-#: .. note::
+#: .. warning::
 #:
 #:    Currently, :class:`~pystella.Field`'s of the form
 #:    ``Field('f[0]')`` will not be processed correctly.
@@ -136,7 +136,7 @@ pymbolic_to_sympy = PymbolicToSympyMapperWithField()
 #:
 #: :arg expr: The :mod:`sympy` expression to be mapped.
 #:
-#: .. note::
+#: .. warning::
 #:
 #:    Currently, any modifications to the indices of a :class:`SympyField`
 #:    will not be reflected when mapped back to a :class:`~pystella.Field`.

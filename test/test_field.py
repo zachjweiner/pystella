@@ -32,51 +32,51 @@ def test_field(proc_shape):
 
     y = ps.Field('y', offset='h')
     result = ps.Indexer(y)
-    assert result == parse("y[i + h, j + h, k + h]")
+    assert result == parse("y[i + h, j + h, k + h]"), result
 
     y = ps.Field('y', offset='h', indices=('a', 'b', 'c'))
     result = ps.Indexer(y)
-    assert result == parse("y[a + h, b + h, c + h]")
+    assert result == parse("y[a + h, b + h, c + h]"), result
 
     y = ps.Field('y', ignore_prepends=True)
     result = ps.Indexer(y, prepend_with=(0, 1))
-    assert result == parse("y[i, j, k]")
+    assert result == parse("y[i, j, k]"), result
 
     y = ps.Field('y[4, 5]', ignore_prepends=True)
     result = ps.Indexer(y, prepend_with=(0, 1))
-    assert result == parse("y[4, 5, i, j, k]")
+    assert result == parse("y[4, 5, i, j, k]"), result
 
     y = ps.Field('y', ignore_prepends=True)
     result = ps.Indexer(y[2, 3], prepend_with=(0, 1))
-    assert result == parse("y[2, 3, i, j, k]")
+    assert result == parse("y[2, 3, i, j, k]"), result
 
     y = ps.Field('y[4, 5]', ignore_prepends=True)
     result = ps.Indexer(y[2, 3], prepend_with=(0, 1))
-    assert result == parse("y[2, 3, 4, 5, i, j, k]")
+    assert result == parse("y[2, 3, 4, 5, i, j, k]"), result
 
     y = ps.Field('y', ignore_prepends=False)
     result = ps.Indexer(y, prepend_with=(0, 1))
-    assert result == parse("y[0, 1, i, j, k]")
+    assert result == parse("y[0, 1, i, j, k]"), result
 
     y = ps.Field('y[4, 5]', ignore_prepends=False)
     result = ps.Indexer(y, prepend_with=(0, 1))
-    assert result == parse("y[0, 1, 4, 5, i, j, k]")
+    assert result == parse("y[0, 1, 4, 5, i, j, k]"), result
 
     y = ps.Field('y', ignore_prepends=False)
     result = ps.Indexer(y[2, 3], prepend_with=(0, 1))
-    assert result == parse("y[0, 1, 2, 3, i, j, k]")
+    assert result == parse("y[0, 1, 2, 3, i, j, k]"), result
 
     y = ps.Field('y[4, 5]', ignore_prepends=False)
     result = ps.Indexer(y[2, 3], prepend_with=(0, 1))
-    assert result == parse("y[0, 1, 2, 3, 4, 5, i, j, k]")
+    assert result == parse("y[0, 1, 2, 3, 4, 5, i, j, k]"), result
 
     y = ps.Field('y', offset=('hx', 'hy', 'hz'))
     result = ps.Indexer(y.shift((1, 2, 3)))
-    assert result == parse("y[i + hx + 1, j + hy + 2, k + hz + 3]")
+    assert result == parse("y[i + hx + 1, j + hy + 2, k + hz + 3]"), result
 
     y = ps.Field('y', offset=('hx', var('hy'), 'hz'))
     result = ps.Indexer(y.shift((1, 2, var('a'))))
-    assert result == parse("y[i + hx + 1, j + hy + 2, k + hz + a]")
+    assert result == parse("y[i + hx + 1, j + hy + 2, k + hz + a]"), result
 
 
 def test_dynamic_field(proc_shape):
@@ -86,22 +86,22 @@ def test_dynamic_field(proc_shape):
     y = ps.DynamicField('y', offset='h')
 
     result = ps.Indexer(y)
-    assert result == parse("y[i + h, j + h, k + h]")
+    assert result == parse("y[i + h, j + h, k + h]"), result
 
     result = ps.Indexer(y.lap)
-    assert result == parse("lap_y[i, j, k]")
+    assert result == parse("lap_y[i, j, k]"), result
 
     result = ps.Indexer(y.dot)
-    assert result == parse("dydt[i + h, j + h, k + h]")
+    assert result == parse("dydt[i + h, j + h, k + h]"), result
 
     result = ps.Indexer(y.pd[var('x')])
-    assert result == parse("dydx[x, i, j, k]")
+    assert result == parse("dydx[x, i, j, k]"), result
 
     result = ps.Indexer(y.d(1, 0))
-    assert result == parse("dydt[1, i + h, j + h, k + h]")
+    assert result == parse("dydt[1, i + h, j + h, k + h]"), result
 
     result = ps.Indexer(y.d(1, 1))
-    assert result == parse("dydx[1, 0, i, j, k]")
+    assert result == parse("dydx[1, 0, i, j, k]"), result
 
 
 def test_field_diff(proc_shape):
@@ -167,6 +167,10 @@ def test_get_field_args(proc_shape):
     args = get_field_args(expressions)
     assert lists_equal(args, true_args)
 
+    expressions = [x.shift((1, 2, 3)), y, y * z**2]
+    args = get_field_args(expressions)
+    assert lists_equal(args, true_args)
+
 
 def test_sympy_interop(proc_shape):
     if proc_shape != (1, 1, 1):
@@ -184,6 +188,13 @@ def test_sympy_interop(proc_shape):
     sympy_expr_2 = pymbolic_to_sympy(new_expr)
     assert sym.simplify(sympy_expr - sympy_expr_2) == 0, \
         "sympy <-> pymbolic conversion not invertible"
+
+    expr = f + f.shift((1, 2, 3))
+    sympy_expr = pymbolic_to_sympy(expr)
+    new_expr = sympy_to_pymbolic(sympy_expr)
+    sympy_expr_2 = pymbolic_to_sympy(new_expr)
+    assert sym.simplify(sympy_expr - sympy_expr_2) == 0, \
+        "sympy <-> pymbolic conversion not invertible with shifted indices"
 
     # from pymbolic.functions import fabs, exp, exmp1
     fabs = parse('math.fabs')

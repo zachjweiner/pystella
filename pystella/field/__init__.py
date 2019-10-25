@@ -49,7 +49,8 @@ class Field(pp.AlgebraicLeaf):
     A :class:`pymbolic.primitives.Expression` designed to mimic an array by carrying
     information about indexing. Kernel generators (:class:`Reduction`,
     :class:`ElementWiseMap`, and subclasses) automatically append indexing
-    specified by the attributes :attr:`indices` and :attr:`offset` by pre-processing
+    specified by the attributes :attr:`indices` and :attr:`offset`
+    (via :attr:`index_tuple`) by pre-processing
     the expressions with :func:`Indexer`.
 
     Examples::
@@ -65,74 +66,91 @@ class Field(pp.AlgebraicLeaf):
     for more examples of
     the intended functionality.
 
-    .. attribute:: child
-
-        The child expression representing the un-subscripted field. Can be input
-        as a string or a :class:`pymbolic.primitives.Expression`.
-
-    .. attribute:: name
-
-        The name of the :class:`Field` instance, i.e., as would appear in
-        a generated kernel. Defaults to ``str(child)``.
-
-    .. attribute:: indices
-
-        A tuple of (symbolic) array indices that will subscript the array. Each
-        entry may be a :class:`pymbolic.primitives.Variable` or a string which
-        parses to one. Defaults to ``('i', 'j', 'k')``
-
-    .. attribute:: offset
-
-        The amount of padding by which to offset the array axes corresponding to
-        the elements of :attr:`indices`. May be a tuple with the same length as
-        :attr:`indices` or a single value. In the latter case, the input is
-        transformed into a tuple with the same length as :attr:`indices`, each with
-        the same value. Defaults to ``0``.
-
-    .. attribute:: ignore_prepends
-
-        Whether to ignore array subscripts prepended when processed with
-        :func:`Indexer`. Useful for timestepping kernels which prepend array indices
-        corresponding to extra storage axes (to specify that an array does not have
-        this axis). Defaults to *False*.
+    .. automethod:: __init__
+    .. autoattribute:: index_tuple
     """
 
-    def __init__(self, child, name=None, offset=0, indices=('i', 'j', 'k'),
+    init_arg_names = ('child', 'offset', 'indices', 'base_offset', 'ignore_prepends')
+
+    def __init__(self, child, offset=0, indices=('i', 'j', 'k'), base_offset=None,
                  ignore_prepends=False):
+        """
+        :arg child: The child expression representing the unsubscripted field.
+            May be a string, a :class:`pymbolic.primitives.Variable`, or a
+            :class:`pymbolic.primitives.Subscript`.
+
+        :arg indices: A tuple of (symbolic) array indices that will subscript
+            the array.
+            Each entry may be a :class:`pymbolic.primitives.Variable` or a string
+            which parses to one.
+            Defaults to ``('i', 'j', 'k')``
+
+        :arg offset: The amount of padding by which to offset the array axes
+            corresponding to the elements of :attr:`indices`. May be a tuple with
+            the same length as :attr:`indices` or a single value.
+            In the latter case, the input is transformed into a tuple with the same
+            length as :attr:`indices`, each with the same value.
+            Defaults to ``0``.
+
+        :arg ignore_prepends: Whether to ignore array subscripts prepended when
+            processed with :func:`Indexer`. Useful for timestepping kernels
+            (e.g., :class:`~pystella.step.RungeKuttaStepper`) which prepend array
+            indices corresponding to extra storage axes (to specify that an array
+            does not have this axis).
+            Defaults to *False*.
+        """
+
         self.child = parse_if_str(child)
-        self.name = name if isinstance(name, str) else str(child)
+        if isinstance(self.child, pp.Subscript):
+            self.name = self.child.aggregate.name
+        else:
+            self.name = self.child.name
 
         if not isinstance(offset, (list, tuple)):
             offset = (offset,)*len(indices)
         if len(offset) != len(indices):
-            raise ValueError('offset and indices must have same length')
+            raise ValueError(
+                'offset (if not length-1) must have same length as indices'
+            )
 
         self.offset = tuple(parse_if_str(o) for o in offset)
-        self.indices = tuple(parse_if_str(i) + off
-                             for i, off in zip(indices, self.offset))
+        self.base_offset = base_offset or self.offset
+        self.indices = tuple(parse_if_str(i) for i in indices)
 
         self.ignore_prepends = ignore_prepends
 
     def __getinitargs__(self):
-        return (self.child, self.indices, self.name, self.ignore_prepends)
+        return (self.child, self.offset, self.indices, self.base_offset,
+                self.ignore_prepends)
 
     mapper_method = "map_field"
+
+    @property
+    def index_tuple(self):
+        """
+        The fully-expanded subscript (i.e., :attr:`indices`
+        offset by :attr:`offset`.)
+        """
+
+        return tuple(i + o for i, o in zip(self.indices, self.offset))
 
     def make_stringifier(self, originating_stringifier=None):
         # FIXME: do something with originating_stringifier?
         return FieldStringifyMapper()
 
-    def shift(self, vec):
-        return Field(self.child, self.name, offset=vec, indices=self.indices,
-                     ignore_prepends=self.ignore_prepends)
+    def new_with_changes(self, **kwargs):
+        init_kwargs = dict(zip(self.init_arg_names, self.__getinitargs__()))
+        init_kwargs.update(kwargs)
+        return Field(**init_kwargs)
+
+    def shift(self, displ):
+        new_offset = tuple(o + d for o, d in zip(self.offset, displ))
+        return self.new_with_changes(offset=new_offset)
 
 
 class FieldStringifyMapper(StringifyMapper):
     def map_field(self, expr, enclosing_prec, *args, **kwargs):
-        if expr.name is not None:
-            return self.rec(parse(expr.name), enclosing_prec, *args, **kwargs)
-        else:
-            return self.rec(expr.child, enclosing_prec, *args, **kwargs)
+        return self.rec(expr.child, enclosing_prec, *args, **kwargs)
 
     map_dynamic_field = map_field
 
@@ -166,24 +184,27 @@ class DynamicField(Field):
         ``pd_child``.
 
     .. automethod:: d
-
     """
 
-    def __init__(self, child, name=None, offset='0', indices=('i', 'j', 'k'),
-                 dot_child=None, lap_child=None, pd_child=None):
-        super().__init__(child, name, offset, indices)
+    init_arg_names = ('child', 'offset', 'indices', 'base_offset',
+                      'dot_child', 'lap_child', 'pd_child')
 
-        self.dot = Field(dot_child if dot_child is not None else 'd' + child + 'dt',
-                         'd' + self.name + 'dt',
+    def __init__(self, child, offset='0', indices=('i', 'j', 'k'),
+                 base_offset=None, dot_child=None, lap_child=None, pd_child=None):
+        super().__init__(child, offset, indices, base_offset=base_offset)
+
+        self.dot = Field(dot_child or 'd' + str(child) + 'dt',
                          offset, indices=indices)
 
-        self.lap = Field(lap_child if lap_child is not None else 'lap_' + child,
-                         'lap_' + self.name,
-                         offset='0', indices=indices, ignore_prepends=True)
+        self.lap = Field(lap_child or 'lap_' + str(child),
+                         offset=0, indices=indices, ignore_prepends=True)
 
-        self.pd = Field(pd_child if pd_child is not None else 'd' + child + 'dx',
-                        'd' + self.name + 'dx',
-                        offset='0', indices=indices, ignore_prepends=True)
+        self.pd = Field(pd_child or'd' + str(child) + 'dx',
+                        offset=0, indices=indices, ignore_prepends=True)
+
+    def __getinitargs__(self):
+        return (self.child, self.offset, self.indices, self.base_offset,
+                self.dot.child, self.lap.child, self.pd.child)
 
     def d(self, *args):
         """
@@ -210,67 +231,50 @@ class DynamicField(Field):
             dfdx[1]
             >>> print(f.d(0, 1, 3))  # x^3 = z
             dfdx[0, 1, 2]
-
         """
         mu = args[-1]
         indices = args[:-1]+(mu-1,)
         return self.dot[args[:-1]] if mu == 0 else self.pd[indices]
 
-    def __getinitargs__(self):
-        return (self.child, self.indices, self.name, self.dot, self.lap, self.pd)
-
     mapper_method = "map_dynamic_field"
 
 
-class IndexMapper(IdentityMapper):
-    def parse_prepend(self, pre_index):
-        if isinstance(pre_index, str):
-            pre_index = (parse(pre_index),)
-        if isinstance(pre_index, pp.Variable):
-            pre_index = (pre_index,)
-        return pre_index
+def parse_prepend(*indices):
+    def parse_if_str(x):
+        return parse(x) if isinstance(x, str) else x
 
+    return tuple(map(parse_if_str, indices))
+
+
+class IndexMapper(IdentityMapper):
     def map_field(self, expr, *args, **kwargs):
         if expr.ignore_prepends:
             pre_index = ()
         else:
-            pre_index = self.parse_prepend(kwargs.pop('prepend_with', ()))
+            pre_index = parse_prepend(*kwargs.pop('prepend_with', ()))
 
-        if isinstance(expr.child, pp.Subscript):
-            x = pp.Subscript(expr.child.aggregate,
-                             pre_index + expr.child.index_tuple + expr.indices)
-        elif isinstance(expr.child, pp.Variable):
-            full_index = pre_index + expr.indices
-            if full_index == ():
-                x = expr.child
-            else:
-                x = pp.Subscript(expr.child, pre_index + expr.indices)
+        pre_index = pre_index + kwargs.pop('outer_subscript', ())
+        full_index = pre_index + expr.index_tuple
+
+        if full_index == tuple():
+            x = expr.child
         else:
-            x = expr
-        return self.rec(x)
+            if isinstance(expr.child, pp.Subscript):
+                full_index = pre_index + expr.child.index_tuple + expr.index_tuple
+                x = pp.Subscript(expr.child.aggregate, self.rec(full_index))
+            else:
+                x = pp.Subscript(expr.child, self.rec(full_index))
+
+        return self.rec(x, *args, **kwargs)
 
     map_dynamic_field = map_field
 
     def map_subscript(self, expr, *args, **kwargs):
         if isinstance(expr.aggregate, Field):
-            pre_index = () if expr.aggregate.ignore_prepends \
-                        else self.parse_prepend(kwargs.pop('prepend_with', ()))
-
-            a = self.rec(expr.aggregate)
-            if isinstance(a, pp.Subscript):
-                agg = a.aggregate
-                full_index = pre_index + expr.index_tuple + a.index_tuple
-            else:
-                agg = a
-                full_index = pre_index + expr.index_tuple
-
-            if full_index == ():
-                x = agg
-            else:
-                x = pp.Subscript(agg, full_index)
-            return self.rec(x)
+            return self.rec(expr.aggregate, *args, **kwargs,
+                            outer_subscript=expr.index_tuple)
         else:
-            return IdentityMapper.map_subscript(self, expr, *args, **kwargs)
+            return super().map_subscript(expr, *args, **kwargs)
 
     def map_lookup(self, expr, *args, **kwargs):
         return self.rec(pp.Variable(expr.name))
@@ -357,7 +361,7 @@ def get_field_args(expressions, unpadded_shape=None):
     fields = FieldCollector()(all_exprs)
     args = []
     for f in fields:
-        shape = tuple(N + 2 * h for N, h in zip(unpadded_shape, f.offset))
+        shape = tuple(N + 2 * h for N, h in zip(unpadded_shape, f.base_offset))
         args.append(GlobalArg(f.child.name, shape=shape))
 
     return sorted(args, key=lambda f: f.name)
