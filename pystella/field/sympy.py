@@ -141,7 +141,7 @@ pymbolic_to_sympy = PymbolicToSympyMapperWithField()
 #:    Currently, any modifications to the indices of a :class:`SympyField`
 #:    will not be reflected when mapped back to a :class:`~pystella.Field`.
 #:    Use :class:`pymbolic.primitives.Subscript` instead (i.e., process
-#:    :class:`~pystella.Field`'s with :class:`~pystella.Indexer` first).
+#:    :class:`~pystella.Field`'s with :func:`~pystella.index_fields` first).
 #:
 sympy_to_pymbolic = SympyToPymbolicMapperWithField()
 

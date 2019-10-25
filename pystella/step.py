@@ -23,7 +23,7 @@ THE SOFTWARE.
 
 import numpy as np
 import loopy as lp
-from pystella.field import Field, Indexer
+from pystella.field import Field, index_fields
 from pystella.elementwise import ElementWiseMap
 from pymbolic import var
 
@@ -200,7 +200,7 @@ class RungeKuttaStepper(Stepper):
         q = var('q')
         fixed_parameters = kwargs.pop('fixed_parameters', dict())
 
-        rhs_statements = {rhs[i]: Indexer(value, prepend_with=(q,))
+        rhs_statements = {rhs[i]: index_fields(value, prepend_with=(q,))
                           for i, value in enumerate(self.rhs_dict.values())}
 
         steps = []
@@ -208,7 +208,7 @@ class RungeKuttaStepper(Stepper):
             RK_dict = {}
             for i, f in enumerate(self.rhs_dict.keys()):
                 # ensure that key is either a Field or a Subscript of a Field
-                # so that Indexer can prepend the q index
+                # so that index_fields can prepend the q index
                 from pymbolic.primitives import Subscript
                 key_has_field = False
                 if isinstance(f, Field):
@@ -245,7 +245,7 @@ class RungeKutta4(RungeKuttaStepper):
     expected_order = 4
 
     def step_statements(self, stage, f, dt, rhs):
-        fq = [Indexer(f, prepend_with=(q,)) for q in range(3)]
+        fq = [index_fields(f, prepend_with=(q,)) for q in range(3)]
 
         if stage == 0:
             return {fq[1]: fq[0] + dt/2 * rhs,
@@ -270,7 +270,7 @@ class RungeKutta3Heun(RungeKuttaStepper):
     expected_order = 3
 
     def step_statements(self, stage, f, dt, rhs):
-        fq = [Indexer(f, prepend_with=(q,)) for q in range(3)]
+        fq = [index_fields(f, prepend_with=(q,)) for q in range(3)]
 
         if stage == 0:
             return {fq[1]: fq[0] + dt/3 * rhs,
@@ -291,7 +291,7 @@ class RungeKutta3Nystrom(RungeKuttaStepper):
     expected_order = 3
 
     def step_statements(self, stage, f, dt, rhs):
-        fq = [Indexer(f, prepend_with=(q,)) for q in range(3)]
+        fq = [index_fields(f, prepend_with=(q,)) for q in range(3)]
 
         if stage == 0:
             return {fq[1]: fq[0] + dt*2/3 * rhs,
@@ -313,7 +313,7 @@ class RungeKutta3Ralston(RungeKuttaStepper):
     expected_order = 3
 
     def step_statements(self, stage, f, dt, rhs):
-        fq = [Indexer(f, prepend_with=(q,)) for q in range(3)]
+        fq = [index_fields(f, prepend_with=(q,)) for q in range(3)]
 
         if stage == 0:
             return {fq[1]: fq[0] + dt/2 * rhs,
@@ -335,7 +335,7 @@ class RungeKutta3SSP(RungeKuttaStepper):
     expected_order = 3
 
     def step_statements(self, stage, f, dt, rhs):
-        fq = [Indexer(f, prepend_with=(q,)) for q in range(3)]
+        fq = [index_fields(f, prepend_with=(q,)) for q in range(3)]
 
         if stage == 0:
             return {fq[1]: fq[0] + dt * rhs}
@@ -357,7 +357,7 @@ class RungeKutta2Midpoint(RungeKuttaStepper):
     expected_order = 2
 
     def step_statements(self, stage, f, dt, rhs):
-        fq = [Indexer(f, prepend_with=(q,)) for q in range(2)]
+        fq = [index_fields(f, prepend_with=(q,)) for q in range(2)]
 
         if stage == 0:
             return {fq[1]: fq[0] + dt/2 * rhs}
@@ -371,7 +371,7 @@ class RungeKutta2Heun(RungeKuttaStepper):
     expected_order = 2
 
     def step_statements(self, stage, f, dt, rhs):
-        fq = [Indexer(f, prepend_with=(q,)) for q in range(2)]
+        fq = [index_fields(f, prepend_with=(q,)) for q in range(2)]
 
         if stage == 0:
             return {fq[1]: fq[0] + dt * rhs,
@@ -390,7 +390,7 @@ class RungeKutta2Ralston(RungeKuttaStepper):
     expected_order = 2
 
     def step_statements(self, stage, f, dt, rhs):
-        fq = [Indexer(f, prepend_with=(q,)) for q in range(2)]
+        fq = [index_fields(f, prepend_with=(q,)) for q in range(2)]
 
         if stage == 0:
             return {fq[1]: fq[0] + dt*2/3 * rhs,
@@ -429,15 +429,15 @@ class LowStorageRKStepper(Stepper):
                 test_array = test_array.aggregate
         k = Field('k_tmp', indices=test_array.indices)
 
-        rhs_statements = {rhs[i]: Indexer(value)
+        rhs_statements = {rhs[i]: index_fields(value)
                           for i, value in enumerate(self.rhs_dict.values())}
 
         steps = []
         for stage in range(self.num_stages):
             RK_dict = {}
             for i, key in enumerate(self.rhs_dict.keys()):
-                f = Indexer(key)
-                k_i = Indexer(k[i])
+                f = index_fields(key)
+                k_i = index_fields(k[i])
                 RK_dict[k_i] = self._A[stage] * k_i + dt * rhs[i]
                 RK_dict[f] = f + self._B[stage] * k_i
 

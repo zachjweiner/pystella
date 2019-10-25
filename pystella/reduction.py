@@ -81,10 +81,10 @@ def get_cl_reduction_op(op):
 
 
 def red_stmnt(assignee, expr, op):
-    from pystella import Indexer
+    from pystella import index_fields
     red = lp.symbolic.Reduction(operation=op,
                                 inames=('i'),
-                                expr=Indexer(expr),
+                                expr=index_fields(expr),
                                 allow_simultaneous=True)
     return lp.Assignment(assignee, red)
 

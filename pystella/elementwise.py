@@ -22,7 +22,7 @@ THE SOFTWARE.
 
 
 import loopy as lp
-from pystella.field import Indexer
+from pystella.field import index_fields
 import pymbolic.primitives as pp
 
 __doc__ = """
@@ -74,13 +74,15 @@ class ElementWiseMap:
             else:
                 temp_var_type = lp.Optional()
 
-            stmnt = self._assignment(Indexer(assignee), Indexer(expression),
+            stmnt = self._assignment(index_fields(assignee),
+                                     index_fields(expression),
                                      temp_var_type=temp_var_type)
             temp_statements += [stmnt]
 
         output_statements = []
         for assignee, expression in map_dict.items():
-            stmnt = self._assignment(Indexer(assignee), Indexer(expression))
+            stmnt = self._assignment(index_fields(assignee),
+                                     index_fields(expression))
             output_statements += [stmnt]
 
         options = kwargs.pop('options', lp.Options())
@@ -113,14 +115,14 @@ class ElementWiseMap:
         :arg map_dict: A :class:`dict` of ``lhs``: ``rhs`` pairs representing the
             statements which write to global arrays. Both the keys and values
             must be :mod:`pymbolic` expressions. Both the keys and values will be
-            processed with :class:`Indexer`.
+            processed with :func:`index_fields`.
 
         The following keyword-only arguments are recognized:
 
         :arg tmp_dict: A :class:`dict` of ``lhs``: ``rhs`` pairs representing the
             statements which write to temporary variables (i.e., local memory or
             registers). Both the keys and values must be :mod:`pymbolic` expressions.
-            The values will be processed with :class:`Indexer`.
+            The values will be processed with :func:`index_fields`.
             The statements produced from ``tmp_dict`` will precede those of
             ``map_dict``, and :class:`loopy.TemporaryVariable` arguments will be
             inferred as needed.

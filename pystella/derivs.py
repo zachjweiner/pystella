@@ -49,7 +49,7 @@ def expand_stencil(f, coefs):
         >>> f = Field('f', offset='h')
         >>> coefs = {(1, 0, 0): 1, (-1, 0, 0): -1}
         >>> stencil = expand_stencil(f, coefs)
-        >>> print(Indexer(stencil))
+        >>> print(index_fields(stencil))
         f[i + h + 1, j + h, k + h] + (-1)*f[i + h + -1, j + h, k + h]
     """
 
@@ -83,7 +83,7 @@ def centered_diff(f, coefs, direction, order):
         >>> f = Field('f', offset='h')
         >>> coefs = {1: 1}
         >>> stencil = centered_diff(f, coefs, 0, 1)
-        >>> print(Indexer(stencil))
+        >>> print(index_fields(stencil))
         f[i + h + 1, j + h, k + h] + (-1)*f[i + h + -1, j + h, k + h]
     """
 

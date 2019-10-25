@@ -32,7 +32,7 @@ __doc__ = """
 .. currentmodule:: pystella
 .. autoclass:: Field
 .. autoclass:: DynamicField
-.. autofunction:: Indexer
+.. autofunction:: index_fields
 .. autofunction:: diff
 .. currentmodule:: pystella.field
 .. autofunction:: get_field_args
@@ -51,14 +51,14 @@ class Field(pp.AlgebraicLeaf):
     :class:`ElementWiseMap`, and subclasses) automatically append indexing
     specified by the attributes :attr:`indices` and :attr:`offset`
     (via :attr:`index_tuple`) by pre-processing
-    the expressions with :func:`Indexer`.
+    the expressions with :func:`index_fields`.
 
     Examples::
 
         >>> f = Field('f', offset='h')
-        >>> print(Indexer(f))
+        >>> print(index_fields(f))
         f[i + h, j + h, k + h]
-        >>> print(Indexer(f[0]))
+        >>> print(index_fields(f[0]))
         f[0, i + h, j + h, k + h]
 
     See `test_field.py
@@ -93,7 +93,7 @@ class Field(pp.AlgebraicLeaf):
             Defaults to ``0``.
 
         :arg ignore_prepends: Whether to ignore array subscripts prepended when
-            processed with :func:`Indexer`. Useful for timestepping kernels
+            processed with :func:`index_fields`. Useful for timestepping kernels
             (e.g., :class:`~pystella.step.RungeKuttaStepper`) which prepend array
             indices corresponding to extra storage axes (to specify that an array
             does not have this axis).
@@ -280,7 +280,7 @@ class IndexMapper(IdentityMapper):
         return self.rec(pp.Variable(expr.name))
 
 
-#: An instance of :class:`IndexMapper` which appends indices to :class:`Field`
+#: Appends subscripts to :class:`Field`
 #: instances in an expression, turning them into ordinary
 #: :class:`pymbolic.primitives.Subscript`'s.
 #: See the documentation of :class:`Field` for examples.
@@ -289,8 +289,10 @@ class IndexMapper(IdentityMapper):
 #:
 #: :arg prepend_with: A :class:`tuple` of indices to prepend to the subscript
 #:  of any :class:`Field`'s in ``expr`` (unless a given :class:`Field` has
-#:  :attr:ignore_prepends` set to *False*. Defaults to an empty :class:`tuple`.
-Indexer = IndexMapper()
+#:  :attr:ignore_prepends` set to *False*. Passed by keyword.
+#:  Defaults to an empty :class:`tuple`.
+#:
+index_fields = IndexMapper()
 
 from pymbolic.mapper import Collector
 
@@ -370,7 +372,7 @@ def get_field_args(expressions, unpadded_shape=None):
 __all__ = [
     "Field",
     "DynamicField",
-    "Indexer",
+    "index_fields",
     "diff",
     "get_field_args",
     # "pymbolic_to_sympy",
