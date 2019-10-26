@@ -23,6 +23,7 @@ THE SOFTWARE.
 
 import pystella as ps
 from pymbolic import parse, var
+from pystella.field import shift_fields
 import pytest
 
 
@@ -71,11 +72,11 @@ def test_field(proc_shape):
     assert result == parse("y[0, 1, 2, 3, 4, 5, i, j, k]"), result
 
     y = ps.Field('y', offset=('hx', 'hy', 'hz'))
-    result = ps.index_fields(y.shift((1, 2, 3)))
+    result = ps.index_fields(shift_fields(y, (1, 2, 3)))
     assert result == parse("y[i + hx + 1, j + hy + 2, k + hz + 3]"), result
 
     y = ps.Field('y', offset=('hx', var('hy'), 'hz'))
-    result = ps.index_fields(y.shift((1, 2, var('a'))))
+    result = ps.index_fields(shift_fields(y, (1, 2, var('a'))))
     assert result == parse("y[i + hx + 1, j + hy + 2, k + hz + a]"), result
 
 
@@ -167,7 +168,7 @@ def test_get_field_args(proc_shape):
     args = get_field_args(expressions)
     assert lists_equal(args, true_args)
 
-    expressions = [x.shift((1, 2, 3)), y, y * z**2]
+    expressions = [shift_fields(x, (1, 2, 3)), y, y * z**2]
     args = get_field_args(expressions)
     assert lists_equal(args, true_args)
 
@@ -189,7 +190,7 @@ def test_sympy_interop(proc_shape):
     assert sym.simplify(sympy_expr - sympy_expr_2) == 0, \
         "sympy <-> pymbolic conversion not invertible"
 
-    expr = f + f.shift((1, 2, 3))
+    expr = f + shift_fields(f, (1, 2, 3))
     sympy_expr = pymbolic_to_sympy(expr)
     new_expr = sympy_to_pymbolic(sympy_expr)
     sympy_expr_2 = pymbolic_to_sympy(new_expr)

@@ -66,7 +66,7 @@ class PymbolicToSympyMapperWithField(PymbolicToSympyMapper):
 
     def map_field(self, expr):
         indices = tuple(self.rec(i) for i in expr.index_tuple)
-        return SympyField(expr, expr.child.name, *indices)
+        return SympyField(expr, self.rec(expr.child), *indices)
 
     def map_subscript(self, expr):
         from pystella import Field
@@ -74,7 +74,7 @@ class PymbolicToSympyMapperWithField(PymbolicToSympyMapper):
             f = expr.aggregate
             subscript = tuple(self.rec(i) for i in expr.index_tuple)
             indices = tuple(self.rec(i) for i in f.index_tuple)
-            return SympyField(f, f.child.name, *indices, subscript=subscript)
+            return SympyField(f, self.rec(f.child), *indices, subscript=subscript)
         else:
             return super().map_subscript(expr)
 

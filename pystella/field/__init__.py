@@ -23,7 +23,7 @@ THE SOFTWARE.
 
 import pymbolic.primitives as pp
 from pymbolic import parse
-from pymbolic.mapper import IdentityMapper
+from pymbolic.mapper import IdentityMapper, Collector
 from pymbolic.mapper.stringifier import StringifyMapper
 from pystella.field.diff import diff
 # from pystella.field.sympy import pymbolic_to_sympy, sympy_to_pymbolic, simplify
@@ -142,10 +142,6 @@ class Field(pp.AlgebraicLeaf):
         init_kwargs = dict(zip(self.init_arg_names, self.__getinitargs__()))
         init_kwargs.update(kwargs)
         return Field(**init_kwargs)
-
-    def shift(self, displ):
-        new_offset = tuple(o + d for o, d in zip(self.offset, displ))
-        return self.new_with_changes(offset=new_offset)
 
 
 class FieldStringifyMapper(StringifyMapper):
@@ -294,7 +290,16 @@ class IndexMapper(IdentityMapper):
 #:
 index_fields = IndexMapper()
 
-from pymbolic.mapper import Collector
+
+class Shifter(IdentityMapper):
+    def map_field(self, expr, shift=(0, 0, 0), *args, **kwargs):
+        new_offset = tuple(o + s for o, s in zip(expr.offset, shift))
+        return expr.new_with_changes(offset=new_offset)
+
+    map_dynamic_field = map_field
+
+
+shift_fields = Shifter()
 
 
 class FieldCollector(Collector):
