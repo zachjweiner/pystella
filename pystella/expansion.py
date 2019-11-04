@@ -77,29 +77,26 @@ class Expansion:
         from pystella.step import LowStorageRKStepper
 
         self.is_low_storage = LowStorageRKStepper in Stepper.__bases__
-        shape = (1,) if self.is_low_storage else (3,)
+        num_copies = Stepper.__dict__.get('num_copies', 1)
+        shape = (num_copies,)
+        arg_shape = (1,) if self.is_low_storage else tuple()
         self.a = np.ones(shape, dtype=dtype)
         self.adot = self.adot_friedmann_1(self.a, energy)
         self.hubble = self.adot / self.a
 
+        slc = (0,) if self.is_low_storage else ()
         from pystella import Field
-        _a = Field('a', indices=[])[(0,) if self.is_low_storage else ()]
-        _adot = Field('adot', indices=[])[(0,) if self.is_low_storage else ()]
+        _a = Field('a', indices=[], shape=arg_shape)[slc]
+        _adot = Field('adot', indices=[], shape=arg_shape)[slc]
         from pymbolic import var
         _e = var('energy')
         _p = var('pressure')
         rhs_dict = {_a: _adot,
                     _adot: self.addot_friedmann_2(_a, _e, _p)}
 
-        args = [lp.GlobalArg('a', shape=shape, dtype=dtype),
-                lp.GlobalArg('adot', shape=shape, dtype=dtype),
-                lp.ValueArg('energy', dtype=dtype),
-                lp.ValueArg('pressure', dtype=dtype),
-                ]
-
         from pystella import DisableLogging
         with DisableLogging():  # silence GCCToolchain warning
-            self.stepper = Stepper(rhs_dict, args=args, rank_shape=(0, 0, 0),
+            self.stepper = Stepper(rhs_dict, rank_shape=(0, 0, 0),
                                    halo_shape=0, dtype=dtype,
                                    target=lp.ExecutableCTarget())
 

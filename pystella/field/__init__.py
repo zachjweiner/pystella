@@ -93,7 +93,7 @@ class Field(pp.AlgebraicLeaf):
         would correspond to an array with shape ``(3, n, Nx, Ny, Nz)``
         (using ``(Nx, Ny, Nz)`` as the shape along the final three axes
         indexed with ``indices``).
-        Only used by :meth:`get_field_args`.
+        Used by :meth:`get_field_args`.
         Defaults to an empty :class:`tuple`.
 
     .. attribute:: indices
@@ -468,7 +468,7 @@ class FieldCollector(CombineMapperMixin, Collector):
     map_dynamic_field = map_field
 
 
-def get_field_args(expressions, unpadded_shape=None):
+def get_field_args(expressions, unpadded_shape=None, prepend_with=None):
     """
     Collects all :class:`~pystella.Field`'s from ``expressions`` and returns a
     corresponding list of :class:`loopy.ArrayArg`'s, using their ``offset``
@@ -482,6 +482,12 @@ def get_field_args(expressions, unpadded_shape=None):
     :arg unpadded_shape: The shape of :class:`~pystella.Field`'s in ``expressions``
         (sans padding).
         Defaults to ``(Nx, Ny, Nz)``.
+
+    :arg prepend_with: A :class:`tuple` to prepend to the shape
+        of any :class:`Field`'s in ``expressions`` (unless a given :class:`Field` has
+        :attr:`ignore_prepends` set to *False*.
+        Passed by keyword.
+        Defaults to an empty :class:`tuple`.
 
     :returns: A :class:`list` of :class:`loopy.ArrayArg`'s.
 
@@ -505,7 +511,15 @@ def get_field_args(expressions, unpadded_shape=None):
     for f in fields:
         spatial_shape = \
             tuple(N + 2 * h for N, h in zip(unpadded_shape, f.base_offset))
-        arg = lp.GlobalArg(f.name, shape=f.shape+spatial_shape, offset=lp.auto)
+        full_shape = f.shape + spatial_shape
+
+        if prepend_with is not None and not f.ignore_prepends:
+            full_shape = prepend_with + full_shape
+
+        if full_shape == tuple():
+            arg = lp.ValueArg(f.name)
+        else:
+            arg = lp.GlobalArg(f.name, shape=full_shape, offset=lp.auto)
 
         if f.name in field_args:
             other_arg = field_args[f.name]

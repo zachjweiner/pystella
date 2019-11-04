@@ -51,10 +51,9 @@ rhs_dict = {
     f_: f_.dot,  # df/dt = \dot{f}
     f_.dot: f_.lap  # d\dot{f}/dt = \nabla^2 f
 }
-args = ps.get_field_args(rhs_dict)  # infer argument information from rhs_dict
 
 # create time-stepping and derivative-computing kernels
-stepper = ps.LowStorageRK54(rhs_dict, args=args, dt=dt, halo_shape=halo_shape)
+stepper = ps.LowStorageRK54(rhs_dict, dt=dt, halo_shape=halo_shape)
 derivs = ps.FiniteDifferencer(decomp, halo_shape, dx)
 
 # temporary array for low-storage integrator

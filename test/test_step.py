@@ -51,40 +51,36 @@ def test_step(ctx_factory, proc_shape, dtype, Stepper):
     is_low_storage = LowStorageRKStepper in Stepper.__bases__
 
     rank_shape = (1, 1, 8)
+    init_vals = np.linspace(1, 3, 8)
     if is_low_storage:
-        arr_shape = rank_shape
+        y = cla.zeros(queue, rank_shape, dtype)
+        y[0, 0, :] = init_vals
+        k_tmp = cla.zeros(queue, (1,)+rank_shape, dtype=dtype)
+        y0 = y.copy()
     else:
-        arr_shape = (3,) + rank_shape
+        num_copies = Stepper.num_copies
+        y = cla.zeros(queue, (num_copies,)+rank_shape, dtype)
+        y[0, 0, 0, :] = init_vals
+        k_tmp = None
+        y0 = y[0].copy()
 
     dtlist = [.1, .05, .025]
 
     for n in [-1., -2., -3., -4.]:
         max_errs = {}
         for dt in dtlist:
-
             def sol(y0, t):
                 return ((-1 + n)*(-t + y0**(1 - n)/(-1 + n)))**(1/(1 - n))
 
-            y = ps.Field('y')
-            rhs_dict = {y: y**n}
+            _y = ps.Field('y')
+            rhs_dict = {_y: _y**n}
 
-            import loopy as lp
-            args = [lp.GlobalArg('y', shape=arr_shape, dtype=dtype)]
-            y = cla.zeros(queue, arr_shape, dtype)
-            if is_low_storage:
-                y[0, 0, :] = np.linspace(1, 3, 8)
-            else:
-                y[0, 0, 0, :] = np.linspace(1, 3, 8)
-
-            stepper = Stepper(rhs_dict, args=args, dt=dt, halo_shape=0,
-                              rank_shape=rank_shape)
+            stepper = Stepper(rhs_dict, dt=dt, halo_shape=0, rank_shape=rank_shape)
 
             if is_low_storage:
-                k_tmp = cla.zeros(queue, (1,)+arr_shape, dtype=dtype)
-                y0 = y.copy()
+                y[0, 0, :] = init_vals
             else:
-                k_tmp = None
-                y0 = y[0].copy()
+                y[0, 0, 0, :] = init_vals
 
             t = 0
             errs = []

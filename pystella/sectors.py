@@ -22,7 +22,6 @@ THE SOFTWARE.
 
 
 import numpy as np
-import loopy as lp
 from pystella import DynamicField, Field
 from pystella.field import diff
 from pymbolic import var
@@ -46,7 +45,6 @@ class Sector:
     code generation for, e.g., preheating simulations.
 
     .. automethod:: __init__
-    .. automethod:: get_args
     .. autoattribute:: rhs_dict
     .. autoattribute:: reducers
     .. automethod:: stress_tensor
@@ -61,16 +59,10 @@ class Sector:
         raise NotImplementedError
 
     def get_args(self, single_stage=True):
-        """
-        :returns: A :class:`list` of all :class:`loopy.KernelArgument`'s
-            relevant for a particular sector.
-
-        :arg single_stage: Whether array shapes should include an outermost axis
-            denoting temporary copies (i.e., for the implementation of
-            classical Runge-Kutta methods).
-            Defaults to *True*.
-        """
-        raise NotImplementedError
+        from warnings import warn
+        warn("Sector.aet_args is deprecated. Use pystella.get_field_args instead.",
+             DeprecationWarning, stacklevel=2)
+        return []
 
     @property
     def rhs_dict(self):
@@ -117,7 +109,7 @@ class ScalarSector(Sector):
         The following keyword-only arguments are recognized:
 
         :arg f: The :class:`DynamicField` of scalar fields.
-            Defaults to ``DynamicField('f', offset='h')``.
+            Defaults to ``DynamicField('f', offset='h', shape=(nscalars,))``.
 
         :arg potential: A :class:`callable` which takes as input a
             :mod:`pymbolic` expression or a :class:`list` thereof, returning
@@ -129,30 +121,8 @@ class ScalarSector(Sector):
         """
 
         self.nscalars = nscalars
-        self.f = kwargs.pop('f', DynamicField('f', offset='h'))
+        self.f = kwargs.pop('f', DynamicField('f', offset='h', shape=(nscalars,)))
         self.potential = kwargs.pop('potential', lambda x: 0)
-
-    def get_args(self, single_stage=True):
-        if single_stage:
-            shape = "(%d, Nx+2*h, Ny+2*h, Nz+2*h)" % self.nscalars
-        else:
-            shape = "(3, %d, Nx+2*h, Ny+2*h, Nz+2*h)" % self.nscalars
-        lap_shape = "(%d, Nx, Ny, Nz)" % self.nscalars
-        pd_shape = "(%d, 3, Nx, Ny, Nz)" % self.nscalars
-        a = lp.ValueArg('a') if single_stage else lp.GlobalArg('a', shape=(3,))
-        H = lp.ValueArg('hubble') if single_stage \
-            else lp.GlobalArg('hubble', shape=(3,))
-
-        all_args = \
-            [
-                lp.GlobalArg(self.f.name, shape=shape, offset=lp.auto),
-                lp.GlobalArg(self.f.dot.name, shape=shape, offset=lp.auto),
-                lp.GlobalArg(self.f.lap.name, shape=lap_shape, offset=lp.auto),
-                lp.GlobalArg(self.f.pd.name, shape=pd_shape, offset=lp.auto),
-                a,
-                H,
-            ]
-        return all_args
 
     @property
     def rhs_dict(self):
@@ -222,27 +192,11 @@ class TensorPerturbationSector:
         The following keyword-only arguments are recognized:
 
         :arg hij: The :class:`DynamicField` of tensor fields.
-            Defaults to ``DynamicField('hij', offset='h')``.
+            Defaults to ``DynamicField('hij', offset='h', shape=(6,))``.
         """
 
         self.hij = kwargs.pop('hij', DynamicField('hij', offset='h'))
         self.sectors = sectors
-
-    def get_args(self, single_stage=True):
-        if single_stage:
-            shape = "(6, Nx+2*h, Ny+2*h, Nz+2*h)"
-        else:
-            shape = "(3, 6, Nx+2*h, Ny+2*h, Nz+2*h)"
-        shape_unpadded = "(6, Nx, Ny, Nz)"
-
-        # assuming that a and H arguments are in other sectors
-        all_args = \
-            [
-                lp.GlobalArg('hij', shape=shape, offset=lp.auto),
-                lp.GlobalArg('dhijdt', shape=shape, offset=lp.auto),
-                lp.GlobalArg('lap_hij', shape=shape_unpadded, offset=lp.auto),
-            ]
-        return all_args
 
     @property
     def rhs_dict(self):
@@ -271,7 +225,7 @@ class TensorPerturbationSector:
 def get_rho_and_p(energy):
     """
     Convenience callback for energy reductions which computes :math:`\\rho` and
-    :math:`P` (really, :math:`a^2` times each).
+    :math:`P`.
 
     :arg energy: A dictionary of energy components as returned by
         :class:`~pystella.Reduction`.

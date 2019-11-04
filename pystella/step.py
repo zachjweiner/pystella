@@ -87,6 +87,7 @@ class Stepper:
 
     num_stages = None
     expected_order = None
+    num_copies = None
 
     def make_steps(self, MapKernel=ElementWiseMap, **kwargs):
         raise NotImplementedError
@@ -107,8 +108,7 @@ class Stepper:
               Both keys and values must be :mod:`pymbolic` expressions.
 
             * a :class:`~pystella.Sector`. In this case, the right-hand side
-              dictionary will be obtained from :attr:`~pystella.Sector.rhs_dict`, and
-              :attr:`args` from :meth:`~pystella.Sector.get_args`.
+              dictionary will be obtained from :attr:`~pystella.Sector.rhs_dict`.
 
             * a :class:`list` of :class:`~pystella.Sector`'s. In this case, the input
               obtained from each :class:`~pystella.Sector` (as described above) will
@@ -132,15 +132,22 @@ class Stepper:
         from pystella import Sector
         if isinstance(input, Sector):
             self.rhs_dict = input.rhs_dict
-            self.args = input.get_args(single_stage=single_stage)
         elif isinstance(input, list):
-            self.args = [arg for s in input
-                         for arg in s.get_args(single_stage=single_stage)]
             self.rhs_dict = dict(i for s in input for i in s.rhs_dict.items())
         elif isinstance(input, dict):
             self.rhs_dict = input
-            self.args = kwargs.pop('args', [...])
-        self.args = self.args + [lp.ValueArg('dt')]
+
+        if not single_stage:
+            prepend_with = (self.num_copies,)
+        else:
+            prepend_with = None
+
+        args = kwargs.pop('args', [...])
+        args = args + [lp.ValueArg('dt')]
+        from pystella import get_field_args
+        inferred_args = get_field_args(self.rhs_dict, prepend_with=prepend_with)
+        from pystella.elementwise import append_new_args
+        self.args = append_new_args(args, inferred_args)
 
         dt = kwargs.pop('dt', None)
         fixed_parameters = kwargs.pop('fixed_parameters', dict())
@@ -243,6 +250,7 @@ class RungeKutta4(RungeKuttaStepper):
 
     num_stages = 4
     expected_order = 4
+    num_copies = 3
 
     def step_statements(self, stage, f, dt, rhs):
         fq = [index_fields(f, prepend_with=(q,)) for q in range(3)]
@@ -268,6 +276,7 @@ class RungeKutta3Heun(RungeKuttaStepper):
 
     num_stages = 3
     expected_order = 3
+    num_copies = 3
 
     def step_statements(self, stage, f, dt, rhs):
         fq = [index_fields(f, prepend_with=(q,)) for q in range(3)]
@@ -289,6 +298,7 @@ class RungeKutta3Nystrom(RungeKuttaStepper):
 
     num_stages = 3
     expected_order = 3
+    num_copies = 3
 
     def step_statements(self, stage, f, dt, rhs):
         fq = [index_fields(f, prepend_with=(q,)) for q in range(3)]
@@ -311,6 +321,7 @@ class RungeKutta3Ralston(RungeKuttaStepper):
 
     num_stages = 3
     expected_order = 3
+    num_copies = 3
 
     def step_statements(self, stage, f, dt, rhs):
         fq = [index_fields(f, prepend_with=(q,)) for q in range(3)]
@@ -333,6 +344,7 @@ class RungeKutta3SSP(RungeKuttaStepper):
 
     num_stages = 3
     expected_order = 3
+    num_copies = 2
 
     def step_statements(self, stage, f, dt, rhs):
         fq = [index_fields(f, prepend_with=(q,)) for q in range(3)]
@@ -355,6 +367,7 @@ class RungeKutta2Midpoint(RungeKuttaStepper):
 
     num_stages = 2
     expected_order = 2
+    num_copies = 2
 
     def step_statements(self, stage, f, dt, rhs):
         fq = [index_fields(f, prepend_with=(q,)) for q in range(2)]
@@ -369,6 +382,7 @@ class RungeKutta2Midpoint(RungeKuttaStepper):
 class RungeKutta2Heun(RungeKuttaStepper):
     num_stages = 2
     expected_order = 2
+    num_copies = 2
 
     def step_statements(self, stage, f, dt, rhs):
         fq = [index_fields(f, prepend_with=(q,)) for q in range(2)]
@@ -388,6 +402,7 @@ class RungeKutta2Ralston(RungeKuttaStepper):
 
     num_stages = 2
     expected_order = 2
+    num_copies = 2
 
     def step_statements(self, stage, f, dt, rhs):
         fq = [index_fields(f, prepend_with=(q,)) for q in range(2)]
@@ -416,8 +431,6 @@ class LowStorageRKStepper(Stepper):
     _C = []
 
     def make_steps(self, MapKernel=ElementWiseMap, **kwargs):
-        self.args = self.args + [lp.GlobalArg('k_tmp', shape=lp.auto)]
-
         rhs = var('rhs')
         dt = var('dt')
 
@@ -427,17 +440,17 @@ class LowStorageRKStepper(Stepper):
         if isinstance(test_array, Subscript):
             if isinstance(test_array.aggregate, Field):
                 test_array = test_array.aggregate
-        k = Field('k_tmp', indices=test_array.indices)
+        k = Field('k_tmp', indices=test_array.indices, shape=(self.num_unknowns,))
 
-        rhs_statements = {rhs[i]: index_fields(value)
+        rhs_statements = {rhs[i]: value
                           for i, value in enumerate(self.rhs_dict.values())}
 
         steps = []
         for stage in range(self.num_stages):
             RK_dict = {}
             for i, key in enumerate(self.rhs_dict.keys()):
-                f = index_fields(key)
-                k_i = index_fields(k[i])
+                f = key
+                k_i = k[i]
                 RK_dict[k_i] = self._A[stage] * k_i + dt * rhs[i]
                 RK_dict[f] = f + self._B[stage] * k_i
 

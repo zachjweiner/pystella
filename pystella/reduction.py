@@ -128,8 +128,7 @@ class Reduction:
               ``'avg'`` (default), ``'sum'``, ``'prod'``, ``'max'``, and ``'min'``.
 
             * a :class:`Sector`. In this case, the reduction dictionary will be
-              obtained from :attr:`Sector.reducers`, and :attr:`args` from
-              :meth:`Sector.get_args`.
+              obtained from :attr:`Sector.reducers`.
 
             * a :class:`list` of :class:`Sector`'s. In this case, the input
               obtained from each :class:`Sector` (as described above) will be
@@ -137,9 +136,13 @@ class Reduction:
 
         The following keyword-only arguments are recognized:
 
-        :arg args: A list of kernel arguments to be specified to
-            :func:`loopy.make_kernel`. Defaults to ``[...]``, which instructs
-            :func:`loopy.make_kernel` to infer all arguments and their shapes.
+        :arg args: A list of :class:`loopy.KernelArgument`'s
+            to be specified to :func:`loopy.make_kernel`.
+            By default, all arguments (and their shapes) are inferred using
+            :func:`get_field_args`, while any remaining (i.e., non-:class:`Field`)
+            arguments are inferred by :func:`loopy.make_kernel`.
+            Any arguments passed via ``args`` override those inferred by either
+            of the above options.
 
         :arg rank_shape: A 3-:class:`tuple` specifying the shape of looped-over
             arrays.
@@ -169,18 +172,13 @@ class Reduction:
         from pystella import Sector
         if isinstance(input, Sector):
             self.reducers = input.reducers
-            self.args = input.get_args()
         elif isinstance(input, list):
             self.reducers = dict(i for s in input for i in s.reducers.items())
-            self.args = {arg.name: arg for s in input
-                         for arg in s.get_args()}
-            self.args = list(self.args.values())
-
         elif isinstance(input, dict):
             self.reducers = input
-            self.args = kwargs.pop('args', [...])
         else:
             raise NotImplementedError
+
         reducers = self.reducers
         rank_shape = kwargs.pop('rank_shape', None)
         halo_shape = kwargs.pop('halo_shape', None)
@@ -214,6 +212,12 @@ class Reduction:
         statements = [red_stmnt(tmp[i, var('j'), var('k')], v,
                                 'sum' if op == 'avg' else op)
                       for i, (v, op) in enumerate(zip(flat_reducers, reduction_ops))]
+
+        args = kwargs.pop('args', [...])
+        from pystella import get_field_args
+        inferred_args = get_field_args(flat_reducers)
+        from pystella.elementwise import append_new_args
+        self.args = append_new_args(args, inferred_args)
 
         knl = self.make_reduce_knl(statements, self.args)
 
@@ -354,13 +358,7 @@ class FieldStatistics(Reduction):
             reducers['abs_min'] = [(fabs(f), 'min')]
         self.reducers = reducers
 
-        args = \
-            [
-                lp.GlobalArg('f', shape="(Nx+2*h, Ny+2*h, Nz+2*h)", offset=lp.auto),
-            ]
-
-        super().__init__(decomp, reducers, args=args, halo_shape=halo_shape,
-                         **kwargs)
+        super().__init__(decomp, reducers, halo_shape=halo_shape, **kwargs)
 
     def __call__(self, f, queue=None, allocator=None):
         """

@@ -22,13 +22,21 @@ THE SOFTWARE.
 
 
 import loopy as lp
-from pystella.field import index_fields
 import pymbolic.primitives as pp
 
 __doc__ = """
 .. currentmodule:: pystella
 .. autoclass:: ElementWiseMap
 """
+
+
+def append_new_args(old_args, new_args):
+    all_args = old_args.copy()
+    supplied_arg_names = set([arg.name for arg in old_args if hasattr(arg, 'name')])
+    for arg in new_args:
+        if arg.name not in supplied_arg_names:
+            all_args.append(arg)
+    return all_args
 
 
 class ElementWiseMap:
@@ -60,7 +68,12 @@ class ElementWiseMap:
     def make_kernel(self, map_dict, tmp_dict, args, **kwargs):
         temp_statements = []
         temp_vars = []
-        for assignee, expression in tmp_dict.items():
+
+        from pystella.field import index_fields
+        indexed_tmp_insns = index_fields(tmp_dict)
+        indexed_map_insns = index_fields(map_dict)
+
+        for assignee, expression in indexed_tmp_insns.items():
             # only declare temporary variables once
             if isinstance(assignee, pp.Variable):
                 current_tmp = assignee
@@ -70,19 +83,16 @@ class ElementWiseMap:
                 current_tmp = None
             if current_tmp is not None and current_tmp not in temp_vars:
                 temp_vars += [current_tmp]
-                temp_var_type = lp.Optional(None)
+                tvt = lp.Optional(None)
             else:
-                temp_var_type = lp.Optional()
+                tvt = lp.Optional()
 
-            stmnt = self._assignment(index_fields(assignee),
-                                     index_fields(expression),
-                                     temp_var_type=temp_var_type)
+            stmnt = self._assignment(assignee, expression, temp_var_type=tvt)
             temp_statements += [stmnt]
 
         output_statements = []
-        for assignee, expression in map_dict.items():
-            stmnt = self._assignment(index_fields(assignee),
-                                     index_fields(expression))
+        for assignee, expression in indexed_map_insns.items():
+            stmnt = self._assignment(assignee, expression)
             output_statements += [stmnt]
 
         options = kwargs.pop('options', lp.Options())
@@ -90,10 +100,14 @@ class ElementWiseMap:
         if len(map_dict) + len(tmp_dict) == 1:
             setattr(options, 'check_dep_resolution', False)
 
+        from pystella import get_field_args
+        inferred_args = get_field_args([map_dict, tmp_dict])
+        all_args = append_new_args(args, inferred_args)
+
         knl = lp.make_kernel(
             "[Nx, Ny, Nz] -> {[i,j,k]: 0<=i<Nx and 0<=j<Ny and 0<=k<Nz}",
             temp_statements + output_statements,
-            args + [lp.ValueArg('Nx, Ny, Nz', dtype='int'), ...],
+            all_args + [lp.ValueArg('Nx, Ny, Nz', dtype='int'), ...],
             options=options,
             **kwargs,
         )
@@ -127,9 +141,13 @@ class ElementWiseMap:
             ``map_dict``, and :class:`loopy.TemporaryVariable` arguments will be
             inferred as needed.
 
-        :arg args: A list of kernel arguments to be specified to
-            :func:`loopy.make_kernel`. Defaults to ``[...]``, which instructs
-            :func:`loopy.make_kernel` to infer all arguments and their shapes.
+        :arg args: A list of :class:`loopy.KernelArgument`'s
+            to be specified to :func:`loopy.make_kernel`.
+            By default, all arguments (and their shapes) are inferred using
+            :func:`get_field_args`, while any remaining (i.e., non-:class:`Field`)
+            arguments are inferred by :func:`loopy.make_kernel`.
+            Any arguments passed via ``args`` override those inferred by either
+            of the above options.
 
         :arg dtype: The default datatype of arrays to assume.
             Will only be applied to all :class:`loopy.KernelArgument`'s

@@ -21,7 +21,6 @@ THE SOFTWARE.
 """
 
 
-import loopy as lp
 from pystella.stencil import Stencil, StreamingStencil
 from pystella.field import Field
 from pystella.field import shift_fields
@@ -246,8 +245,6 @@ class FiniteDifferencer:
                                     SecondCenteredDifference(halo_shape))
         rank_shape = kwargs.pop('rank_shape', None)
 
-        args = [lp.GlobalArg('fx', shape="(Nx+2*h, Ny+2*h, Nz+2*h)", offset=lp.auto)]
-
         fx = Field('fx', offset='h')
         pd = tuple(Field(pdi) for pdi in ('pdx', 'pdy', 'pdz'))
         pdx, pdy, pdz = ({pdi: first_stencil(fx, i+1) * (1/dxi)}
@@ -255,7 +252,7 @@ class FiniteDifferencer:
         lap = {Field('lap'): sum(second_stencil(fx, i+1) * dxi**-2
                                  for i, dxi in enumerate(dx))}
 
-        common_args = dict(halo_shape=halo_shape, args=args, prefetch_args=['fx'],
+        common_args = dict(halo_shape=halo_shape, prefetch_args=['fx'],
                            rank_shape=rank_shape)
 
         self.pdx_knl = Stencil(pdx, lsize=(16, 2, 16), **common_args)
