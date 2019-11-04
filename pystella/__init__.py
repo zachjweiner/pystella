@@ -21,7 +21,8 @@ THE SOFTWARE.
 """
 
 
-from pystella.field import Field, DynamicField, index_fields, diff, get_field_args
+from pystella.field import (Field, DynamicField, index_fields, shift_fields,
+                            diff, get_field_args)
 from pystella.sectors import Sector, ScalarSector, TensorPerturbationSector
 from pystella.elementwise import ElementWiseMap
 from pystella.stencil import Stencil, StreamingStencil
@@ -103,6 +104,7 @@ __all__ = [
     "Field",
     "DynamicField",
     "index_fields",
+    "shift_fields",
     "diff",
     "get_field_args",
     "Sector",

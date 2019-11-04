@@ -135,17 +135,18 @@ def test_get_field_args(proc_shape):
     if proc_shape != (1, 1, 1):
         pytest.skip("test field only on one rank")
 
-    from pystella import Field, get_field_args
+    from pystella import Field, DynamicField, get_field_args
 
     x = Field('x', offset=(1, 2, 3))
     y = Field('y', offset='h')
-    z = Field('z')
+    z = DynamicField('z', shape=(2, 'a'))
 
-    from loopy import GlobalArg
+    import loopy as lp
     true_args = [
-        GlobalArg('x', shape='(Nx+2, Ny+4, Nz+6)'),
-        GlobalArg('y', shape='(Nx+2*h, Ny+2*h, Nz+2*h)'),
-        GlobalArg('z', shape='(Nx, Ny, Nz)'),
+        lp.GlobalArg('x', shape='(Nx+2, Ny+4, Nz+6)', offset=lp.auto),
+        lp.GlobalArg('y', shape='(Nx+2*h, Ny+2*h, Nz+2*h)', offset=lp.auto),
+        lp.GlobalArg('z', shape='(2, a, Nx, Ny, Nz)', offset=lp.auto),
+        lp.GlobalArg('dzdx', shape='(2, a, 3, Nx, Ny, Nz)', offset=lp.auto),
     ]
 
     def lists_equal(a, b):
@@ -156,21 +157,45 @@ def test_get_field_args(proc_shape):
             equal *= x in a
         return equal
 
-    expressions = {x: y, y: x * z}
+    expressions = {x: y, y: x * z + z.pd[0]}
     args = get_field_args(expressions)
     assert lists_equal(args, true_args)
 
-    expressions = x * y + z
+    expressions = x * y + z + z.pd[2]
     args = get_field_args(expressions)
     assert lists_equal(args, true_args)
 
-    expressions = [x, y, y * z**2]
+    expressions = [x, y, y * z**2, 3 + z.pd[0] + z.pd[1]]
     args = get_field_args(expressions)
     assert lists_equal(args, true_args)
 
-    expressions = [shift_fields(x, (1, 2, 3)), y, y * z**2]
+    expressions = [shift_fields(x, (1, 2, 3)), y + z.pd[0], y * z**2]
     args = get_field_args(expressions)
     assert lists_equal(args, true_args)
+
+
+def test_collect_field_indices(proc_shape):
+    if proc_shape != (1, 1, 1):
+        pytest.skip("test field only on one rank")
+
+    from pystella import Field, DynamicField
+    from pystella.field import collect_field_indices
+
+    x = Field('x', offset=(1, 2, 3))
+    y = Field('y', indices=('i', 'x'), offset='h')
+    z = DynamicField('z', shape=(2, 'a'))
+
+    expressions = {x: y, y: x * z + z.pd[0]}
+    indices = collect_field_indices(expressions)
+    assert indices == set(['i', 'j', 'k', 'x'])
+
+    expressions = [x, z]
+    indices = collect_field_indices(expressions)
+    assert indices == set(['i', 'j', 'k'])
+
+    expressions = [shift_fields(x, (1, 2, 3)), y + z.pd[0], y * z**2]
+    indices = collect_field_indices(expressions)
+    assert indices == set(['i', 'j', 'k', 'x'])
 
 
 def test_sympy_interop(proc_shape):
@@ -222,4 +247,5 @@ if __name__ == "__main__":
     test_dynamic_field((1, 1, 1))
     test_field_diff((1, 1, 1))
     test_get_field_args((1, 1, 1))
+    test_collect_field_indices((1, 1, 1))
     test_sympy_interop((1, 1, 1))

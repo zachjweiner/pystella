@@ -23,7 +23,12 @@ THE SOFTWARE.
 
 import pymbolic.primitives as pp
 from pymbolic import parse
-from pymbolic.mapper import IdentityMapper, Collector
+from pymbolic.mapper import Collector
+import loopy as lp
+from loopy.symbolic import (
+    IdentityMapper as IdentityMapperBase,
+    CombineMapper as CombineMapperBase,
+    SubstitutionMapper as SubstitutionMapperBase)
 from pymbolic.mapper.stringifier import StringifyMapper
 from pystella.field.diff import diff
 # from pystella.field.sympy import pymbolic_to_sympy, sympy_to_pymbolic, simplify
@@ -33,8 +38,8 @@ __doc__ = """
 .. autoclass:: Field
 .. autoclass:: DynamicField
 .. autofunction:: index_fields
+.. autofunction:: shift_fields
 .. autofunction:: diff
-.. currentmodule:: pystella.field
 .. autofunction:: get_field_args
 .. automodule:: pystella.field.sympy
 """
@@ -50,8 +55,8 @@ class Field(pp.AlgebraicLeaf):
     information about indexing. Kernel generators (:class:`Reduction`,
     :class:`ElementWiseMap`, and subclasses) automatically append indexing
     specified by the attributes :attr:`indices` and :attr:`offset`
-    (via :attr:`index_tuple`) by pre-processing
-    the expressions with :func:`index_fields`.
+    (via :attr:`index_tuple`) by preprocessing
+    expressions with :func:`index_fields`.
 
     Examples::
 
@@ -66,40 +71,70 @@ class Field(pp.AlgebraicLeaf):
     for more examples of
     the intended functionality.
 
-    .. automethod:: __init__
+    .. attribute:: child
+
+        The child expression representing the unsubscripted field.
+        May be a string, a :class:`pymbolic.primitives.Variable`, or a
+        :class:`pymbolic.primitives.Subscript`.
+
+    .. attribute:: offset
+
+        The amount of padding by which to offset the array axes
+        corresponding to the elements of :attr:`indices`. May be a tuple with
+        the same length as :attr:`indices` or a single value.
+        In the latter case, the input is transformed into a tuple with the same
+        length as :attr:`indices`, each with the same value.
+        Defaults to ``0``.
+
+    .. attribute:: shape
+
+        The shape of axes preceding those indexed by `indices`.
+        For example, ``Field('f', shape=(3, 'n'))``
+        would correspond to an array with shape ``(3, n, Nx, Ny, Nz)``
+        (using ``(Nx, Ny, Nz)`` as the shape along the final three axes
+        indexed with ``indices``).
+        Only used by :meth:`get_field_args`.
+        Defaults to an empty :class:`tuple`.
+
+    .. attribute:: indices
+
+        A tuple of (symbolic) array indices that will subscript
+        the array.
+        Each entry may be a :class:`pymbolic.primitives.Variable` or a string
+        which parses to one.
+        Defaults to ``('i', 'j', 'k')``
+
+    .. attribute:: ignore_prepends
+
+        Whether to ignore array subscripts prepended when
+        processed with :func:`index_fields`. Useful for timestepping kernels
+        (e.g., :class:`~pystella.step.RungeKuttaStepper`) which prepend array
+        indices corresponding to extra storage axes (to specify that an array
+        does not have this axis).
+        Defaults to *False*.
+
+    .. attribute:: base_offset
+
+        The amount of padding by which to offset the array axes
+        corresponding to the elements of :attr:`indices`.
+        In contrast to :attr:`offset`, denotes the offset of an "unshifted"
+        array access, so that this attribute is used in determining the
+        fully-padded shape of the underlying array, while use of
+        :func:`shift_fields` may specify offset array accesses by modifying
+        :attr:`offset`.
+
+    .. versionchanged:: 2019.6
+
+        Added :attr:`shape`.
+
     .. autoattribute:: index_tuple
     """
 
-    init_arg_names = ('child', 'offset', 'indices', 'base_offset', 'ignore_prepends')
+    init_arg_names = ('child', 'offset', 'shape', 'indices',
+                      'ignore_prepends', 'base_offset')
 
-    def __init__(self, child, offset=0, indices=('i', 'j', 'k'), base_offset=None,
-                 ignore_prepends=False):
-        """
-        :arg child: The child expression representing the unsubscripted field.
-            May be a string, a :class:`pymbolic.primitives.Variable`, or a
-            :class:`pymbolic.primitives.Subscript`.
-
-        :arg indices: A tuple of (symbolic) array indices that will subscript
-            the array.
-            Each entry may be a :class:`pymbolic.primitives.Variable` or a string
-            which parses to one.
-            Defaults to ``('i', 'j', 'k')``
-
-        :arg offset: The amount of padding by which to offset the array axes
-            corresponding to the elements of :attr:`indices`. May be a tuple with
-            the same length as :attr:`indices` or a single value.
-            In the latter case, the input is transformed into a tuple with the same
-            length as :attr:`indices`, each with the same value.
-            Defaults to ``0``.
-
-        :arg ignore_prepends: Whether to ignore array subscripts prepended when
-            processed with :func:`index_fields`. Useful for timestepping kernels
-            (e.g., :class:`~pystella.step.RungeKuttaStepper`) which prepend array
-            indices corresponding to extra storage axes (to specify that an array
-            does not have this axis).
-            Defaults to *False*.
-        """
-
+    def __init__(self, child, offset=0, shape=tuple(), indices=('i', 'j', 'k'),
+                 ignore_prepends=False, base_offset=None):
         self.child = parse_if_str(child)
         if isinstance(self.child, pp.Subscript):
             self.name = self.child.aggregate.name
@@ -116,12 +151,12 @@ class Field(pp.AlgebraicLeaf):
         self.offset = tuple(parse_if_str(o) for o in offset)
         self.base_offset = base_offset or self.offset
         self.indices = tuple(parse_if_str(i) for i in indices)
-
+        self.shape = shape
         self.ignore_prepends = ignore_prepends
 
     def __getinitargs__(self):
-        return (self.child, self.offset, self.indices, self.base_offset,
-                self.ignore_prepends)
+        return (self.child, self.offset, self.shape, self.indices,
+                self.ignore_prepends, self.base_offset)
 
     mapper_method = "map_field"
 
@@ -138,10 +173,10 @@ class Field(pp.AlgebraicLeaf):
         # FIXME: do something with originating_stringifier?
         return FieldStringifyMapper()
 
-    def new_with_changes(self, **kwargs):
+    def copy(self, **kwargs):
         init_kwargs = dict(zip(self.init_arg_names, self.__getinitargs__()))
         init_kwargs.update(kwargs)
-        return Field(**init_kwargs)
+        return type(self)(**init_kwargs)
 
 
 class FieldStringifyMapper(StringifyMapper):
@@ -159,48 +194,55 @@ class DynamicField(Field):
     .. attribute:: dot
 
         A :class:`Field` representing the time derivative of the base
-        :class:`Field`. It shares the same :attr:`indices` and :attr:`offset`
-        as the base :class:`Field`. Its name defaults to ``d{self.child}dt``,
-        but may be specified via the argument ``dot_child``.
+        :class:`Field`.
+        Defaults to a :class:`Field` with name ``d{self.child}dt`` with the
+        same :attr:`shape`, :attr:`indices`, and :attr:`offset`,
+        but may be specified via the argument ``dot``.
 
     .. attribute:: lap
 
         A :class:`Field` representing the Laplacian of the base
-        :class:`Field`. It shares the same :attr:`indices` as the base
-        :class:`Field` but with ``offset = 0``. Its name defaults to
-        ``lap_{self.child}``, but may be specified via the argument
-        ``lap_child``.
+        :class:`Field`.
+        Defaults to a :class:`Field` with name ``lap_{self.child}`` with the
+        same :attr:`shape` and :attr:`indices` but with zero :attr:`offset`,
+        but may be specified via the argument ``lap``.
 
     .. attribute:: pd
 
         A :class:`Field` representing the spatial derivative(s) of the base
-        :class:`Field`. It shares the same :attr:`indices` as the base
-        :class:`Field` but with ``offset = 0``. Its name defaults to
-        ``d{self.child}dx``, but may be specified via the argument
-        ``pd_child``.
+        :class:`Field`.
+        Defaults to a :class:`Field` with name ``d{self.child}dx`` with shape
+        ``(3,)+shape``, the same :attr:`indices`, and zero :attr:`offset`,
+        but may be specified via the argument ``pd``.
 
     .. automethod:: d
+
+    .. versionchanged:: 2019.6
+
+        Specifying the names of :attr:`dot`, :attr:`lap`, and :attr:`pd` was
+        replaced by passing actual :class:`Field` instances.
     """
 
-    init_arg_names = ('child', 'offset', 'indices', 'base_offset',
-                      'dot_child', 'lap_child', 'pd_child')
+    init_arg_names = ('child', 'offset', 'shape', 'indices', 'base_offset',
+                      'dot', 'lap', 'pd')
 
-    def __init__(self, child, offset='0', indices=('i', 'j', 'k'),
-                 base_offset=None, dot_child=None, lap_child=None, pd_child=None):
-        super().__init__(child, offset, indices, base_offset=base_offset)
+    def __init__(self, child, offset='0', shape=tuple(), indices=('i', 'j', 'k'),
+                 base_offset=None, dot=None, lap=None, pd=None):
+        super().__init__(child, offset=offset, indices=indices,
+                         base_offset=base_offset, shape=shape)
 
-        self.dot = Field(dot_child or 'd' + str(child) + 'dt',
-                         offset, indices=indices)
+        self.dot = dot or Field('d%sdt' % str(child), shape=shape,
+                                offset=offset, indices=indices)
 
-        self.lap = Field(lap_child or 'lap_' + str(child),
-                         offset=0, indices=indices, ignore_prepends=True)
+        self.lap = lap or Field('lap_%s' % str(child), shape=shape,
+                                offset=0, indices=indices, ignore_prepends=True)
 
-        self.pd = Field(pd_child or'd' + str(child) + 'dx',
-                        offset=0, indices=indices, ignore_prepends=True)
+        self.pd = pd or Field('d%sdx' % str(child), shape=shape+(3,),
+                              offset=0, indices=indices, ignore_prepends=True)
 
     def __getinitargs__(self):
-        return (self.child, self.offset, self.indices, self.base_offset,
-                self.dot.child, self.lap.child, self.pd.child)
+        return (self.child, self.offset, self.shape, self.indices, self.base_offset,
+                self.dot, self.lap, self.pd)
 
     def d(self, *args):
         """
@@ -235,19 +277,93 @@ class DynamicField(Field):
     mapper_method = "map_dynamic_field"
 
 
-def parse_prepend(*indices):
-    def parse_if_str(x):
-        return parse(x) if isinstance(x, str) else x
+class IdentityMapperMixin:
+    def map_field(self, expr, *args, **kwargs):
+        return expr.copy(
+            child=self.rec(expr.child, *args, **kwargs),
+            indices=self.rec(expr.indices, *args, **kwargs),
+            offset=self.rec(expr.offset, *args, **kwargs),
+        )
 
-    return tuple(map(parse_if_str, indices))
+    def map_dynamic_field(self, expr, *args, **kwargs):
+        return expr.copy(
+            child=self.rec(expr.child, *args, **kwargs),
+            indices=self.rec(expr.indices, *args, **kwargs),
+            offset=self.rec(expr.offset, *args, **kwargs),
+            dot=self.rec(expr.dot, *args, **kwargs),
+            pd=self.rec(expr.pd, *args, **kwargs),
+            lap=self.rec(expr.lap, *args, **kwargs),
+        )
+
+    def map_derivative(self, expr, *args, **kwargs):
+        return type(expr)(
+            self.rec(expr.child, *args, **kwargs),
+            self.rec(expr.variables, *args, **kwargs))
+
+    def map_dict(self, expr, *args, **kwargs):
+        return dict(self.rec(list(expr.items()), *args, **kwargs))
+
+    def map_assignment(self, expr, *args, **kwargs):
+        return expr.copy(
+            assignee=self.rec(expr.assignee, *args, **kwargs),
+            expression=self.rec(expr.expression, *args, **kwargs),
+        )
+
+    def map_foreign(self, expr, *args, **kwargs):
+        if isinstance(expr, dict):
+            return self.map_dict(expr, *args, **kwargs)
+        if isinstance(expr, lp.Assignment):
+            return self.map_assignment(expr, *args, **kwargs)
+        else:
+            return super().map_foreign(expr, *args, **kwargs)
+
+
+class IdentityMapper(IdentityMapperMixin, IdentityMapperBase):
+    pass
+
+
+class CombineMapperMixin:
+    def map_field(self, expr, *args, **kwargs):
+        return set()
+
+    map_dynamic_field = map_field
+
+    def map_derivative(self, expr, *args, **kwargs):
+        return self.combine((
+            self.rec(expr.child, *args, **kwargs),
+            self.rec(expr.variables, *args, **kwargs)))
+
+    def map_dict(self, expr, *args, **kwargs):
+        return self.rec(list(expr.items()), *args, **kwargs)
+
+    def map_assignment(self, expr, *args, **kwargs):
+        return self.combine((
+            self.rec(expr.assignee, *args, **kwargs),
+            self.rec(expr.expression, *args, **kwargs)))
+
+    def map_foreign(self, expr, *args, **kwargs):
+        if isinstance(expr, dict):
+            return self.map_dict(expr, *args, **kwargs)
+        if isinstance(expr, lp.Assignment):
+            return self.map_assignment(expr, *args, **kwargs)
+        else:
+            return super().map_foreign(expr, *args, **kwargs)
+
+
+class CombineMapper(CombineMapperMixin, CombineMapperBase):
+    pass
 
 
 class IndexMapper(IdentityMapper):
+    def map_lookup(self, expr, *args, **kwargs):
+        return self.rec(pp.Variable(expr.name))
+
     def map_field(self, expr, *args, **kwargs):
         if expr.ignore_prepends:
             pre_index = ()
         else:
-            pre_index = parse_prepend(*kwargs.pop('prepend_with', ()))
+            prepend = kwargs.get('prepend_with') or ()
+            pre_index = tuple(parse_if_str(x) for x in prepend)
 
         pre_index = pre_index + kwargs.pop('outer_subscript', ())
         full_index = pre_index + expr.index_tuple
@@ -272,38 +388,81 @@ class IndexMapper(IdentityMapper):
         else:
             return super().map_subscript(expr, *args, **kwargs)
 
-    def map_lookup(self, expr, *args, **kwargs):
-        return self.rec(pp.Variable(expr.name))
 
+def index_fields(expr, prepend_with=None):
+    """
+    Appends subscripts to :class:`Field`
+    instances in an expression, turning them into ordinary
+    :class:`pymbolic.primitives.Subscript`'s.
+    See the documentation of :class:`Field` for examples.
 
-#: Appends subscripts to :class:`Field`
-#: instances in an expression, turning them into ordinary
-#: :class:`pymbolic.primitives.Subscript`'s.
-#: See the documentation of :class:`Field` for examples.
-#:
-#: :arg expr: The :mod:`pymbolic` expression to be mapped.
-#:
-#: :arg prepend_with: A :class:`tuple` of indices to prepend to the subscript
-#:  of any :class:`Field`'s in ``expr`` (unless a given :class:`Field` has
-#:  :attr:ignore_prepends` set to *False*. Passed by keyword.
-#:  Defaults to an empty :class:`tuple`.
-#:
-index_fields = IndexMapper()
+    :arg expr: The expression(s) to be mapped.
+
+    :arg prepend_with: A :class:`tuple` of indices to prepend to the subscript
+        of any :class:`Field`'s in ``expr`` (unless a given :class:`Field` has
+        :attr:`ignore_prepends` set to *False*. Passed by keyword.
+        Defaults to an empty :class:`tuple`.
+    """
+
+    return IndexMapper()(expr, prepend_with=prepend_with)
 
 
 class Shifter(IdentityMapper):
     def map_field(self, expr, shift=(0, 0, 0), *args, **kwargs):
         new_offset = tuple(o + s for o, s in zip(expr.offset, shift))
-        return expr.new_with_changes(offset=new_offset)
-
-    map_dynamic_field = map_field
+        return expr.copy(offset=new_offset)
 
 
-shift_fields = Shifter()
+def shift_fields(expr, shift):
+    """
+    Returns an expression with all :class:`Field`'s shifted by ``shift``--i.e.,
+    with ``shift`` added elementwise to each :class:`Field`'s ``offset`` attribute.
+
+    :arg expr: The expression(s) to be mapped.
+
+    :arg shift: A :class:`tuple`.
+
+    .. versionadded:: 2019.6
+    """
+
+    return Shifter()(expr, shift=shift)
 
 
-class FieldCollector(Collector):
-    def map_field(self, expr):
+class SubstitutionMapper(IdentityMapperMixin, SubstitutionMapperBase):
+    def map_algebraic_leaf(self, expr, *args, **kwargs):
+        result = self.subst_func(expr)
+        if result is not None:
+            return result
+        else:
+            method = getattr(IdentityMapper, expr.mapper_method)
+            return method(self, expr, *args, **kwargs)
+
+    map_sum = map_algebraic_leaf
+    map_product = map_algebraic_leaf
+    map_quotient = map_algebraic_leaf
+    map_floor_div = map_algebraic_leaf
+    map_remainder = map_algebraic_leaf
+    map_power = map_algebraic_leaf
+    map_if = map_algebraic_leaf
+    map_call = map_algebraic_leaf
+    map_product = map_algebraic_leaf
+    map_lookup = map_algebraic_leaf
+    map_derivative = map_algebraic_leaf
+    map_field = map_algebraic_leaf
+    map_dynamic_field = map_algebraic_leaf
+    map_reduction = map_algebraic_leaf
+
+
+def substitute(expression, variable_assignments={}, **kwargs):
+    variable_assignments = variable_assignments.copy()
+    variable_assignments.update(kwargs)
+
+    from pymbolic.mapper.substitutor import make_subst_func
+    return SubstitutionMapper(make_subst_func(variable_assignments))(expression)
+
+
+class FieldCollector(CombineMapperMixin, Collector):
+    def map_field(self, expr, *args, **kwargs):
         return set([expr])
 
     map_dynamic_field = map_field
@@ -311,28 +470,12 @@ class FieldCollector(Collector):
 
 def get_field_args(expressions, unpadded_shape=None):
     """
-    A :class:`pymbolic.mapper.Collector` which collects all
-    :class:`~pystella.Field`'s from ``expressions`` and returns a corresponding
-    list of :class:`loopy.ArrayArg`'s, using information about array indexing offsets
-    to determine their shape.
-
-    .. warning::
-
-        This method currently does not correctly process
-        :class:`~pystella.Field`'s which are subscripted (i.e., nested
-        inside a :class:`pymbolic.primitives.Subscript`).
-        That is, it disregards any information about outer axes as represented
-        by subscripting.
+    Collects all :class:`~pystella.Field`'s from ``expressions`` and returns a
+    corresponding list of :class:`loopy.ArrayArg`'s, using their ``offset``
+    and ``shape`` attributes to determine their full shape.
 
     :arg expressions: The expressions from which to collect
         :class:`~pystella.Field`'s.
-        May be one of the following:
-
-            * A :class:`dict`, in which case all keys and values are iterated over.
-
-            * A :class:`list`, in which case all elements are iterated over.
-
-            * A :class:`pymbolic.primitives.Expression`.
 
     The following keyword arguments are recognized:
 
@@ -344,42 +487,78 @@ def get_field_args(expressions, unpadded_shape=None):
 
     Example::
 
-        >>> f = Field('f', offset='h)
-        >>> get_field_args(f)
-        [<f: type: <auto/runtime>, shape: (Nx + 2*h, Ny + 2*h, Nz + 2*h)
-        aspace: global>]
+        >>> f, g = Field('f', offset='h'), Field('g', shape=(3, 'a'), offset=1)
+        >>> get_field_args({f: g + 1})
+
+    would return the equivalent of::
+
+        >>> [lp.GlobalArg('f', shape='(Nx+2*h, Ny+2*h, Nz+2*h)', offset=lp.auto),
+        ...  lp.GlobalArg('g', shape='(3, a, Nx+2, Ny+2, Nz+2)', offset=lp.auto)]
     """
 
-    all_exprs = []
-    if isinstance(expressions, dict):
-        for k, v in expressions.items():
-            all_exprs.append(k)
-            all_exprs.append(v)
-    elif isinstance(expressions, list):
-        all_exprs = expressions
-    else:
-        all_exprs = [expressions]
+    from pymbolic import parse
+    unpadded_shape = unpadded_shape or parse('Nx, Ny, Nz')
 
-    if unpadded_shape is None:
-        unpadded_shape = parse('Nx, Ny, Nz')
+    fields = FieldCollector()(expressions)
 
-    from loopy import GlobalArg
-
-    fields = FieldCollector()(all_exprs)
-    args = []
+    field_args = {}
     for f in fields:
-        shape = tuple(N + 2 * h for N, h in zip(unpadded_shape, f.base_offset))
-        args.append(GlobalArg(f.child.name, shape=shape))
+        spatial_shape = \
+            tuple(N + 2 * h for N, h in zip(unpadded_shape, f.base_offset))
+        arg = lp.GlobalArg(f.name, shape=f.shape+spatial_shape, offset=lp.auto)
 
-    return sorted(args, key=lambda f: f.name)
+        if f.name in field_args:
+            other_arg = field_args[f.name]
+            if arg.shape != other_arg.shape:
+                raise ValueError(
+                    "Encountered instances of field '%s' with conflicting shapes"
+                    % f.name)
+        else:
+            field_args[f.name] = arg
+
+    return list(sorted(field_args.values(), key=lambda f: f.name))
+
+
+def collect_field_indices(expressions):
+    fields = FieldCollector()(expressions)
+
+    all_indices = set()
+    for f in fields:
+        all_indices |= set(f.indices)
+
+    def get_name(expr):
+        try:
+            return expr.name
+        except AttributeError:
+            return str(expr)
+
+    all_indices = sorted(tuple(get_name(i) for i in all_indices))
+
+    return set(all_indices)
+
+
+def indices_to_domain(indices):
+    constraints = " and ".join("0 <= %s < N%s" % (idx, idx) for idx in indices)
+    domain = "{[%s]: %s}" % (",".join(indices), constraints)
+    return domain
+
+
+def infer_field_domains(expressions):
+    all_indices = collect_field_indices(expressions)
+    return indices_to_domain(all_indices)
 
 
 __all__ = [
     "Field",
     "DynamicField",
     "index_fields",
-    "diff",
+    "shift_fields",
+    "substitute",
     "get_field_args",
+    "collect_field_indices",
+    "indices_to_domain",
+    "infer_field_domains",
+    "diff",
     # "pymbolic_to_sympy",
     # "sympy_to_pymbolic",
     # "simplify",
