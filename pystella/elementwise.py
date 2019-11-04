@@ -65,15 +65,15 @@ class ElementWiseMap:
                              no_sync_with=no_sync_with,
                              **kwargs)
 
-    def make_kernel(self, map_dict, tmp_dict, args, **kwargs):
+    def make_kernel(self, map_instructions, tmp_instructions, args, **kwargs):
         temp_statements = []
         temp_vars = []
 
         from pystella.field import index_fields
-        indexed_tmp_insns = index_fields(tmp_dict)
-        indexed_map_insns = index_fields(map_dict)
+        indexed_tmp_insns = index_fields(tmp_instructions)
+        indexed_map_insns = index_fields(map_instructions)
 
-        for assignee, expression in indexed_tmp_insns.items():
+        for assignee, expression in indexed_tmp_insns:
             # only declare temporary variables once
             if isinstance(assignee, pp.Variable):
                 current_tmp = assignee
@@ -91,17 +91,17 @@ class ElementWiseMap:
             temp_statements += [stmnt]
 
         output_statements = []
-        for assignee, expression in indexed_map_insns.items():
+        for assignee, expression in indexed_map_insns:
             stmnt = self._assignment(assignee, expression)
             output_statements += [stmnt]
 
         options = kwargs.pop('options', lp.Options())
         # ignore lack of supposed dependency for single-instruction kernels
-        if len(map_dict) + len(tmp_dict) == 1:
+        if len(map_instructions) + len(tmp_instructions) == 1:
             setattr(options, 'check_dep_resolution', False)
 
         from pystella import get_field_args
-        inferred_args = get_field_args([map_dict, tmp_dict])
+        inferred_args = get_field_args([map_instructions, tmp_instructions])
         all_args = append_new_args(args, inferred_args)
 
         knl = lp.make_kernel(
@@ -124,22 +124,26 @@ class ElementWiseMap:
 
         return knl
 
-    def __init__(self, map_dict, **kwargs):
+    def __init__(self, map_instructions, **kwargs):
         """
-        :arg map_dict: A :class:`dict` of ``lhs``: ``rhs`` pairs representing the
-            statements which write to global arrays. Both the keys and values
-            must be :mod:`pymbolic` expressions. Both the keys and values will be
-            processed with :func:`index_fields`.
+        :arg map_instructions: A :class:`list` of instructions which write to global
+            arrays.
+            Entries may be :class:`loopy.Assignment`'s or tuples
+            ``(assignee, expression)`` of :mod:`pymbolic` expressions, the latter
+            of which can include :class:`Field`'s.
+            All entries will be processed with :func:`index_fields`.
 
         The following keyword-only arguments are recognized:
 
-        :arg tmp_dict: A :class:`dict` of ``lhs``: ``rhs`` pairs representing the
-            statements which write to temporary variables (i.e., local memory or
-            registers). Both the keys and values must be :mod:`pymbolic` expressions.
-            The values will be processed with :func:`index_fields`.
-            The statements produced from ``tmp_dict`` will precede those of
-            ``map_dict``, and :class:`loopy.TemporaryVariable` arguments will be
-            inferred as needed.
+        :arg tmp_instructions: A :class:`list` of instructions
+            which write to temporary variables (i.e., local or private memory).
+            Entries may be :class:`loopy.Assignment`'s or tuples
+            ``(assignee, expression)`` of :mod:`pymbolic` expressions, the latter
+            of which can include :class:`Field`'s.
+            The expressions will be processed with :func:`index_fields`.
+            The statements produced from ``tmp_instructions`` will precede those of
+            ``map_instructions``, and :class:`loopy.TemporaryVariable` arguments
+            will be inferred as needed.
 
         :arg args: A list of :class:`loopy.KernelArgument`'s
             to be specified to :func:`loopy.make_kernel`.
@@ -175,8 +179,28 @@ class ElementWiseMap:
         Any remaining keyword arguments are passed to :func:`loopy.make_kernel`.
         """
 
-        self.map_dict = map_dict
-        self.tmp_dict = kwargs.pop('tmp_dict', {})
+        if 'map_dict' in kwargs:
+            from warnings import warn
+            warn("Passing map_dict is deprecated. Pass map_instructions instead.",
+                 DeprecationWarning, stacklevel=2)
+            map_instructions = kwargs.pop('map_dict')
+
+        self.map_instructions = map_instructions
+        if isinstance(self.map_instructions, dict):
+            self.map_instructions = list(self.map_instructions.items())
+
+        if 'tmp_dict' in kwargs:
+            from warnings import warn
+            warn("Passing tmp_dict is deprecated. Pass tmp_instructions instead.",
+                 DeprecationWarning, stacklevel=2)
+            tmp_instructions = kwargs.pop('tmp_dict')
+        else:
+            tmp_instructions = []
+
+        self.tmp_instructions = kwargs.pop('tmp_instructions', tmp_instructions)
+        if isinstance(self.tmp_instructions, dict):
+            self.tmp_instructions = list(self.tmp_instructions.items())
+
         self.args = kwargs.pop('args', [...])
         self.dtype = kwargs.pop('dtype', None)
 
@@ -193,8 +217,8 @@ class ElementWiseMap:
         )
         kernel_kwargs.update(kwargs)
 
-        knl = self.make_kernel(self.map_dict, self.tmp_dict, self.args,
-                               **kernel_kwargs)
+        knl = self.make_kernel(self.map_instructions, self.tmp_instructions,
+                               self.args, **kernel_kwargs)
 
         if rank_shape is not None:
             knl = lp.fix_parameters(
@@ -260,8 +284,8 @@ class ElementWiseMap:
 
     def __str__(self):
         string = ''
-        for key, value in self.tmp_dict.items():
+        for key, value in self.tmp_instructions:
             string += str(key) + ' = ' + str(value) + '\n'
-        for key, value in self.map_dict.items():
+        for key, value in self.map_instructions:
             string += str(key) + ' = ' + str(value) + '\n'
         return string

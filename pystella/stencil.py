@@ -68,7 +68,7 @@ class Stencil(ElementWiseMap):
                 knl = lp.tag_inames(knl, x)
         return knl
 
-    def __init__(self, map_dict, halo_shape, **kwargs):
+    def __init__(self, map_instructions, halo_shape, **kwargs):
         """
         In addition to the parameters to :meth:`ElementWiseMap.__init__`,
         the following arguments are required:
@@ -96,7 +96,7 @@ class Stencil(ElementWiseMap):
             _lsize = (8, 4, 4)  # default should be only powers of two
         lsize = kwargs.pop('lsize', _lsize)
 
-        super().__init__(map_dict=map_dict, lsize=lsize,
+        super().__init__(map_instructions, lsize=lsize,
                          silenced_warnings=['single_writer_after_creation'],
                          **kwargs, halo_shape=halo_shape)
 
@@ -127,11 +127,12 @@ class StreamingStencil(Stencil):
 
         return knl
 
-    def __init__(self, map_dict, halo_shape, **kwargs):
+    def __init__(self, map_instructions, halo_shape, **kwargs):
         if len(kwargs.get('prefetch_args', [])) > 1:
             raise NotImplementedError('Streaming codegen can only handle one \
                                        prefetch array for now')
 
         lsize = kwargs.pop('lsize', (16, 4, 8))
 
-        super().__init__(map_dict, lsize=lsize, halo_shape=halo_shape, **kwargs)
+        super().__init__(map_instructions, lsize=lsize, halo_shape=halo_shape,
+                         **kwargs)
