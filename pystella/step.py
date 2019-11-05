@@ -234,7 +234,7 @@ class RungeKuttaStepper(Stepper):
             fixed_parameters.update(q=0 if stage == 0 else 1)
 
             options = lp.Options(enforce_variable_access_ordered="no_check")
-            step = MapKernel(RK_dict, tmp_dict=rhs_statements,
+            step = MapKernel(RK_dict, tmp_instructions=rhs_statements,
                              args=self.args, **kwargs, options=options,
                              fixed_parameters=fixed_parameters)
             steps.append(step)
@@ -454,7 +454,7 @@ class LowStorageRKStepper(Stepper):
                 RK_dict[k_i] = self._A[stage] * k_i + dt * rhs[i]
                 RK_dict[f] = f + self._B[stage] * k_i
 
-            step = MapKernel(RK_dict, tmp_dict=rhs_statements,
+            step = MapKernel(RK_dict, tmp_instructions=rhs_statements,
                              args=self.args, **kwargs)
             steps.append(step)
 

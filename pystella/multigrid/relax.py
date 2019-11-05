@@ -213,8 +213,8 @@ class RelaxationBase:
             lhs_dict[rho] = resid + tmp_lhs[i]
 
         args = self.unknown_args + self.rho_args + self.residual_args
-        self.lhs_correction = MapKernel(lhs_dict, tmp_dict=tmp_dict, args=args,
-                                        **kwargs)
+        self.lhs_correction = MapKernel(lhs_dict, tmp_instructions=tmp_dict,
+                                        args=args, **kwargs)
 
     def make_residual_kernel(self, MapKernel, **kwargs):
         residual_dict = {}

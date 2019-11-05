@@ -57,7 +57,7 @@ def test_elementwise(ctx_factory, grid_shape, proc_shape, dtype, timing=False):
                 z: z + a[1] * b}
     single_insn = {x: y + z}
 
-    ew_map = ps.ElementWiseMap(map_dict, tmp_dict=tmp_dict)
+    ew_map = ps.ElementWiseMap(map_dict, tmp_instructions=tmp_dict)
 
     x = clr.rand(queue, rank_shape, dtype=dtype)
     y = clr.rand(queue, rank_shape, dtype=dtype)

@@ -94,11 +94,11 @@ def RestrictionBase(coefs, StencilKernel, halo_shape, **kwargs):
             lp.GlobalArg('f2', shape='(Nx+2*h, Ny+2*h, Nz+2*h)')]
 
     if isinstance(StencilKernel, Stencil):
-        return StencilKernel(restrict_dict, tmp_dict=tmp_dict, args=args,
+        return StencilKernel(restrict_dict, tmp_instructions=tmp_dict, args=args,
                              prefetch_args=['f1'], halo_shape=halo_shape,
                              lsize=lsize, **kwargs)
     else:
-        return StencilKernel(restrict_dict, tmp_dict=tmp_dict, args=args,
+        return StencilKernel(restrict_dict, tmp_instructions=tmp_dict, args=args,
                              halo_shape=halo_shape, lsize=lsize, **kwargs)
 
 
@@ -206,7 +206,7 @@ def InterpolationBase(even_coefs, odd_coefs, StencilKernel, halo_shape, **kwargs
     args = [lp.GlobalArg('f1', shape='(Nx+2*h, Ny+2*h, Nz+2*h)'),
             lp.GlobalArg('f2', shape='(Nx//2+2*h, Ny//2+2*h, Nz//2+2*h)')]
 
-    return StencilKernel(interp_dict, tmp_dict=tmp_dict, args=args,
+    return StencilKernel(interp_dict, tmp_instructions=tmp_dict, args=args,
                          prefetch_args=['f2'], halo_shape=halo_shape, **kwargs)
 
 
