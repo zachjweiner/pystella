@@ -24,6 +24,7 @@ THE SOFTWARE.
 import numpy as np
 import pyopencl.array as cla  # noqa: F401
 import loopy as lp
+from pystella.elementwise import ElementWiseMap
 
 from warnings import filterwarnings
 from loopy.diagnostic import ParameterFinderWarning
@@ -80,37 +81,18 @@ def get_cl_reduction_op(op):
         raise NotImplementedError('pyopencl reduction for operation %s' % op)
 
 
-def red_stmnt(assignee, expr, op):
-    from pystella import index_fields
-    red = lp.symbolic.Reduction(operation=op,
-                                inames=('i'),
-                                expr=index_fields(expr),
-                                allow_simultaneous=True)
-    return lp.Assignment(assignee, red)
-
-
-class Reduction:
+class Reduction(ElementWiseMap):
     """
-    An interface to :func:`loopy.make_kernel` which computes (an arbitrary
+    A subclass of :class:`ElementWiseMap` which computes (an arbitrary
     number of) reductions.
 
     .. automethod:: __init__
     .. automethod:: __call__
-    .. attribute:: knl
-
-        The generated :class:`loopy.LoopKernel`.
     """
-    def make_reduce_knl(self, statements, args):
-        knl = lp.make_kernel(
-            "[Nx, Ny, Nz] -> {[i,j,k]: 0<=i<Nx and 0<=j<Ny and 0<=k<Nz}",
-            statements + [lp.Assignment('Nx_', 'Nx')],
-            args + [lp.GlobalArg('Nx_', shape=(), dtype='int'), ...],
-            default_offset=lp.auto,
-            lang_version=(2018, 2),
-            )
-        knl = lp.split_iname(knl, "k", 32, outer_tag="g.0", inner_tag="l.0")
-        knl = lp.split_iname(knl, "j", 2, outer_tag="g.1", inner_tag="ilp")
-        knl = lp.remove_unused_arguments(knl)
+
+    def parallelize(self, knl, lsize):
+        knl = lp.split_iname(knl, "k", lsize[0], outer_tag="g.0", inner_tag="l.0")
+        knl = lp.split_iname(knl, "j", lsize[1], outer_tag="g.1", inner_tag="ilp")
         return knl
 
     def __init__(self, decomp, input, **kwargs):
@@ -134,29 +116,8 @@ class Reduction:
               obtained from each :class:`Sector` (as described above) will be
               combined.
 
-        The following keyword-only arguments are recognized:
-
-        :arg args: A list of :class:`loopy.KernelArgument`'s
-            to be specified to :func:`loopy.make_kernel`.
-            By default, all arguments (and their shapes) are inferred using
-            :func:`get_field_args`, while any remaining (i.e., non-:class:`Field`)
-            arguments are inferred by :func:`loopy.make_kernel`.
-            Any arguments passed via ``args`` override those inferred by either
-            of the above options.
-
-        :arg rank_shape: A 3-:class:`tuple` specifying the shape of looped-over
-            arrays.
-            Defaults to *None*, in which case these values are not fixed (and
-            will be inferred when the kernel is called at a slight performance
-            penalty).
-
-        :arg halo_shape: The number of halo layers on (both sides of) each axis of
-            the computational grid.
-            May either be an :class:`int`, interpreted as a value to fix the
-            parameter ``h`` to, or a :class:`tuple`, interpreted as values for
-            ``hx``, ``hy``, and ``hz``.
-            Defaults to *None*, in which case no such values are fixed at kernel
-            creation.
+        The following keyword-only arguments are recognized (in addition to those
+        accepted by :class:`ElementWiseMap`):
 
         :arg grid_size: The total number of gridpoints on the entire computational
             grid.
@@ -180,8 +141,6 @@ class Reduction:
             raise NotImplementedError
 
         reducers = self.reducers
-        rank_shape = kwargs.pop('rank_shape', None)
-        halo_shape = kwargs.pop('halo_shape', None)
         self.grid_size = kwargs.pop('grid_size', None)
         self.callback = kwargs.pop('callback', lambda x: x)
 
@@ -209,30 +168,22 @@ class Reduction:
                     reduction_ops.append('avg')
         self.reduction_ops = reduction_ops
 
-        statements = [red_stmnt(tmp[i, var('j'), var('k')], v,
-                                'sum' if op == 'avg' else op)
-                      for i, (v, op) in enumerate(zip(flat_reducers, reduction_ops))]
+        def reduction(expr, op):
+            return lp.symbolic.Reduction(operation=op, inames=('i',), expr=expr,
+                                         allow_simultaneous=True)
 
-        args = kwargs.pop('args', [...])
-        from pystella import get_field_args
-        inferred_args = get_field_args(flat_reducers)
-        from pystella.elementwise import append_new_args
-        self.args = append_new_args(args, inferred_args)
+        statements = [
+            (tmp[i, var('j'), var('k')],
+             reduction(expr, 'sum' if op == 'avg' else op))
+            for i, (expr, op) in enumerate(zip(flat_reducers, reduction_ops))
+        ]
+        statements += [(var('Nx_'), var('Nx'))]
 
-        knl = self.make_reduce_knl(statements, self.args)
+        args = [lp.GlobalArg('Nx_', shape=(), dtype='int')]
+        args += kwargs.pop('args', [...])
 
-        if rank_shape is not None:
-            knl = lp.fix_parameters(
-                knl, Nx=rank_shape[0], Ny=rank_shape[1], Nz=rank_shape[2]
-            )
-        if isinstance(halo_shape, int):
-            knl = lp.fix_parameters(knl, h=halo_shape)
-        elif isinstance(halo_shape, (tuple, list)):
-            knl = lp.fix_parameters(
-                knl, hx=halo_shape[0], hy=halo_shape[1], hz=halo_shape[2]
-            )
-
-        self.knl = lp.set_options(knl, return_dict=True)
+        super().__init__(statements, **kwargs, args=args, seq_dependencies=False,
+                         lsize=(32, 2, 1), options=lp.Options(return_dict=True))
 
     def reduce_array(self, arr, op):
         if op == 'prod':
@@ -277,20 +228,7 @@ class Reduction:
             (at a slight performance penalty).
         """
 
-        input_args = kwargs.copy()
-        if filter_args:
-            kernel_args = [arg.name for arg in self.knl.args]
-            for arg in kwargs:
-                if arg not in kernel_args:
-                    input_args.pop(arg)
-
-            # add back PyOpenCLExecuter arguments
-            if isinstance(self.knl.target, lp.PyOpenCLTarget):
-                for arg in ['allocator', 'wait_for', 'out_host']:
-                    if arg in kwargs:
-                        input_args[arg] = kwargs.get(arg)
-
-        evt, output = self.knl(queue, **input_args)
+        evt, output = super().__call__(queue, filter_args=filter_args, **kwargs)
         tmp = output['tmp']
         vals = {}
         for key, sub_indices in self.tmp_dict.items():

@@ -73,27 +73,37 @@ class ElementWiseMap:
         indexed_tmp_insns = index_fields(tmp_instructions)
         indexed_map_insns = index_fields(map_instructions)
 
-        for assignee, expression in indexed_tmp_insns:
-            # only declare temporary variables once
-            if isinstance(assignee, pp.Variable):
-                current_tmp = assignee
-            elif isinstance(assignee, pp.Subscript):
-                current_tmp = assignee.aggregate
+        for statement in indexed_tmp_insns:
+            if isinstance(statement, lp.Assignment):
+                temp_statements += [statement]
             else:
-                current_tmp = None
-            if current_tmp is not None and current_tmp not in temp_vars:
-                temp_vars += [current_tmp]
-                tvt = lp.Optional(None)
-            else:
-                tvt = lp.Optional()
+                assignee, expression = statement
+                # only declare temporary variables once
+                if isinstance(assignee, pp.Variable):
+                    current_tmp = assignee
+                elif isinstance(assignee, pp.Subscript):
+                    current_tmp = assignee.aggregate
+                else:
+                    current_tmp = None
+                if current_tmp is not None and current_tmp not in temp_vars:
+                    temp_vars += [current_tmp]
+                    tvt = lp.Optional(None)
+                else:
+                    tvt = lp.Optional()
 
-            stmnt = self._assignment(assignee, expression, temp_var_type=tvt)
-            temp_statements += [stmnt]
+                temp_statements += [
+                    self._assignment(assignee, expression, temp_var_type=tvt)
+                ]
 
         output_statements = []
-        for assignee, expression in indexed_map_insns:
-            stmnt = self._assignment(assignee, expression)
-            output_statements += [stmnt]
+        for statement in indexed_map_insns:
+            if isinstance(statement, lp.Assignment):
+                output_statements += [statement]
+            else:
+                assignee, expression = statement
+                temp_statements += [
+                    self._assignment(assignee, expression)
+                ]
 
         options = kwargs.pop('options', lp.Options())
         # ignore lack of supposed dependency for single-instruction kernels

@@ -48,15 +48,19 @@ def test_reduction(ctx_factory, grid_shape, proc_shape, dtype, op,
     rank_shape = tuple(Ni // pi for Ni, pi in zip(grid_shape, proc_shape))
     mpi = ps.DomainDecomposition(proc_shape, h, rank_shape)
 
+    from pymbolic import var
     from pystella import Field
+    tmp_insns = [(var('x'), Field('f') / 2 + .31)]
+
     reducers = {}
-    reducers['avg'] = [(Field('f'), op)]
+    reducers['avg'] = [(var('x'), op)]
 
     if pass_grid_dims:
         reducer = ps.Reduction(mpi, reducers, rank_shape=rank_shape,
+                               tmp_instructions=tmp_insns,
                                grid_size=np.product(grid_shape))
     else:
-        reducer = ps.Reduction(mpi, reducers)
+        reducer = ps.Reduction(mpi, reducers, tmp_instructions=tmp_insns)
 
     f = clr.rand(queue, rank_shape, dtype=dtype)
 
@@ -66,7 +70,7 @@ def test_reduction(ctx_factory, grid_shape, proc_shape, dtype, op,
     result = reducer(queue, f=f, allocator=pool)
     avg = result['avg']
 
-    avg_test = reducer.reduce_array(f, op)
+    avg_test = reducer.reduce_array(f / 2 + .31, op)
     if op == 'avg':
         avg_test /= np.product(grid_shape)
 

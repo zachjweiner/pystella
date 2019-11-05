@@ -461,7 +461,7 @@ def substitute(expression, variable_assignments={}, **kwargs):
     return SubstitutionMapper(make_subst_func(variable_assignments))(expression)
 
 
-class FieldCollector(CombineMapperMixin, Collector):
+class FieldCollector(CombineMapper, Collector):
     def map_field(self, expr, *args, **kwargs):
         return set([expr])
 
