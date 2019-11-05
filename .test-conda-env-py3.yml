@@ -14,6 +14,7 @@ dependencies:
 - pyopencl
 - pocl
 - fftw
+- openmpi
 - mpi4py
 - mpi4py-fft
 - clfft
