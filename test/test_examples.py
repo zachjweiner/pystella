@@ -42,8 +42,7 @@ def test_examples(ctx_factory, grid_shape, proc_shape, filename, expected):
     if os.environ.get('RUNNING_ON_AZURE', False):
         pytest.skip("can't run tests on Azure")
 
-    result = subprocess.run(['python', filename, 'end_time', '1'],
-                            stdout=subprocess.PIPE)
+    result = subprocess.run(['python', filename], stdout=subprocess.PIPE)
 
     assert result.returncode == 0, '%s failed' % filename
 

@@ -60,7 +60,7 @@ class Sector:
 
     def get_args(self, single_stage=True):
         from warnings import warn
-        warn("Sector.aet_args is deprecated. Use pystella.get_field_args instead.",
+        warn("Sector.get_args is deprecated. Use pystella.get_field_args instead.",
              DeprecationWarning, stacklevel=2)
         return []
 
@@ -195,7 +195,7 @@ class TensorPerturbationSector:
             Defaults to ``DynamicField('hij', offset='h', shape=(6,))``.
         """
 
-        self.hij = kwargs.pop('hij', DynamicField('hij', offset='h'))
+        self.hij = kwargs.pop('hij', DynamicField('hij', offset='h', shape=(6,)))
         self.sectors = sectors
 
     @property

@@ -55,7 +55,7 @@ df0 = [-.142231 * mpl, 0]  # units of mpl
 end_time = 1
 end_scale_factor = 20
 Stepper = ps.LowStorageRK54
-gravitational_waves = False  # whether to simulate gravitational waves
+gravitational_waves = True  # whether to simulate gravitational waves
 
 ctx = ps.choose_device_and_make_context()
 queue = cl.CommandQueue(ctx)
