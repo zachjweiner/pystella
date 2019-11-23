@@ -83,8 +83,12 @@ class PowerSpectra:
         counts[kvecs[2] == 0] = 1.
         counts[kvecs[2] == self.grid_shape[-1]//2] = 1.
 
-        from mpi4py import MPI
-        max_k = self.decomp.allreduce(np.max(rkmags), MPI.MAX)
+        if self.decomp.nranks > 1:
+            from mpi4py import MPI
+            max_k = self.decomp.allreduce(np.max(rkmags), MPI.MAX)
+        else:
+            max_k = np.max(rkmags)
+
         self.num_bins = int(max_k / self.bin_width + .5) + 1
         bins = np.arange(-.5, self.num_bins + .5) * self.bin_width
 
