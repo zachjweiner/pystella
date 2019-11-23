@@ -27,14 +27,14 @@ import h5py
 
 def get_versions(dependencies):
     import importlib
-    import pkg_resources
+    from pkg_resources import get_distribution, DistributionNotFound
     from pytools import find_module_git_revision
     versions = {}
     git_revs = {}
     for dep in dependencies:
         try:
-            versions[dep] = pkg_resources.get_distribution(dep).version
-        except ModuleNotFoundError:
+            versions[dep] = get_distribution(dep).version
+        except (ModuleNotFoundError, DistributionNotFound):
             versions[dep] = None
         try:
             file = importlib.import_module(dep.replace('.', '')).__file__
@@ -145,11 +145,11 @@ class OutputFile(h5py.File):
 
         self.create_group('versions')
         for k, v in versions.items():
-            self['versions'][k] = v
+            self['versions'][k] = v or ''
 
         self.create_group('git_revs')
         for k, v in git_revs.items():
-            self['git_revs'][k] = '' if v is None else v
+            self['git_revs'][k] = v or ''
 
     def output(self, group, **kwargs):
         """
