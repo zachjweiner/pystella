@@ -47,7 +47,7 @@ def make_hermitian(data, fft):
 @pytest.mark.filterwarnings(
     "ignore::pyopencl.characterize.CLCharacterizationWarning")
 @pytest.mark.filterwarnings("ignore::loopy.diagnostic.LoopyAdvisory")
-@pytest.mark.parametrize("dtype", [np.float64, np.float32])
+@pytest.mark.parametrize("dtype", ['float64', 'complex128'])
 @pytest.mark.parametrize("L", [(10,)*3, (10, 7, 8), (3, 8, 19), (13.2, 5.71, 9.4),
                                (11, 11, 4), (4, 11, 11), (11, 4, 11)])
 def test_spectra(ctx_factory, grid_shape, proc_shape, dtype, L, timing=False):
@@ -76,19 +76,26 @@ def test_spectra(ctx_factory, grid_shape, proc_shape, dtype, L, timing=False):
     fk = make_data(*fft.shape(True)).astype(cdtype)
 
     fk_d = cla.to_device(queue, fk)
-    spectrum = spec.bin_power(fk_d, k_power=k_power, is_real=True)
+    spectrum = spec.bin_power(fk_d, k_power=k_power)
     bins = np.arange(-.5, spec.num_bins + .5) * spec.bin_width
 
     sub_k = list(x.get() for x in fft.sub_k.values())
     kvecs = np.meshgrid(*sub_k, indexing='ij', sparse=False)
     kmags = np.sqrt(sum((dki * ki)**2 for dki, ki in zip(dk, kvecs)))
 
-    counts = 2. * np.ones_like(kmags)
-    counts[kvecs[2] == 0] = 1
-    counts[kvecs[2] == grid_shape[-1]//2] = 1
+    if fft.is_real:
+        counts = 2. * np.ones_like(kmags)
+        counts[kvecs[2] == 0] = 1
+        counts[kvecs[2] == grid_shape[-1]//2] = 1
+    else:
+        counts = 1. * np.ones_like(kmags)
 
-    max_rtol = 1.e-8 if dtype == np.float64 else 2.e-2
-    avg_rtol = 1.e-11 if dtype == np.float64 else 2.e-4
+    if np.dtype(dtype) in (np.dtype('float64'), np.dtype('complex128')):
+        max_rtol = 1.e-8
+        avg_rtol = 1.e-11
+    else:
+        max_rtol = 2.e-2
+        avg_rtol = 2.e-4
 
     bin_counts2 = spec.bin_power(np.ones_like(fk), queue=queue, k_power=0)
     assert np.max(np.abs(bin_counts2 - 1)) < max_rtol, \
@@ -101,47 +108,27 @@ def test_spectra(ctx_factory, grid_shape, proc_shape, dtype, L, timing=False):
     # skip the Nyquist mode and the zero mode
     err = np.abs((spectrum[1:-2] - hist[1:-2]) / hist[1:-2])
     assert np.max(err) < max_rtol and np.average(err) < avg_rtol, \
-           "real power spectrum inaccurate for grid_shape=%s" % (grid_shape,)
+           "power spectrum inaccurate for grid_shape=%s" % (grid_shape,)
 
     if timing:
         from common import timer
-        t = timer(lambda: spec.bin_power(fk_d, k_power=k_power, is_real=True))
-        print("real power spectrum took %.3f ms for grid_shape=%s"
-              % (t, grid_shape))
-
-    # complex_shape = (p.grid_shape[0], p.grid_shape[1]//p.proc_shape[0],
-    #                  p.grid_shape[2]//p.proc_shape[1])
-    # fk = make_data(complex_shape).astype(cdtype)
-
-    # fk_d = cla.to_device(queue, fk)
-    # spectrum = spec.bin_power(fk_d, k_power=k_power, is_real=False)
-
-    # hist = np.histogram(ckmags/dk, bins=bins,
-    #                     weights=np.abs(fk)**2. * ckmags**k_power)[0]
-    # hist = mpi.allreduce(hist)/spec.bin_counts
-
-    # err = np.abs((spectrum[1:-2] - hist[1:-2]) / hist[1:-2])
-    # assert np.max(err) < max_rtol and np.average(err) < avg_rtol, \
-    #     "complex power spectrum inaccurate for N=%d" % (N)
-
-    # if timing:
-    #     start = time.time()
-    #     for i in range(nrun):
-    #         spectrum = spec.bin_power(fk_d, k_power=k_power, is_real=False)
-    #     end = time.time()
-    #     print("complex power spectrum took %.3f ms for N=%d"
-    #         % ((end - start)/nrun*1000., N))
+        t = timer(lambda: spec.bin_power(fk_d, k_power=k_power))
+        print("power spectrum took %.3f ms for grid_shape=%s, dtype=%s"
+              % (t, grid_shape, str(dtype)))
 
 
 @pytest.mark.filterwarnings(
     "ignore::pyopencl.characterize.CLCharacterizationWarning")
 @pytest.mark.filterwarnings("ignore::loopy.diagnostic.LoopyAdvisory")
-@pytest.mark.parametrize("dtype", [np.float64, np.float32])
+@pytest.mark.parametrize("dtype", ['float64', 'float32'])
 def test_pol_spectra(ctx_factory, grid_shape, proc_shape, dtype, timing=False):
     if ctx_factory:
         ctx = ctx_factory()
     else:
         ctx = ps.choose_device_and_make_context()
+
+    if np.dtype(dtype).kind != 'f':
+        dtype = 'float64'
 
     queue = cl.CommandQueue(ctx)
     h = 1
@@ -191,7 +178,7 @@ def test_pol_spectra(ctx_factory, grid_shape, proc_shape, dtype, timing=False):
 
 
 if __name__ == "__main__":
-    args = {'grid_shape': (256,)*3, 'proc_shape': (1,)*3, 'dtype': np.float64}
+    args = {'grid_shape': (256,)*3, 'proc_shape': (1,)*3, 'dtype': 'float64'}
     from common import get_exec_arg_dict
     args.update(get_exec_arg_dict())
     test_spectra(None, **args, L=None, timing=True)

@@ -41,7 +41,8 @@ def DFT(decomp, context, queue, grid_shape, dtype, **kwargs):
     whether to use :class:`pystella.fourier.gDFT` (for single-device, OpenCL-based
     FFTs via :mod:`gpyfft`) or :class:`pystella.fourier.pDFT`
     (for distributed, CPU FFTs via :class:`mpi4py_fft.PFFT`),
-    based on the processor shape ``proc_shape`` and a flag ``use_fftw``.
+    based on the processor shape ``proc_shape`` attribute of ``decomp``
+    and a flag ``use_fftw``.
 
     :arg decomp: A :class:`DomainDecomposition`.
 
@@ -52,8 +53,8 @@ def DFT(decomp, context, queue, grid_shape, dtype, **kwargs):
     :arg grid_shape: A 3-:class:`tuple` specifying the shape of position-space arrays
         to be transformed.
 
-    :arg dtype: The datatype of real arrays to be transformed. The complex
-        datatype is chosen to have the same precision.
+    :arg dtype: The datatype of position-space arrays to be transformed. The complex
+        datatype for momentum-space arrays is chosen to have the same precision.
 
     The following keyword-only arguments are recognized:
 
@@ -67,13 +68,10 @@ def DFT(decomp, context, queue, grid_shape, dtype, **kwargs):
     """
 
     use_fftw = kwargs.pop('use_fftw', False)
-    proc_shape = decomp.proc_shape
-    if proc_shape == (1, 1, 1) and not use_fftw:
+    if decomp.proc_shape == (1, 1, 1) and not use_fftw:
         return gDFT(decomp, context, queue, grid_shape, dtype)
     else:
-        # local_shape = tuple(N//P for N, P in zip(grid_shape, proc_shape))
-        # tmp = cla.zeros(queue, local_shape, dtype)
-        return pDFT(decomp, queue, grid_shape, proc_shape, dtype, **kwargs)
+        return pDFT(decomp, queue, grid_shape, dtype, **kwargs)
 
 
 def _transfer_array(a, b):
@@ -138,10 +136,10 @@ class BaseDFT:
         Any remaining keyword arguments are passed to :meth:`forward_transform`.
 
         .. note::
-            If you need the result of multiple Fourier transforms, you must
+            If you need the result of multiple Fourier transforms at once, you must
             either supply an ``fk`` array or copy the output.
             Namely, without passing ``fk`` the same memory (attached to the
-            transform object) will be used as output, overwriting any prior
+            transform object) will be used for output, overwriting any prior
             results.
         """
 
@@ -207,10 +205,10 @@ class BaseDFT:
         Any remaining keyword arguments are passed to :meth:`backward_transform`.
 
         .. note::
-            If you need the result of multiple Fourier transforms, you must
+            If you need the result of multiple Fourier transforms at once, you must
             either supply an ``fx`` array or copy the output.
             Namely, without passing ``fx`` the same memory (attached to the
-            transform object) will be used as output, overwriting any prior
+            transform object) will be used for output, overwriting any prior
             results.
         """
 
@@ -285,8 +283,22 @@ class BaseDFT:
         return array
 
 
-_c_dtype_mapping = {'float32': 'complex64', 'float64': 'complex128',
-                    np.float32: 'complex64', np.float64: 'complex128'}
+def get_sliced_momenta(grid_shape, dtype, slc, queue):
+    from pystella.fourier import get_real_dtype_with_matching_prec
+    rdtype = get_real_dtype_with_matching_prec(dtype)
+
+    from numpy.fft import fftfreq
+    k = [fftfreq(n, 1/n).astype(rdtype) for n in grid_shape]
+
+    if dtype.kind == 'f':
+        from numpy.fft import rfftfreq
+        k[-1] = rfftfreq(grid_shape[-1], 1/grid_shape[-1]).astype(rdtype)
+
+    names = ('momenta_x', 'momenta_y', 'momenta_z')
+    sub_k = {direction: cla.to_device(queue, k_i[s_i])
+             for direction, k_i, s_i in zip(names, k, slc)}
+
+    return sub_k
 
 
 class pDFT(BaseDFT):
@@ -299,43 +311,44 @@ class pDFT(BaseDFT):
     .. automethod:: __init__
     """
 
-    def __init__(self, decomp, queue, grid_shape, proc_shape, dtype, **kwargs):
+    def __init__(self, decomp, queue, grid_shape, dtype, **kwargs):
         """
         :arg decomp: A :class:`pystella.DomainDecomposition`.
+            The shape of the MPI processor grid is determined by
+            the ``proc_shape`` attribute of this object.
 
         :arg queue: A :class:`pyopencl.CommandQueue`.
 
         :arg grid_shape: A 3-:class:`tuple` specifying the shape of position-space
             arrays to be transformed.
 
-        :arg proc_shape: A 3-:class:`tuple` specifying the shape of the MPI
-            processor grid.
-
-        :arg dtype: The datatype of real arrays to be transformed. The complex
-            datatype is chosen to have the same precision.
+        :arg dtype: The datatype of position-space arrays to be transformed.
+            The complex datatype for momentum-space arrays is chosen to have
+            the same precision.
 
         Any keyword arguments are passed to :meth:`mpi4py_fft.PFFT.__init__()`.
         """
 
         self.decomp = decomp
         self.grid_shape = grid_shape
-        self.proc_shape = proc_shape
-        self.dtype = dtype
-        cdtype = _c_dtype_mapping[dtype]
-        self.cdtype = cdtype
+        self.proc_shape = decomp.proc_shape
+        self.dtype = np.dtype(dtype)
+        self.is_real = self.dtype.kind == 'f'
 
-        if proc_shape[0] > 1 and proc_shape[1] == 1:
+        from pystella.fourier import get_complex_dtype_with_matching_prec
+        self.cdtype = get_complex_dtype_with_matching_prec(self.dtype)
+
+        if self.proc_shape[0] > 1 and self.proc_shape[1] == 1:
             slab = True
         else:
             slab = False
 
         from mpi4py_fft.pencil import Subcomm
         default_kwargs = dict(
-            # FIXME: this is weird
             axes=([0], [1], [2]), threads=16, backend='fftw', collapse=True,
             )
         default_kwargs.update(kwargs)
-        comm = decomp.comm if slab else Subcomm(decomp.comm, proc_shape)
+        comm = decomp.comm if slab else Subcomm(decomp.comm, self.proc_shape)
 
         from mpi4py_fft import PFFT
         self.fft = PFFT(comm, grid_shape, dtype=dtype, slab=slab, **default_kwargs)
@@ -346,17 +359,15 @@ class pDFT(BaseDFT):
         self.fx = self.fft.forward.input_array
         self.fk = self.fft.forward.output_array
 
-        from numpy.fft import fftfreq
-        k = [fftfreq(n, 1/n).astype(dtype) for n in grid_shape]
-
-        if dtype in ('float32', 'float64', np.float32, np.float64):
-            from numpy.fft import rfftfreq
-            k[-1] = rfftfreq(grid_shape[-1], 1/grid_shape[-1]).astype(dtype)
-
         slc = self.fft.local_slice(True)
-        names = ('momenta_x', 'momenta_y', 'momenta_z')
-        self.sub_k = {direction: cla.to_device(queue, k_i[s_i])
-                      for direction, k_i, s_i in zip(names, k, slc)}
+        self.sub_k = get_sliced_momenta(grid_shape, self.dtype, slc, queue)
+
+    @property
+    def proc_permutation(self):
+        axes = list(a for b in self.fft.axes for a in b)
+        for t in self.fft.transfer:
+            axes[t.axisA], axes[t.axisB] = axes[t.axisB], axes[t.axisA]
+        return axes
 
     def shape(self, forward_output=True):
         return self.fft.shape(forward_output=forward_output)
@@ -370,8 +381,8 @@ class pDFT(BaseDFT):
 
 class gDFT(BaseDFT):
     """
-    A wrapper to :mod:`gpyfft` to compute real-to-complex and complex-to-real
-    Fast Fourier transforms.
+    A wrapper to :mod:`gpyfft` to compute Fast Fourier transforms with
+    :mod:`clfft`.
 
     See :class:`pystella.fourier.dft.BaseDFT`.
 
@@ -389,40 +400,38 @@ class gDFT(BaseDFT):
         :arg grid_shape: A 3-:class:`tuple` specifying the shape of position-space
             arrays to be transformed.
 
-        :arg dtype: The datatype of real arrays to be transformed. The complex
-            datatype is chosen to have the same precision.
+        :arg dtype: The datatype of position-space arrays to be transformed.
+            The complex datatype for momentum-space arrays is chosen to have
+            the same precision.
         """
 
         self.decomp = decomp
         self.grid_shape = grid_shape
-        self.dtype = dtype
-        cdtype = _c_dtype_mapping[dtype]
-        self.cdtype = cdtype
+        self.dtype = np.dtype(dtype)
+        self.is_real = is_real = self.dtype.kind == 'f'
+
+        from pystella.fourier import get_complex_dtype_with_matching_prec
+        self.cdtype = cdtype = get_complex_dtype_with_matching_prec(self.dtype)
 
         self.fx = cla.zeros(queue, grid_shape, dtype)
-        self.fk = cla.zeros(queue, self.shape(True), cdtype)
+        self.fk = cla.zeros(queue, self.shape(is_real), cdtype)
         from gpyfft import FFT
-        self.forward = FFT(context, queue, self.fx, out_array=self.fk, real=True,
+        self.forward = FFT(context, queue, self.fx, out_array=self.fk, real=is_real,
                            scale_forward=1, scale_backward=1)
-        self.backward = FFT(context, queue, self.fk, out_array=self.fx, real=True,
+        self.backward = FFT(context, queue, self.fk, out_array=self.fx, real=is_real,
                             scale_forward=1, scale_backward=1)
 
-        from numpy.fft import fftfreq, rfftfreq
-        names = ('momenta_x', 'momenta_y', 'momenta_z')
-
         slc = ((), (), (),)
-        k = [fftfreq(n, 1/n).astype(dtype) for n in grid_shape]
-        self.sub_k_c = {direction: cla.to_device(queue, k_i[s_i])
-                        for direction, k_i, s_i in zip(names, k, slc)}
+        self.sub_k = get_sliced_momenta(grid_shape, self.dtype, slc, queue)
 
-        k[-1] = rfftfreq(grid_shape[-1], 1/grid_shape[-1]).astype(dtype)
-        self.sub_k = {direction: cla.to_device(queue, k_i[s_i])
-                      for direction, k_i, s_i in zip(names, k, slc)}
+    @property
+    def proc_permutation(self):
+        return tuple(range(len(self.grid_shape)))
 
     def shape(self, forward_output=True):
-        if forward_output:
+        if forward_output and self.is_real:
             shape = list(self.grid_shape)
-            shape[-1] = shape[-1]//2+1
+            shape[-1] = shape[-1] // 2 + 1
             return tuple(shape)
         else:
             return self.grid_shape

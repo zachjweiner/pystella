@@ -32,7 +32,7 @@ from pyopencl.tools import (  # noqa
         pytest_generate_tests_for_pyopencl as pytest_generate_tests)
 
 
-@pytest.mark.parametrize("dtype", [np.float64, np.float32])
+@pytest.mark.parametrize("dtype", ['float64', 'complex128'])
 def test_dft(ctx_factory, grid_shape, proc_shape, dtype, timing=False):
     if ctx_factory:
         ctx = ctx_factory()
@@ -47,19 +47,32 @@ def test_dft(ctx_factory, grid_shape, proc_shape, dtype, timing=False):
     fft = ps.DFT(mpi, ctx, queue, grid_shape, dtype)
     grid_size = np.product(grid_shape)
 
-    if proc_shape[0] * proc_shape[1] * proc_shape[2] == 1:
+    from pystella.fourier import get_real_dtype_with_matching_prec
+    rdtype = get_real_dtype_with_matching_prec(dtype)
+
+    if fft.is_real:
+        np_dft = np.fft.rfftn
+        np_idft = np.fft.irfftn
+    else:
+        np_dft = np.fft.fftn
+        np_idft = np.fft.ifftn
+
+    if mpi.nranks == 1:
         rng = clr.ThreefryGenerator(ctx, seed=12321)
-        fx = rng.uniform(queue, grid_shape, dtype) + 1.e-2
+        fx = rng.uniform(queue, grid_shape, rdtype) + 1.e-2
+        if not fft.is_real:
+            fx = fx + 1j * rng.uniform(queue, grid_shape, rdtype)
+
         fx1 = fx.get()
 
         fk = fft.dft(fx)
         fk1 = fk.get()
-        fk_np = np.fft.rfftn(fx1)
+        fk_np = np_dft(fx1)
 
         fx2 = fft.idft(fk).get()
-        fx_np = np.fft.irfftn(fk1)
+        fx_np = np_idft(fk1)
 
-        rtol = 1.e-11 if dtype == np.float64 else 2.e-3
+        rtol = 1.e-11 if dtype in ('float64', 'complex128') else 2.e-3
         assert np.allclose(fx1, fx2 / grid_size, rtol=rtol, atol=0), \
                 "IDFT(DFT(f)) != f for grid_shape=%s" % (grid_shape,)
 
@@ -68,6 +81,35 @@ def test_dft(ctx_factory, grid_shape, proc_shape, dtype, timing=False):
 
         assert np.allclose(fx_np, fx2 / grid_size, rtol=rtol, atol=0), \
                 "IDFT disagrees with numpy for grid_shape=%s" % (grid_shape,)
+    else:
+        mpi0 = ps.DomainDecomposition(proc_shape, 0, rank_shape)
+        if mpi0.rank == 0:
+            rng = clr.ThreefryGenerator(ctx, seed=12321)
+            f = rng.uniform(queue, grid_shape, rdtype) + 1.e-2
+            if not fft.is_real:
+                f = f + 1j * rng.uniform(queue, grid_shape, rdtype)
+        else:
+            f = None
+
+        fx = cla.zeros(queue, rank_shape, dtype)
+        mpi0.scatter_array(queue, f, fx, root=0)
+        fx1 = fx.get()
+
+        fk = fft.dft(fx)
+        fx2 = fft.idft(fk)
+
+        # FIXME: not currently testing individual transforms against numpy
+
+        if mpi.rank == 0:
+            rtol = 1.e-11 if dtype in ('float64', 'complex128') else 2.e-3
+            assert np.allclose(fx1, fx2 / grid_size, rtol=rtol, atol=0), \
+                    "IDFT(DFT(f)) != f for grid_shape=%s" % (grid_shape,)
+
+            # assert np.allclose(fk_np, fk1, rtol=rtol, atol=0), \
+            #         "DFT disagrees with numpy for grid_shape=%s" % (grid_shape,)
+
+            # assert np.allclose(fx_np, fx2 / grid_size, rtol=rtol, atol=0), \
+            #         "IDFT disagrees with numpy for grid_shape=%s" % (grid_shape,)
 
     fx_cl = cla.empty(queue, rank_shape, dtype)
     pencil_shape = tuple(ni + 2*h for ni in rank_shape)
@@ -93,7 +135,8 @@ def test_dft(ctx_factory, grid_shape, proc_shape, dtype, timing=False):
     from common import timer
 
     if mpi.rank == 0:
-        print("N = %s" % (grid_shape,))
+        print("N = %s, " % (grid_shape,),
+              'complex' if np.dtype(dtype).kind == 'c' else 'real')
 
     from itertools import product
     for (a, input_), (b, output) in product(fx_types.items(), fk_types.items()):
@@ -108,7 +151,7 @@ def test_dft(ctx_factory, grid_shape, proc_shape, dtype, timing=False):
 
 
 if __name__ == "__main__":
-    args = {'grid_shape': (256,)*3, 'proc_shape': (1,)*3, 'dtype': np.float64}
+    args = {'grid_shape': (256,)*3, 'proc_shape': (1,)*3, 'dtype': 'float64'}
     from common import get_exec_arg_dict
     args.update(get_exec_arg_dict())
     test_dft(None, **args, timing=True)

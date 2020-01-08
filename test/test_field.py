@@ -234,10 +234,10 @@ def test_sympy_interop(proc_shape):
     expr = sym.exp(x)
     assert sympy_to_pymbolic(expr) == exp(var('x'))
 
-    expr = sym.Function('expm1')(x)
+    expr = sym.Function('expm1')(x)  # pylint: disable=E1102
     assert sympy_to_pymbolic(expr) == expm1(var('x'))
 
-    expr = sym.Function('aaa')(x)
+    expr = sym.Function('aaa')(x)  # pylint: disable=E1102
     from pymbolic.primitives import Call, Variable
     assert sympy_to_pymbolic(expr) == Call(Variable('aaa'), (Variable('x'),))
 

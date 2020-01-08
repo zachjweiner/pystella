@@ -89,7 +89,7 @@ class RayleighGenerator:
             dfk[i, j, k] = 1j * wk[i, j, k] * (Lmode - Rmode) / sqrt2 - hubble * fk_
             """,
             [
-                lp.ValueArg("hubble", self.dtype),
+                lp.ValueArg("hubble", self.rdtype),
                 lp.GlobalArg('fk, dfk', shape=lp.auto, dtype=self.cdtype),
                 ...
             ],
@@ -119,6 +119,8 @@ class RayleighGenerator:
         :arg context: A :class:`pyopencl.Context`.
 
         :arg fft: An FFT object as returned by :func:`DFT`.
+            The datatype of position-space arrays will match that
+            of the passed FFT object.
 
         :arg dk: A 3-:class:`tuple` of the momentum-space grid spacing of each
             axis (i.e., the infrared cutoff of the grid in each direction).
@@ -133,12 +135,14 @@ class RayleighGenerator:
 
         self.fft = fft
         self.dtype = fft.dtype
+        from pystella.fourier import get_real_dtype_with_matching_prec
+        self.rdtype = get_real_dtype_with_matching_prec(self.dtype)
         self.cdtype = fft.cdtype
         self.volume = volume
 
         sub_k = list(x.get() for x in self.fft.sub_k.values())
         kvecs = np.meshgrid(*sub_k, indexing='ij', sparse=False)
-        self.rkmags = np.sqrt(sum((dki * ki)**2 for dki, ki in zip(dk, kvecs)))
+        self.kmags = np.sqrt(sum((dki * ki)**2 for dki, ki in zip(dk, kvecs)))
 
         seed = kwargs.pop('seed', 13298)
         self.rng = clr.ThreefryGenerator(context, seed=seed)
@@ -153,14 +157,17 @@ class RayleighGenerator:
         self.wkb_knl = parallelize(self.get_wkb_knl())
         self.non_wkb_knl = parallelize(self.get_non_wkb_knl())
 
-    def post_process(self, fk, is_real):
+    def _post_process(self, fk):
         from pystella.fourier import gDFT
-        if is_real and isinstance(self.fft, gDFT):
+        if self.fft.is_real and isinstance(self.fft, gDFT):
             # real fields must be Hermitian-symmetric, and it seems we
             # need to do this manually when FFT'ing with gpyfft
             fk = make_hermitian(fk)
-        # can at least do this in general
-        self.fft.zero_corner_modes(fk, only_imag=True)
+
+        if self.fft.is_real:
+            # can at least do this in general
+            self.fft.zero_corner_modes(fk, only_imag=True)
+
         return fk
 
     # wrapper to remove 1/0 and set homogeneous power to zero
@@ -175,7 +182,7 @@ class RayleighGenerator:
         return power
 
     def generate(self, queue, random=True, field_ps=lambda kmag: 1/2/kmag,
-                 norm=1, is_real=True, window=lambda kmag: 1.):
+                 norm=1, window=lambda kmag: 1.):
         """
         Generate a 3-D array of Fourier modes with a given power spectrum and
         random phases.
@@ -195,14 +202,6 @@ class RayleighGenerator:
             power spectra.
             Defaults to ``1``.
 
-        :arg is_real: Whether the fields to be generated are real or complex
-            (in position space).
-            Defaults to *True*.
-
-            .. note::
-
-                Currently, only ``is_real=True`` is supported.
-
         :arg window: A :class:`callable` window function filtering initial mode
             amplitudes.
             Defaults to ``lambda kmag: 1``, i.e., no filter.
@@ -212,19 +211,18 @@ class RayleighGenerator:
         """
 
         amplitude_sq = norm / self.volume
-        kmags = self.rkmags  # if is_real else self.ckmags
 
-        rands = self.rng.uniform(queue, (2,)+kmags.shape, self.dtype)
+        rands = self.rng.uniform(queue, (2,)+self.kmags.shape, self.rdtype)
         if not random:
             rands[0] = np.exp(-1)
 
-        f_power = (amplitude_sq * window(kmags)**2
-                   * self._ps_wrapper(field_ps, kmags, kmags))
+        f_power = (amplitude_sq * window(self.kmags)**2
+                   * self._ps_wrapper(field_ps, self.kmags, self.kmags))
 
         evt, (fk,) = self.non_wkb_knl(queue, rands=rands, f_power=f_power,
                                       out_host=True)
 
-        return self.post_process(fk, is_real)
+        return self._post_process(fk)
 
     def init_field(self, fx, queue=None, **kwargs):
         """
@@ -324,7 +322,7 @@ class RayleighGenerator:
     def generate_WKB(self, queue, random=True,
                      field_ps=lambda wk: 1/2/wk,
                      norm=1, omega_k=lambda kmag: kmag,
-                     hubble=0., is_real=True, window=lambda kmag: 1.):
+                     hubble=0., window=lambda kmag: 1.):
         """
         Generate a 3-D array of Fourier modes with a given power spectrum and
         random phases, along with that of its time derivative
@@ -353,22 +351,21 @@ class RayleighGenerator:
         """
 
         amplitude_sq = norm / self.volume
-        kmags = self.rkmags  # if is_real else self.ckmags
-        kshape = kmags.shape
+        kshape = self.kmags.shape
 
-        rands = self.rng.uniform(queue, (4,)+kshape, self.dtype)
+        rands = self.rng.uniform(queue, (4,)+kshape, self.rdtype)
         if not random:
             rands[0] = rands[2] = np.exp(-1)
 
-        wk = omega_k(kmags)
-        f_power = (amplitude_sq * window(kmags)**2
-                   * self._ps_wrapper(field_ps, wk, kmags))
+        wk = omega_k(self.kmags)
+        f_power = (amplitude_sq * window(self.kmags)**2
+                   * self._ps_wrapper(field_ps, wk, self.kmags))
 
         evt, out = self.wkb_knl(queue, rands=rands, hubble=hubble,
                                 wk=wk, f_power=f_power, out_host=True)
 
-        fk = self.post_process(out['fk'], is_real)
-        dfk = self.post_process(out['dfk'], is_real)
+        fk = self._post_process(out['fk'])
+        dfk = self._post_process(out['dfk'])
 
         return fk, dfk
 

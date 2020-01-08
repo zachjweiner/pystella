@@ -31,7 +31,7 @@ from pyopencl.tools import (  # noqa
         pytest_generate_tests_for_pyopencl as pytest_generate_tests)
 
 
-@pytest.mark.parametrize("dtype", [np.float64, np.float32])
+@pytest.mark.parametrize("dtype", ['float64', 'complex128'])
 @pytest.mark.parametrize("random", [True, False])
 def test_generate_WKB(ctx_factory, grid_shape, proc_shape, dtype, random,
                       timing=False):
@@ -63,7 +63,7 @@ def test_generate_WKB(ctx_factory, grid_shape, proc_shape, dtype, random,
               % ('' if random else 'non-', t, grid_shape))
 
 
-@pytest.mark.parametrize("dtype", [np.float64, np.float32])
+@pytest.mark.parametrize("dtype", ['float64', 'complex128'])
 @pytest.mark.parametrize("random", [True, False])
 def test_generate(ctx_factory, grid_shape, proc_shape, dtype, random, timing=False):
     if ctx_factory:
@@ -99,21 +99,21 @@ def test_generate(ctx_factory, grid_shape, proc_shape, dtype, random, timing=Fal
         err = np.abs(1 - spectrum / true_spectrum)
 
         tol = .1 if num_bins < 64 else .3
-        assert np.max(err[num_bins//4:-4]) < tol and np.average(err[1:]) < tol, \
+        assert (np.max(err[num_bins//3:-num_bins//3]) < tol
+                and np.average(err[1:]) < tol), \
             "init power spectrum incorrect for %srandom k**%d" \
             % ('' if random else 'non-', exp)
 
         if random:
-            fx = fft.idft(cla.to_device(queue, fk))
-            if isinstance(fx, np.ndarray):
-                fx = cla.to_device(queue, fx)
+            fx = fft.idft(cla.to_device(queue, fk)).real
+            if isinstance(fx, cla.Array):
+                fx = fx.get()
 
             grid_size = np.product(grid_shape)
 
-            avg = mpi.allreduce(cla.sum(fx).get()) / grid_size
-            var = mpi.allreduce(cla.sum(fx**2).get()) / grid_size - avg**2
-            skew = mpi.allreduce(cla.sum(fx**3).get()) / grid_size \
-                    - 3 * avg * var - avg**3
+            avg = mpi.allreduce(np.sum(fx)) / grid_size
+            var = mpi.allreduce(np.sum(fx**2)) / grid_size - avg**2
+            skew = mpi.allreduce(np.sum(fx**3)) / grid_size - 3 * avg * var - avg**3
             skew /= var**1.5
             assert skew < tol, \
                 "init power spectrum has large skewness for k**%d" % (exp)
@@ -160,7 +160,7 @@ def is_hermitian(fk):
     return test.all()
 
 
-@pytest.mark.parametrize("dtype", [np.float64])
+@pytest.mark.parametrize("dtype", ['float64'])
 def test_make_hermitian(ctx_factory, grid_shape, proc_shape, dtype):
     if proc_shape != (1, 1, 1):
         pytest.skip("test make_hermitian only on one rank")
@@ -174,10 +174,11 @@ def test_make_hermitian(ctx_factory, grid_shape, proc_shape, dtype):
 
 
 if __name__ == "__main__":
-    args = {'grid_shape': (32,)*3, 'proc_shape': (1, 1, 1), 'dtype': np.float64}
+    args = {'grid_shape': (32,)*3, 'proc_shape': (1, 1, 1), 'dtype': 'float64'}
     from common import get_exec_arg_dict
     args.update(get_exec_arg_dict())
-    test_make_hermitian(None, **args)
+    if args['proc_shape'] == (1, 1, 1):
+        test_make_hermitian(None, **args)
     for random in [True, False]:
         test_generate_WKB(None, **args, random=random, timing=True)
         test_generate(None, **args, random=random, timing=True)

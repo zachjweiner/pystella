@@ -48,6 +48,8 @@ class PowerSpectra:
         :arg decomp: A :class:`DomainDecomposition`.
 
         :arg fft: An FFT object as returned by :func:`DFT`.
+            The datatype of position-space arrays will match that
+            of the passed FFT object.
 
         :arg dk: A 3-:class:`tuple` of the momentum-space grid spacing of each
             axis (i.e., the infrared cutoff of the grid in each direction).
@@ -66,7 +68,10 @@ class PowerSpectra:
         self.proc_shape = decomp.proc_shape
 
         self.dtype = fft.dtype
+        from pystella.fourier import get_real_dtype_with_matching_prec
+        self.rdtype = get_real_dtype_with_matching_prec(self.dtype)
         self.cdtype = fft.cdtype
+
         self.kshape = self.fft.shape(True)
 
         self.dk = dk
@@ -77,30 +82,31 @@ class PowerSpectra:
 
         sub_k = list(x.get() for x in self.fft.sub_k.values())
         kvecs = np.meshgrid(*sub_k, indexing='ij', sparse=False)
-        rkmags = np.sqrt(sum((dki * ki)**2 for dki, ki in zip(self.dk, kvecs)))
+        kmags = np.sqrt(sum((dki * ki)**2 for dki, ki in zip(self.dk, kvecs)))
 
-        counts = 2. * np.ones_like(rkmags)
-        counts[kvecs[2] == 0] = 1.
-        counts[kvecs[2] == self.grid_shape[-1]//2] = 1.
+        if self.fft.is_real:
+            counts = 2. * np.ones_like(kmags)
+            counts[kvecs[2] == 0] = 1.
+            counts[kvecs[2] == self.grid_shape[-1]//2] = 1.
+        else:
+            counts = 1. * np.ones_like(kmags)
 
         if self.decomp.nranks > 1:
             from mpi4py import MPI
-            max_k = self.decomp.allreduce(np.max(rkmags), MPI.MAX)
+            max_k = self.decomp.allreduce(np.max(kmags), MPI.MAX)
         else:
-            max_k = np.max(rkmags)
+            max_k = np.max(kmags)
 
         self.num_bins = int(max_k / self.bin_width + .5) + 1
         bins = np.arange(-.5, self.num_bins + .5) * self.bin_width
 
-        sub_bin_counts = np.histogram(rkmags, weights=counts, bins=bins)[0]
+        sub_bin_counts = np.histogram(kmags, weights=counts, bins=bins)[0]
         self.bin_counts = self.decomp.allreduce(sub_bin_counts)
 
-        self.real_spectra_knl = self.make_spectra_knl(True, self.kshape[-1])
-        # FIXME: get complex Nz better
-        _Nz = self.grid_shape[-1] // self.proc_shape[1]
-        self.complex_spectra_knl = self.make_spectra_knl(False, _Nz)
+        rank_shape = self.fft.shape(True)
+        self.knl = self.make_spectra_knl(self.fft.is_real, rank_shape)
 
-    def make_spectra_knl(self, is_real, Nz):
+    def make_spectra_knl(self, is_real, rank_shape):
         knl = lp.make_kernel(
             "[NZ, Nx, Ny, Nz, num_bins, is_real] -> \
                 { [i,j,k,b]: 0<=i<Nx and 0<=j<Ny and 0<=k<Nz and 0<=b<num_bins}",
@@ -129,15 +135,15 @@ class PowerSpectra:
             end
             """,
             [
-                lp.GlobalArg("spectrum", self.dtype, shape=(self.num_bins,),
+                lp.GlobalArg("spectrum", self.rdtype, shape=(self.num_bins,),
                              for_atomic=True),
-                lp.GlobalArg("momenta_x", self.dtype, shape=('Nx',)),
-                lp.GlobalArg("momenta_y", self.dtype, shape=('Ny',)),
-                lp.GlobalArg("momenta_z", self.dtype, shape=('Nz',)),
-                lp.TemporaryVariable("temp", self.dtype, shape=(self.num_bins,),
+                lp.GlobalArg("momenta_x", self.rdtype, shape=('Nx',)),
+                lp.GlobalArg("momenta_y", self.rdtype, shape=('Ny',)),
+                lp.GlobalArg("momenta_z", self.rdtype, shape=('Nz',)),
+                lp.TemporaryVariable("temp", self.rdtype, shape=(self.num_bins,),
                                      for_atomic=True,
                                      address_space=lp.AddressSpace.LOCAL),
-                lp.ValueArg("k_power, bin_width, dki, dkj, dkk", self.dtype),
+                lp.ValueArg("k_power, bin_width, dki, dkj, dkk", self.rdtype),
                 ...
             ],
             default_offset=lp.auto,
@@ -145,18 +151,20 @@ class PowerSpectra:
             seq_dependencies=True,
             lang_version=(2018, 2),
         )
-        # FIXME: count incorrect for complex?
 
         knl = lp.fix_parameters(knl, NZ=self.grid_shape[-1], num_bins=self.num_bins,
+                                is_real=is_real, bin_width=self.bin_width,
                                 dki=self.dk[0], dkj=self.dk[1], dkk=self.dk[2],
-                                Nz=Nz, is_real=is_real)
-        knl = lp.split_iname(knl, "k", Nz, outer_tag="g.0", inner_tag="l.0")
+                                Nx=rank_shape[0], Ny=rank_shape[1], Nz=rank_shape[2]
+                                )
+        knl = lp.split_iname(knl, "k", rank_shape[2],
+                             outer_tag="g.0", inner_tag="l.0")
         knl = lp.split_iname(knl, "b", min(1024, self.num_bins),
                              outer_tag="g.0", inner_tag="l.0")
         knl = lp.tag_inames(knl, "j:g.1")
         return knl
 
-    def bin_power(self, fk, queue=None, k_power=3, is_real=True, allocator=None):
+    def bin_power(self, fk, queue=None, k_power=3, allocator=None):
         """
         Computes the binned power spectrum of a momentum-space field, weighted
         by :math:`k^n` where ``k_power`` specifies the value of :math:`n`.
@@ -183,17 +191,8 @@ class PowerSpectra:
 
         queue = queue or fk.queue
 
-        if is_real:
-            evt, (spectrum,) = \
-                self.real_spectra_knl(queue, allocator=allocator, fk=fk,
-                                      k_power=k_power, **self.fft.sub_k,
-                                      bin_width=self.bin_width)
-        else:
-            raise NotImplementedError('complex spectra, at least distributed')
-            evt, (spectrum,) = \
-                self.complex_spectra_knl(queue, allocator=allocator, fk=fk,
-                                         k_power=k_power, **self.fft.sub_k_c,
-                                         bin_width=self.bin_width)
+        evt, (spectrum,) = self.knl(queue, allocator=allocator, fk=fk,
+                                    k_power=k_power, **self.fft.sub_k)
 
         full_spectrum = self.decomp.allreduce(spectrum.get())
         return full_spectrum / self.bin_counts
@@ -236,16 +235,15 @@ class PowerSpectra:
         """
 
         queue = queue or fx.queue
-        is_real = fx.dtype == np.float64 or fx.dtype == np.float32
 
         outer_shape = fx.shape[:-3]
         from itertools import product
         slices = list(product(*[range(n) for n in outer_shape]))
 
-        result = np.zeros(outer_shape+(self.num_bins,), self.dtype)
+        result = np.zeros(outer_shape+(self.num_bins,), self.rdtype)
         for s in slices:
             fk = self.fft.dft(fx[s])
-            result[s] = self.bin_power(fk, queue, k_power, is_real, allocator)
+            result[s] = self.bin_power(fk, queue, k_power, allocator)
 
         return self.norm * result
 
@@ -280,7 +278,7 @@ class PowerSpectra:
         from itertools import product
         slices = list(product(*[range(n) for n in outer_shape]))
 
-        result = np.zeros(outer_shape+(2, self.num_bins,), self.dtype)
+        result = np.zeros(outer_shape+(2, self.num_bins,), self.rdtype)
         for s in slices:
             for mu in range(3):
                 self.fft.dft(vector[s][mu], vec_k[mu])

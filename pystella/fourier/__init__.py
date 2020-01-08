@@ -20,12 +20,29 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 """
 
+import numpy as np
 from pystella.fourier.dft import DFT, gDFT, pDFT
 from pystella.fourier.rayleigh import RayleighGenerator
 from pystella.fourier.projectors import Projector
 from pystella.fourier.spectra import PowerSpectra
 from pystella.fourier.derivs import SpectralCollocator
 from pystella.fourier.poisson import SpectralPoissonSolver
+
+
+_r_to_c_dtype_map = {np.dtype('float32'): np.dtype('complex64'),
+                     np.dtype('float64'): np.dtype('complex128')}
+
+_c_to_r_dtype_map = {np.dtype('complex64'): np.dtype('float32'),
+                     np.dtype('complex128'): np.dtype('float64')}
+
+
+def get_real_dtype_with_matching_prec(dtype):
+    return _c_to_r_dtype_map.get(np.dtype(dtype)) or dtype
+
+
+def get_complex_dtype_with_matching_prec(dtype):
+    return _r_to_c_dtype_map.get(np.dtype(dtype)) or dtype
+
 
 __all__ = [
     "DFT",
@@ -36,4 +53,6 @@ __all__ = [
     "PowerSpectra",
     "SpectralCollocator",
     "SpectralPoissonSolver",
+    "get_real_dtype_with_matching_prec",
+    "get_complex_dtype_with_matching_prec",
 ]
