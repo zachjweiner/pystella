@@ -93,9 +93,13 @@ reduce_energy = ps.Reduction(decomp, scalar_sector, halo_shape=halo_shape,
                              rank_shape=rank_shape, grid_size=grid_size)
 
 
-def compute_energy(f, df, lap_f, a):
-    derivs(queue, fx=f, lap=lap_f)
-    return reduce_energy(queue, f=f, dfdt=df, lap_f=lap_f, a=np.array(a))
+def compute_energy(f, dfdt, lap_f, dfdx, a):
+    if gravitational_waves:
+        derivs(queue, fx=f, lap=lap_f, grd=dfdx)
+    else:
+        derivs(queue, fx=f, lap=lap_f)
+
+    return reduce_energy(queue, f=f, dfdt=dfdt, lap_f=lap_f, a=np.array(a))
 
 
 # create output function
@@ -166,7 +170,7 @@ for i in range(nscalars):
     dfdt[i] = df0[i]
 
 # compute energy of background fields and initialize expansion
-energy = compute_energy(f, dfdt, lap_f, 1.)
+energy = compute_energy(f, dfdt, lap_f, dfdx, 1.)
 expand = ps.Expansion(energy['total'], Stepper, mpl=mpl)
 
 # compute hubble correction to scalar field effective mass
@@ -192,7 +196,7 @@ for i in range(nscalars):
     dfdt[i] += df0[i]
 
 # re-initialize energy and expansion
-energy = compute_energy(f, dfdt, lap_f, expand.a[0])
+energy = compute_energy(f, dfdt, lap_f, dfdx, expand.a[0])
 expand = ps.Expansion(energy['total'], Stepper, mpl=mpl)
 
 # output first slice
@@ -218,7 +222,7 @@ while t < end_time and expand.a[0] < end_scale_factor:
                 f=f, dfdt=dfdt, dfdx=dfdx, lap_f=lap_f,
                 hij=hij, dhijdt=dhijdt, lap_hij=lap_hij, filter_args=True)
         expand.step(s, energy['total'], energy['pressure'], dt)
-        energy = compute_energy(f, dfdt, lap_f, expand.a)
+        energy = compute_energy(f, dfdt, lap_f, dfdx, expand.a)
         if gravitational_waves:
             derivs(queue, fx=hij, lap=lap_hij)
 

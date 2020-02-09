@@ -27,12 +27,12 @@ from pymbolic import var
 
 
 class FieldDifferentiationMapper(DifferentiationMapper):
-    def __init__(self, variable, xmu=None):
+    def __init__(self, variable, xmu=None, **kwargs):
         if xmu is not None:
             self.xmu = xmu
         else:
             self.xmu = {var('t'): 0, var('x'): 1, var('y'): 2, var('z'): 3}
-        super().__init__(variable)
+        super().__init__(variable, **kwargs)
 
     map_field = DifferentiationMapper.map_variable
 
@@ -54,7 +54,7 @@ class FieldDifferentiationMapper(DifferentiationMapper):
         return If(expr.condition, self.rec(expr.then), self.rec(expr.else_))
 
 
-def diff(f, *x):
+def diff(f, *x, allowed_nonsmoothness='discontinuous'):
     """
     A differentiator which computes :math:`\\partial f / \\partial x` and understands
     :class:`Field`'s. If ``x`` is one of ``t``, ``x``, ``y``, or ``z`` and ``f``
@@ -86,4 +86,7 @@ def diff(f, *x):
     if len(x) > 1:
         return diff(diff(f, x[0]), *x[1:])
     else:
-        return FieldDifferentiationMapper(pp.make_variable(x[0]))(f)
+        differentiator = FieldDifferentiationMapper(
+            pp.make_variable(x[0]), allowed_nonsmoothness=allowed_nonsmoothness
+        )
+        return differentiator(f)
