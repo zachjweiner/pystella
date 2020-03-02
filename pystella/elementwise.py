@@ -65,7 +65,8 @@ class ElementWiseMap:
                              no_sync_with=no_sync_with,
                              **kwargs)
 
-    def make_kernel(self, map_instructions, tmp_instructions, args, **kwargs):
+    def make_kernel(self, map_instructions, tmp_instructions, args, domains,
+                    **kwargs):
         temp_statements = []
         temp_vars = []
 
@@ -74,7 +75,7 @@ class ElementWiseMap:
         indexed_map_insns = index_fields(map_instructions)
 
         for statement in indexed_tmp_insns:
-            if isinstance(statement, lp.Assignment):
+            if isinstance(statement, lp.InstructionBase):
                 temp_statements += [statement]
             else:
                 assignee, expression = statement
@@ -97,7 +98,7 @@ class ElementWiseMap:
 
         output_statements = []
         for statement in indexed_map_insns:
-            if isinstance(statement, lp.Assignment):
+            if isinstance(statement, lp.InstructionBase):
                 output_statements += [statement]
             else:
                 assignee, expression = statement
@@ -115,7 +116,7 @@ class ElementWiseMap:
         all_args = append_new_args(args, inferred_args)
 
         knl = lp.make_kernel(
-            "[Nx, Ny, Nz] -> {[i,j,k]: 0<=i<Nx and 0<=j<Ny and 0<=k<Nz}",
+            domains,
             temp_statements + output_statements,
             all_args + [lp.ValueArg('Nx, Ny, Nz', dtype='int'), ...],
             options=options,
@@ -219,6 +220,11 @@ class ElementWiseMap:
         rank_shape = kwargs.pop('rank_shape', None)
         halo_shape = kwargs.pop('halo_shape', None)
 
+        domains = kwargs.pop(
+            'domains',
+            "[Nx, Ny, Nz] -> {[i,j,k]: 0<=i<Nx and 0<=j<Ny and 0<=k<Nz}"
+        )
+
         kernel_kwargs = dict(
             seq_dependencies=True,
             default_offset=lp.auto,
@@ -228,7 +234,7 @@ class ElementWiseMap:
         kernel_kwargs.update(kwargs)
 
         knl = self.make_kernel(self.map_instructions, self.tmp_instructions,
-                               self.args, **kernel_kwargs)
+                               self.args, domains, **kernel_kwargs)
 
         if rank_shape is not None:
             knl = lp.fix_parameters(

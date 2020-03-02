@@ -312,8 +312,10 @@ class IdentityMapperMixin:
     def map_foreign(self, expr, *args, **kwargs):
         if isinstance(expr, dict):
             return self.map_dict(expr, *args, **kwargs)
-        if isinstance(expr, lp.Assignment):
+        elif isinstance(expr, lp.Assignment):
             return self.map_assignment(expr, *args, **kwargs)
+        elif isinstance(expr, lp.InstructionBase):
+            return expr
         else:
             return super().map_foreign(expr, *args, **kwargs)
 
@@ -344,8 +346,10 @@ class CombineMapperMixin:
     def map_foreign(self, expr, *args, **kwargs):
         if isinstance(expr, dict):
             return self.map_dict(expr, *args, **kwargs)
-        if isinstance(expr, lp.Assignment):
+        elif isinstance(expr, lp.Assignment):
             return self.map_assignment(expr, *args, **kwargs)
+        elif isinstance(expr, lp.InstructionBase):
+            return set()
         else:
             return super().map_foreign(expr, *args, **kwargs)
 
@@ -411,6 +415,8 @@ class Shifter(IdentityMapper):
     def map_field(self, expr, shift=(0, 0, 0), *args, **kwargs):
         new_offset = tuple(o + s for o, s in zip(expr.offset, shift))
         return expr.copy(offset=new_offset)
+
+    map_dynamic_field = map_field
 
 
 def shift_fields(expr, shift):
