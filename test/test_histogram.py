@@ -56,7 +56,7 @@ def test_histogram(ctx_factory, grid_shape, proc_shape, dtype, timing=False):
     hist = Histogrammer(mpi, bin_expr, weight_expr, num_bins, rank_shape, dtype)
 
     rng = clr.ThreefryGenerator(ctx, seed=12321)
-    fx = rng.uniform(queue, grid_shape, dtype)
+    fx = rng.uniform(queue, rank_shape, dtype)
     fx_h = fx.get()
 
     result = hist(queue, fx=fx)
