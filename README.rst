@@ -22,10 +22,10 @@ systems.
 Its features include:
 
 * code generation for performant element-wise kernels, stencil-based computations,
-  and reductions
+  reductions, and histograms
 * distributed domain decomposition and grid boundary sychronization
 * time-stepping algorithms, including low-storage Runge-Kutta schemes
-* finite-difference and spectral-collocation methods for spatial derivatives
+* finite difference and spectral collocation methods for spatial derivatives
 * a geometric multigrid solver for generic sets of nonlinear boundary-value problems
   (in beta)
 * wrappers to OpenCL-based Fast Fourier Transforms (FFTs) and distributed

@@ -126,6 +126,8 @@ class PowerSpectra:
         fk = var('fk')[i, j, k]
         weight_expr = count * kmag**(var('k_power')) * var('abs')(fk)**2
 
+        histograms = {'spectrum': (bin_expr, weight_expr)}
+
         args = [
             lp.GlobalArg("fk", self.cdtype, shape=('Nx', 'Ny', 'Nz'),
                          offset=lp.auto),
@@ -137,8 +139,8 @@ class PowerSpectra:
         ]
 
         from pystella.histogram import Histogrammer
-        return Histogrammer(self.decomp, bin_expr, weight_expr, self.num_bins,
-                            rank_shape, self.rdtype, args=args)
+        return Histogrammer(self.decomp, histograms, self.num_bins, rank_shape,
+                            self.rdtype, args=args)
 
     def bin_power(self, fk, queue=None, k_power=3, allocator=None):
         """
@@ -167,9 +169,9 @@ class PowerSpectra:
 
         queue = queue or fk.queue
 
-        spectrum = self.knl(queue, allocator=allocator, fk=fk,
-                            k_power=k_power, **self.fft.sub_k)
-        return spectrum / self.bin_counts
+        result = self.knl(queue, allocator=allocator, fk=fk,
+                          k_power=k_power, **self.fft.sub_k)
+        return result['spectrum'] / self.bin_counts
 
     def __call__(self, fx, queue=None, k_power=3, allocator=None):
         """

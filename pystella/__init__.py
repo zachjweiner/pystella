@@ -27,6 +27,7 @@ from pystella.sectors import Sector, ScalarSector, TensorPerturbationSector
 from pystella.elementwise import ElementWiseMap
 from pystella.stencil import Stencil, StreamingStencil
 from pystella.reduction import Reduction, FieldStatistics
+from pystella.histogram import Histogrammer, FieldHistogrammer
 from pystella.step import (RungeKutta4, RungeKutta3SSP, RungeKutta3Heun,
                            RungeKutta3Nystrom, RungeKutta3Ralston,
                            RungeKutta2Midpoint, RungeKutta2Ralston, LowStorageRK54,
@@ -127,6 +128,8 @@ __all__ = [
     "FiniteDifferencer",
     "Reduction",
     "FieldStatistics",
+    "Histogrammer",
+    "FieldHistogrammer",
     "DomainDecomposition",
     "Expansion",
     "DFT",

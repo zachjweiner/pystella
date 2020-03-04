@@ -12,6 +12,8 @@ Kernel creation
 
 .. automodule:: pystella.reduction
 
+.. automodule:: pystella.histogram
+
 Fields
 ------
 
