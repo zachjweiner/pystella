@@ -112,6 +112,12 @@ statistics = ps.FieldStatistics(decomp, halo_shape, rank_shape=rank_shape,
                                 grid_size=grid_size)
 spectra = ps.PowerSpectra(decomp, fft, dk, volume)
 projector = ps.Projector(fft, halo_shape)
+hist = ps.FieldHistogrammer(decomp, 1000, rank_shape, dtype)
+
+a_sq_rho = (3 * mpl**2 * ps.Field('hubble', indices=[])**2 / 8 / np.pi)
+rho_dict = {ps.Field('rho'): scalar_sector.stress_tensor(0, 0) / a_sq_rho}
+compute_rho = ps.ElementWiseMap(rho_dict, halo_shape=halo_shape,
+                                rank_shape=rank_shape)
 
 
 def output(step_count, t, energy, expand,
@@ -133,7 +139,15 @@ def output(step_count, t, energy, expand,
     if expand.a[0] / output.a_last_spec >= 1.05:
         output.a_last_spec = expand.a[0]
 
-        spec_out = dict(scalar=spectra(f))
+        if not gravitational_waves:
+            derivs(queue, fx=f, grd=dfdx)
+
+        tmp = cla.empty(queue, shape=rank_shape, dtype=dtype)
+        compute_rho(queue, a=expand.a, hubble=expand.hubble, rho=tmp,
+                    f=f, dfdt=dfdt, dfdx=dfdx)
+        rho_hist = hist(tmp)
+
+        spec_out = dict(scalar=spectra(f), rho=spectra(tmp))
 
         if gravitational_waves:
             Hnow = expand.hubble
@@ -144,6 +158,7 @@ def output(step_count, t, energy, expand,
             spec_out['gw'] = spectra.gw(dhijdt, projector, Hnow)
 
         if decomp.rank == 0:
+            out.output('rho_histogram', t=t, a=expand.a[0], **rho_hist)
             out.output('spectra', t=t, a=expand.a[0], **spec_out)
 
 
@@ -200,7 +215,8 @@ energy = compute_energy(f, dfdt, lap_f, dfdx, expand.a[0])
 expand = ps.Expansion(energy['total'], Stepper, mpl=mpl)
 
 # output first slice
-output(0, 0., energy, expand, f, dfdt, lap_f, dfdx, hij, dhijdt, lap_hij)
+output(0, 0., energy, expand, f=f, dfdt=dfdt, lap_f=lap_f, dfdx=dfdx,
+       hij=hij, dhijdt=dhijdt, lap_hij=lap_hij)
 
 # evolution
 t = 0.
@@ -228,7 +244,8 @@ while t < end_time and expand.a[0] < end_scale_factor:
 
     t += dt
     step_count += 1
-    output(step_count, t, energy, expand, f, dfdt, dfdx, lap_f, hij, dhijdt, lap_hij)
+    output(step_count, t, energy, expand, f=f, dfdt=dfdt, lap_f=lap_f, dfdx=dfdx,
+           hij=hij, dhijdt=dhijdt, lap_hij=lap_hij)
     if time() - last_out > 30 and decomp.rank == 0:
         last_out = time()
         ms_per_step = (last_out - start) * 1e3 / step_count
