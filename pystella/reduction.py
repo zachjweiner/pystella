@@ -199,27 +199,29 @@ class Reduction(ElementWiseMap):
         else:
             return rank_sum
 
-    def __call__(self, queue, filter_args=False, **kwargs):
+    def __call__(self, queue=None, filter_args=False, **kwargs):
         """
-        Performs reductions by calling :attr:`knl` and
+        Computes reductions by calling :attr:`knl` and
         :meth:`DomainDecomposition.allreduce`.
+
+        In addition to the arguments required by the actual kernel
+        (passed by keyword only), the following keyword arguments are recognized:
 
         :arg queue: The :class:`pyopencl.CommandQueue` on which to enqueue the
             kernel.
-            If *None*, ``queue`` is not passed (i.e., for
+            Defaults to *None*, in which case ``queue`` is not passed (i.e., for
             :class:`loopy.ExecutableCTarget`)
 
-        The following keyword arguments are recognized:
-
         :arg filter_args: Whether to filter ``kwargs`` such that no unexpected
-            arguments are passed to the :attr:`knl`. Defaults to *False*.
+            arguments are passed to the :attr:`knl`.
+            Defaults to *False*.
 
         :arg allocator: A :mod:`pyopencl` allocator used to allocate temporary
             arrays, i.e., most usefully a :class:`pyopencl.tools.MemoryPool`.
             See the note in the documentation of
             :meth:`SpectralCollocator`.
 
-        The remaining keyword arguments are passed to :attr:`knl`.
+        Any remaining keyword arguments are passed to :attr:`knl`.
 
         :returns: A :class:`dict` with the same keys as (interpreted from) ``input``
             whose values are the corresponding (lists of) reduced values.
