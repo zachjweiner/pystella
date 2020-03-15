@@ -21,9 +21,6 @@ THE SOFTWARE.
 """
 
 
-import pyopencl.array as cla
-import loopy as lp
-
 __doc__ = """
 .. currentmodule:: pystella
 .. autoclass:: Projector
@@ -42,153 +39,6 @@ class Projector:
     .. automethod:: vec_to_pol
     .. automethod:: transverse_traceless
     """
-
-    def get_pol_to_vec_knl(self):
-        return lp.make_kernel(
-            "[Nx, Ny, Nz] -> \
-                { [i,j,k,mu]: 0<=i<Nx and 0<=j<Ny and 0<=k<Nz and 0<=mu<3}",
-            """
-            for i, j, k
-                for mu
-                    <> eps[mu] = 0
-                end
-                <> kx = eff_mom_x[i]
-                <> ky = eff_mom_y[j]
-                <> kz = eff_mom_z[k]
-
-                if fabs(kx) < 1.e-10 and fabs(ky) < 1.e-10
-                    if fabs(kz) > 1.e-10
-                        eps[0] = 1 / sqrt2
-                        eps[1] = 1j / sqrt2
-                    end
-                else
-                    <> Kappa = sqrt(kx**2 + ky**2)
-                    <> kmag = sqrt(kx**2 + ky**2 + kz**2)
-
-                    eps[0] = (kx * kz / kmag - 1j * ky) / Kappa / sqrt2
-                    eps[1] = (ky * kz / kmag + 1j * kx) / Kappa / sqrt2
-                    eps[2] = - Kappa / kmag / sqrt2
-                end
-
-                vector[mu, i, j, k] = eps[mu] * plus[i, j, k] \
-                                    + conj(eps[mu]) * minus[i, j, k] {dup=mu}
-            end
-
-            """,
-            seq_dependencies=True,
-            default_offset=lp.auto,
-            lang_version=(2018, 2),
-        )
-
-    def get_vec_to_pol_knl(self):
-        return lp.make_kernel(
-            "[Nx, Ny, Nz] -> \
-                { [i,j,k,mu]: 0<=i<Nx and 0<=j<Ny and 0<=k<Nz and 0<=mu<3}",
-            """
-            for i, j, k
-                for mu
-                    <> eps[mu] = 0
-                end
-                <> kx = eff_mom_x[i]
-                <> ky = eff_mom_y[j]
-                <> kz = eff_mom_z[k]
-
-                if fabs(kx) < 1.e-10 and fabs(ky) < 1.e-10
-                    if fabs(kz) > 1.e-10
-                        eps[0] = 1 / sqrt2
-                        eps[1] = 1j / sqrt2
-                    end
-                else
-                    <> Kappa = sqrt(kx**2 + ky**2)
-                    <> kmag = sqrt(kx**2 + ky**2 + kz**2)
-
-                    eps[0] = (kx * kz / kmag - 1j * ky) / Kappa / sqrt2
-                    eps[1] = (ky * kz / kmag + 1j * kx) / Kappa / sqrt2
-                    eps[2] = - Kappa / kmag / sqrt2
-                end
-
-                plus[i, j, k] = sum(mu, conj(eps[mu]) * vector[mu, i, j, k]) {dup=mu}
-                minus[i, j, k] = sum(mu, eps[mu] * vector[mu, i, j, k]) {dup=mu}
-            end
-            """,
-            seq_dependencies=True,
-            default_offset=lp.auto,
-            lang_version=(2018, 2),
-        )
-
-    def get_transversify_knl(self):
-        return lp.make_kernel(
-            "[Nx, Ny, Nz] -> \
-                { [i,j,k,mu]: 0<=i<Nx and 0<=j<Ny and 0<=k<Nz and 0<=mu<3}",
-            """
-            for i, j, k
-                <> kvec[0] = eff_mom_x[i]
-                kvec[1] = eff_mom_y[j]
-                kvec[2] = eff_mom_z[k]
-                if fabs(kvec[0]) < 1.e-14 \
-                    and fabs(kvec[1]) < 1.e-14 \
-                    and fabs(kvec[2]) < 1.e-14
-                    vectorT[mu, i, j, k] = 0
-                else
-                    <> kmag = sqrt(sum(mu, kvec[mu]**2)) {dup=mu}
-                    <> div = sum(mu, kvec[mu] * vector[mu, i, j, k]) {dup=mu}
-
-                    vectorT[mu, i, j, k] = vector[mu, i, j, k] \
-                                        - kvec[mu] / kmag**2 * div {dup=mu,nosync=*}
-                end
-            end
-            """,
-            seq_dependencies=True,
-            default_offset=lp.auto,
-            lang_version=(2018, 2),
-        )
-
-    def get_tt_knl(self):
-        knl = lp.make_kernel(
-            "[Nx, Ny, Nz] -> \
-                { [i,j,k,a,b,c,d]: \
-                    0<=i<Nx and 0<=j<Ny and 0<=k<Nz and 1<=a,b,c,d<=3}",
-            """
-            for i, j, k
-                <> kvec[0] = eff_mom_x[i]
-                kvec[1] = eff_mom_y[j]
-                kvec[2] = eff_mom_z[k]
-                <> kmag = sqrt(kvec[0]**2 + kvec[1]**2 + kvec[2]**2)
-                kvec[0] = kvec[0] / kmag
-                kvec[1] = kvec[1] / kmag
-                kvec[2] = kvec[2] / kmag
-
-                id(a, b) := ((7 - if(a <= b, a, b)) * if(a <= b, a, b)) // 2 \
-                            - 4 + if(a <= b, b, a)
-                P(a, b) := if(a == b, 1, 0) - kvec[a-1] * kvec[b-1]
-
-                for a, b
-                    if a <= b
-                        hTT[id(a, b)] = sum((c, d), \
-                                            (P(a, c) * P(d, b) \
-                                            - .5 * P(a, b) * P(c, d)) \
-                                            * hij[id(c, d), i, j, k])
-                    end
-                end
-
-                for a, b
-                    if a <= b
-                        hijTT[id(a, b), i, j, k] = hTT[id(a, b)] {dup=a,dup=b}
-                    end
-                end
-            end
-            """,
-            [
-                lp.GlobalArg('hij', shape='(6, Nx, Ny, Nz)'),
-                lp.GlobalArg('hijTT', shape='(6, Nx, Ny, Nz)'),
-                lp.TemporaryVariable('hTT', shape='(6,)'),
-                ...
-            ],
-            seq_dependencies=True,
-            default_offset=lp.auto,
-            lang_version=(2018, 2),
-        )
-        return lp.expand_subst(knl)
 
     def __init__(self, fft, effective_k):
         """
@@ -229,20 +79,109 @@ class Projector:
             eff_k = effective_k(kk.astype(fft.dtype) * dk_dx[mu], 1)
             eff_k[abs(sub_k[mu]) == fft.grid_shape[mu]//2] = 0.
             eff_k[sub_k[mu] == 0] = 0.
+
+            import pyopencl.array as cla
             self.eff_mom[name] = cla.to_device(queue, eff_k)
 
-        def process(knl):
-            knl = lp.fix_parameters(knl, sqrt2=2**.5)
-            knl = lp.split_iname(knl, "k", 32, outer_tag="g.0", inner_tag="l.0")
-            knl = lp.split_iname(knl, "j", 1, outer_tag="g.1", inner_tag="unr")
-            knl = lp.split_iname(knl, "i", 1, outer_tag="g.2", inner_tag="unr")
-            knl = lp.set_options(knl, enforce_variable_access_ordered="no_check")
-            return knl
+        from pymbolic import var, parse
+        from pymbolic.primitives import If, Comparison, LogicalAnd
+        from pystella import Field
+        indices = parse('i, j, k')
+        eff_k = tuple(var(array)[mu] for array, mu in zip(eff_mom_names, indices))
+        fabs, sqrt, conj = parse('fabs, sqrt, conj')
+        kmag = sqrt(sum(kk**2 for kk in eff_k))
 
-        self.pol_to_vec_knl = process(self.get_pol_to_vec_knl())
-        self.vec_to_pol_knl = process(self.get_vec_to_pol_knl())
-        self.transversify_knl = process(self.get_transversify_knl())
-        self.tt_knl = process(self.get_tt_knl())
+        from pystella import ElementWiseMap
+        vector = Field('vector', shape=(3,))
+        vector_T = Field('vector_T', shape=(3,))
+
+        kvec_zero = LogicalAnd(
+            tuple(Comparison(fabs(eff_k[mu]), '<', 1e-14) for mu in range(3))
+        )
+
+        import loopy as lp
+
+        def assign(asignee, expr, **kwargs):
+            default = dict(within_inames=frozenset(('i', 'j', 'k')),
+                           no_sync_with=[('*', 'any')])
+            default.update(kwargs)
+            return lp.Assignment(asignee, expr, **default)
+
+        div = var('div')
+        tmp = [assign(div, sum(eff_k[mu] * vector[mu] for mu in range(3)),
+                      temp_var_type=lp.Optional(None))]
+        self.transversify_knl = ElementWiseMap(
+            {vector_T[mu]: If(kvec_zero, 0, vector[mu] - eff_k[mu] / kmag**2 * div)
+             for mu in range(3)},
+            tmp_instructions=tmp, lsize=(32, 1, 1), rank_shape=fft.shape(True),
+        )
+
+        kmag, Kappa = parse('kmag, Kappa')
+        tmp = [assign(kmag, sqrt(sum(kk**2 for kk in eff_k))),
+               assign(Kappa, sqrt(sum(kk**2 for kk in eff_k[:2])))]
+
+        zero = fft.cdtype.type(0)
+        kx_ky_zero = LogicalAnd(tuple(Comparison(fabs(eff_k[mu]), '<', 1e-10)
+                                      for mu in range(2)))
+        kz_nonzero = Comparison(fabs(eff_k[2]), '>', 1e-10)
+
+        eps = var('eps')
+        tmp.extend([
+            assign(eps[0],
+                   If(kx_ky_zero,
+                      If(kz_nonzero, fft.cdtype.type(1 / 2**.5), zero),
+                      (eff_k[0]*eff_k[2]/kmag - 1j*eff_k[1]) / Kappa / 2**.5)),
+            assign(eps[1],
+                   If(kx_ky_zero,
+                      If(kz_nonzero, fft.cdtype.type(1j / 2**(1/2)), zero),
+                      (eff_k[1]*eff_k[2]/kmag + 1j*eff_k[0]) / Kappa / 2**.5)),
+            assign(eps[2], If(kx_ky_zero, zero, - Kappa / kmag / 2**.5))
+        ])
+
+        args = [
+            lp.TemporaryVariable('eps', shape=(3,)),
+            lp.TemporaryVariable('kmag'),
+            lp.TemporaryVariable('Kappa'),
+            ...
+        ]
+
+        plus, minus = Field('plus'), Field('minus')
+
+        self.vec_to_pol_knl = ElementWiseMap(
+            {plus: sum(vector[mu] * conj(eps[mu]) for mu in range(3)),
+             minus: sum(vector[mu] * eps[mu] for mu in range(3))},
+            tmp_instructions=tmp, args=args,
+            lsize=(32, 1, 1), rank_shape=fft.shape(True),
+        )
+        self.pol_to_vec_knl = ElementWiseMap(
+            {vector[mu]: plus * eps[mu] + minus * conj(eps[mu]) for mu in range(3)},
+            tmp_instructions=tmp, args=args,
+            lsize=(32, 1, 1), rank_shape=fft.shape(True),
+        )
+
+        from pystella.sectors import tensor_index as tid
+
+        eff_k_hat = tuple(kk / sqrt(sum(kk**2 for kk in eff_k)) for kk in eff_k)
+        hij = Field('hij', shape=(6,))
+        hij_TT = Field('hij_TT', shape=(6,))
+
+        Pab = var('P')
+        tmp = {Pab[tid(a, b)]: (If(Comparison(a, '==', b), 1, 0)
+                                - eff_k_hat[a-1] * eff_k_hat[b-1])
+               for a in range(1, 4) for b in range(a, 4)}
+
+        def projected_hij(a, b):
+            return sum(
+                (Pab[tid(a, c)] * Pab[tid(d, b)]
+                 - Pab[tid(a, b)] * Pab[tid(c, d)] / 2) * hij[tid(c, d)]
+                for c in range(1, 4) for d in range(1, 4)
+            )
+
+        self.tt_knl = ElementWiseMap(
+            {hij_TT[tid(a, b)]: projected_hij(a, b)
+             for a in range(1, 4) for b in range(a, 4)},
+            tmp_instructions=tmp, lsize=(32, 1, 1), rank_shape=fft.shape(True),
+        )
 
     def transversify(self, queue, vector, vector_T=None):
         """
@@ -265,7 +204,7 @@ class Projector:
 
         vector_T = vector_T or vector
         evt, _ = self.transversify_knl(queue, **self.eff_mom,
-                                       vector=vector, vectorT=vector)
+                                       vector=vector, vector_T=vector)
         return evt
 
     def pol_to_vec(self, queue, plus, minus, vector):
@@ -338,7 +277,7 @@ class Projector:
         """
 
         hij_TT = hij_TT or hij
-        evt, _ = self.tt_knl(queue, hij=hij, hijTT=hij_TT, **self.eff_mom)
+        evt, _ = self.tt_knl(queue, hij=hij, hij_TT=hij_TT, **self.eff_mom)
 
         # re-set to zero
         for mu in range(6):

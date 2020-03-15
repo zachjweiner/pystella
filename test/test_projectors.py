@@ -192,10 +192,13 @@ def test_vector_projector(ctx_factory, grid_shape, proc_shape, h, dtype, pol,
         if pol:
             t = timer(lambda: project.pol_to_vec(queue, plus, minus, vector),
                       ntime=ntime)
+            print("pol_to_vec took %.3f ms for grid_shape=%s" % (t, grid_shape))
+            t = timer(lambda: project.vec_to_pol(queue, plus, minus, vector),
+                      ntime=ntime)
+            print("vec_to_pol took %.3f ms for grid_shape=%s" % (t, grid_shape))
         else:
             t = timer(lambda: project.transversify(queue, vector), ntime=ntime)
-        print("%s took %.3f ms for grid_shape=%s"
-              % ("pol_to_vec" if pol else "transversify", t, grid_shape))
+            print("transversify took %.3f ms for grid_shape=%s" % (t, grid_shape))
 
 
 def tensor_id(i, j):
