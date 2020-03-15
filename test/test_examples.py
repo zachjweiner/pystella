@@ -39,8 +39,13 @@ def test_examples(ctx_factory, grid_shape, proc_shape, filename, expected):
     if proc_shape[0] * proc_shape[1] * proc_shape[2] > 1:
         pytest.skip('run examples on only one rank')
 
-    if os.environ.get('RUNNING_ON_AZURE', False):
-        pytest.skip("can't run tests on Azure")
+    on_azure = os.environ.get('RUNNING_ON_AZURE', False)
+    on_github = os.environ.get('GITHUB_WORKSPACE', False)
+
+    if on_azure:
+        filename = os.environ.get('SYSTEM_DEFAULTWORKINGDIRECTORY') + '/' + filename
+    if on_github:
+        filename = os.environ.get('GITHUB_WORKSPACE') + '/' + filename
 
     result = subprocess.run(['python', filename], stdout=subprocess.PIPE)
 

@@ -1,6 +1,9 @@
 pystella: a distributed and accelerated framework for PDE solving
 =================================================================
 
+.. image:: https://github.com/zachjweiner/pystella/workflows/CI/badge.svg?branch=master
+    :alt: Github Build Status
+    :target: https://github.com/zachjweiner/pystella/actions?query=branch%3Amaster+workflow%3ACI
 .. image:: https://dev.azure.com/zachjweiner/pystella/_apis/build/status/zachjweiner.pystella?branchName=master
     :alt: Azure Build Status
     :target: https://dev.azure.com/zachjweiner/pystella/_build/latest?definitionId=1&branchName=master

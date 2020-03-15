@@ -1,0 +1,73 @@
+name: CI
+on:
+    push:
+        branches: [ '**' ]
+    pull_request:
+        paths-ignore:
+        - 'doc/*.rst'
+    schedule:
+        - cron:  '17 3 * * 0'
+
+jobs:
+    flake8:
+        name: Flake8
+        runs-on: ubuntu-latest
+        steps:
+        -   uses: actions/checkout@v2
+        -
+            uses: actions/setup-python@v1
+            with:
+                python-version: 3.8
+        -   name: "Main Script"
+            run: |
+                pip install flake8
+                flake8 pystella examples/*.py test/*.py
+    pylint:
+        name: Pylint
+        runs-on: ubuntu-latest
+        steps:
+        -   uses: actions/checkout@v2
+        -
+            uses: actions/setup-python@v1
+            with:
+                python-version: 3.8
+        -   name: "Main Script"
+            run: |
+                set -e
+                CONDA_ENVIRONMENT=.test-conda-env-py3.yml
+                USE_CONDA_BUILD=1
+                curl -L -O -k https://gitlab.tiker.net/inducer/ci-support/raw/master/prepare-and-run-pylint.sh
+                . ./prepare-and-run-pylint.sh pystella test/test_*.py examples/*.py
+    pytest:
+        name: Pytest
+        runs-on: ubuntu-latest
+        steps:
+        -   uses: actions/checkout@v2
+        -
+            uses: actions/setup-python@v1
+            with:
+                python-version: 3.8
+        -   name: "Main Script"
+            run: |
+                set -e
+                CONDA_ENVIRONMENT=.test-conda-env-py3.yml
+                USE_CONDA_BUILD=1
+                curl -L -O -k https://gitlab.tiker.net/inducer/ci-support/raw/master/build-and-test-py-project-within-miniconda.sh
+                . ./build-and-test-py-project-within-miniconda.sh
+
+    pytest-distributed:
+        name: Pytest Distributed
+        runs-on: ubuntu-latest
+        steps:
+        -   uses: actions/checkout@v2
+        -
+            uses: actions/setup-python@v1
+            with:
+                python-version: 3.8
+        -   name: "Main Script"
+            run: |
+                set -e
+                CONDA_ENVIRONMENT=.test-conda-env-py3.yml
+                curl -L -O -k https://gitlab.tiker.net/inducer/ci-support/raw/master/build-py-project-within-miniconda.sh
+                . ./build-py-project-within-miniconda.sh
+                mpiexec --oversubscribe -np 4 pytest --proc_shape 2,2,1 -rw --durations=10 --tb=native -rxs

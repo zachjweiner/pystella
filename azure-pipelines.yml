@@ -1,3 +1,5 @@
+trigger: [ '*' ]
+
 jobs:
 -
     job: 'Python3'
