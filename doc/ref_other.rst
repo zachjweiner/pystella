@@ -13,10 +13,15 @@ Expansion
 
 .. autoclass:: Expansion
 
-Utilities
----------
+Statistical analysis
+--------------------
 
 .. autoclass:: FieldStatistics
+
+.. autoclass:: FieldHistogrammer
+
+Utilities
+---------
 
 .. autoclass:: pystella.output.OutputFile
 

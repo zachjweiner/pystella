@@ -65,7 +65,6 @@ class PowerSpectra:
         self.decomp = decomp
         self.fft = fft
         self.grid_shape = fft.grid_shape
-        self.proc_shape = decomp.proc_shape
 
         self.dtype = fft.dtype
         from pystella.fourier import get_real_dtype_with_matching_prec
@@ -107,62 +106,41 @@ class PowerSpectra:
         self.knl = self.make_spectra_knl(self.fft.is_real, rank_shape)
 
     def make_spectra_knl(self, is_real, rank_shape):
-        knl = lp.make_kernel(
-            "[NZ, Nx, Ny, Nz, num_bins, is_real] -> \
-                { [i,j,k,b]: 0<=i<Nx and 0<=j<Ny and 0<=k<Nz and 0<=b<num_bins}",
-            """
-            for b
-                spectrum[b] = 0 {atomic}
-            end
-            ... gbarrier
-            for j
-                for b
-                    temp[b] = 0 {id=init, atomic}
-                end
-                for i, k
-                    <> k_i = momenta_x[i]
-                    <> k_j = momenta_y[j]
-                    <> k_k = momenta_z[k]
-                    <> kmag = sqrt((dki * k_i)**2 + (dkj * k_j)**2 + (dkk * k_k)**2)
-                    <int> bin = round(kmag / bin_width)
-                    <> count = if(is_real and k_k > 0 and k_k < NZ/2, 2., 1.)
-                    <> power = abs(fk[i, j, k])**2 * kmag**k_power * count
-                    temp[bin] = temp[bin] + power {id=tmp, dep=init, atomic}
-                end
-                for b
-                    spectrum[b] = spectrum[b] + temp[b] {id=glb, dep=tmp, atomic}
-                end
-            end
-            """,
-            [
-                lp.GlobalArg("spectrum", self.rdtype, shape=(self.num_bins,),
-                             for_atomic=True),
-                lp.GlobalArg("momenta_x", self.rdtype, shape=('Nx',)),
-                lp.GlobalArg("momenta_y", self.rdtype, shape=('Ny',)),
-                lp.GlobalArg("momenta_z", self.rdtype, shape=('Nz',)),
-                lp.TemporaryVariable("temp", self.rdtype, shape=(self.num_bins,),
-                                     for_atomic=True,
-                                     address_space=lp.AddressSpace.LOCAL),
-                lp.ValueArg("k_power, bin_width, dki, dkj, dkk", self.rdtype),
-                ...
-            ],
-            default_offset=lp.auto,
-            silenced_warnings=['write_race(tmp)', 'write_race(glb)'],
-            seq_dependencies=True,
-            lang_version=(2018, 2),
-        )
+        from pymbolic import var, parse
+        indices = i, j, k = parse('i, j, k')
+        momenta = [var('momenta_'+xx) for xx in ('x', 'y', 'z')]
+        ksq = sum((dk_i * mom[ii])**2
+                  for mom, dk_i, ii in zip(momenta, self.dk, indices))
+        kmag = var('sqrt')(ksq)
+        bin_expr = var('round')(kmag / self.bin_width)
 
-        knl = lp.fix_parameters(knl, NZ=self.grid_shape[-1], num_bins=self.num_bins,
-                                is_real=is_real, bin_width=self.bin_width,
-                                dki=self.dk[0], dkj=self.dk[1], dkk=self.dk[2],
-                                Nx=rank_shape[0], Ny=rank_shape[1], Nz=rank_shape[2]
-                                )
-        knl = lp.split_iname(knl, "k", rank_shape[2],
-                             outer_tag="g.0", inner_tag="l.0")
-        knl = lp.split_iname(knl, "b", min(1024, self.num_bins),
-                             outer_tag="g.0", inner_tag="l.0")
-        knl = lp.tag_inames(knl, "j:g.1")
-        return knl
+        if is_real:
+            from pymbolic.primitives import If, Comparison, LogicalAnd
+            nyq = self.grid_shape[-1] / 2
+            condition = LogicalAnd((Comparison(momenta[2][k], '>', 0),
+                                    Comparison(momenta[2][k], '<', nyq)))
+            count = If(condition, 2, 1)
+        else:
+            count = 1
+
+        fk = var('fk')[i, j, k]
+        weight_expr = count * kmag**(var('k_power')) * var('abs')(fk)**2
+
+        histograms = {'spectrum': (bin_expr, weight_expr)}
+
+        args = [
+            lp.GlobalArg("fk", self.cdtype, shape=('Nx', 'Ny', 'Nz'),
+                         offset=lp.auto),
+            lp.GlobalArg("momenta_x", self.rdtype, shape=('Nx',)),
+            lp.GlobalArg("momenta_y", self.rdtype, shape=('Ny',)),
+            lp.GlobalArg("momenta_z", self.rdtype, shape=('Nz',)),
+            lp.ValueArg("k_power", self.rdtype),
+            ...
+        ]
+
+        from pystella.histogram import Histogrammer
+        return Histogrammer(self.decomp, histograms, self.num_bins, rank_shape,
+                            self.rdtype, args=args)
 
     def bin_power(self, fk, queue=None, k_power=3, allocator=None):
         """
@@ -191,11 +169,9 @@ class PowerSpectra:
 
         queue = queue or fk.queue
 
-        evt, (spectrum,) = self.knl(queue, allocator=allocator, fk=fk,
-                                    k_power=k_power, **self.fft.sub_k)
-
-        full_spectrum = self.decomp.allreduce(spectrum.get())
-        return full_spectrum / self.bin_counts
+        result = self.knl(queue, allocator=allocator, fk=fk,
+                          k_power=k_power, **self.fft.sub_k)
+        return result['spectrum'] / self.bin_counts
 
     def __call__(self, fx, queue=None, k_power=3, allocator=None):
         """
