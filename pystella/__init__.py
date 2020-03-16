@@ -82,10 +82,13 @@ def choose_device_and_make_context(platform_choice=None, device_choice=None):
         pass
     num_devices = len(devices)
 
-    import os
-    local_rank = int(os.getenv('OMPI_COMM_WORLD_LOCAL_RANK',
-                               os.getenv('MV2_COMM_WORLD_LOCAL_RANK', 0)))
-    choice = device_choice or (local_rank % num_devices)
+    if device_choice is None:
+        import os
+        local_rank = int(os.getenv('OMPI_COMM_WORLD_LOCAL_RANK',
+                                   os.getenv('MV2_COMM_WORLD_LOCAL_RANK', 0)))
+        choice = (local_rank % num_devices)
+    else:
+        choice = device_choice
 
     return cl.Context([devices[choice]])
 
