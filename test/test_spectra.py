@@ -176,6 +176,18 @@ def test_pol_spectra(ctx_factory, grid_shape, proc_shape, dtype, timing=False):
     assert np.max(err) < max_rtol and np.average(err) < avg_rtol, \
            "minus power spectrum inaccurate for grid_shape=%s" % (grid_shape,)
 
+    hij = cl.clrandom.rand(queue, (6,)+rank_shape, dtype)
+    gw_spec = spec.gw(hij, project, 1.3)
+    gw_pol_spec = spec.gw_polarization(hij, project, 1.3)
+
+    max_rtol = 1.e-14 if dtype == np.float64 else 1.e-2
+    avg_rtol = 1.e-11 if dtype == np.float64 else 1.e-4
+
+    diff = gw_spec - gw_pol_spec[0] - gw_pol_spec[1]
+    err = diff[1:-1] / gw_spec[1:-1]
+    assert np.max(err) < max_rtol and np.average(err) < avg_rtol, \
+           "gw pol don't add up to gw for grid_shape=%s" % (grid_shape,)
+
 
 if __name__ == "__main__":
     args = {'grid_shape': (256,)*3, 'proc_shape': (1,)*3, 'dtype': 'float64'}

@@ -29,15 +29,17 @@ __doc__ = """
 
 class Projector:
     """
-    Constructs kernels to projector vectors to and from their polarization basis
-    and to project out longitudinal modes, and to project a tensor field to its
-    transverse and traceless component.
+    Constructs kernels to projector vectors and tensors to and from their
+    polarization basis, to project out the longitudinal component of a vector,
+    and to project a tensor field to its transverse and traceless component.
 
     .. automethod:: __init__
     .. automethod:: transversify
     .. automethod:: pol_to_vec
     .. automethod:: vec_to_pol
     .. automethod:: transverse_traceless
+    .. automethod:: tensor_to_pol
+    .. automethod:: pol_to_tensor
     """
 
     def __init__(self, fft, effective_k):
@@ -99,6 +101,16 @@ class Projector:
             tuple(Comparison(fabs(eff_k[mu]), '<', 1e-14) for mu in range(3))
         )
 
+        # note: write all output via private temporaries to allow for in-place
+
+        div = var('div')
+        div_insn = [(div, sum(eff_k[mu] * vector[mu] for mu in range(3)))]
+        self.transversify_knl = ElementWiseMap(
+            {vector_T[mu]: If(kvec_zero, 0, vector[mu] - eff_k[mu] / kmag**2 * div)
+             for mu in range(3)},
+            tmp_instructions=div_insn, lsize=(32, 1, 1), rank_shape=fft.shape(True),
+        )
+
         import loopy as lp
 
         def assign(asignee, expr, **kwargs):
@@ -107,18 +119,9 @@ class Projector:
             default.update(kwargs)
             return lp.Assignment(asignee, expr, **default)
 
-        div = var('div')
-        tmp = [assign(div, sum(eff_k[mu] * vector[mu] for mu in range(3)),
-                      temp_var_type=lp.Optional(None))]
-        self.transversify_knl = ElementWiseMap(
-            {vector_T[mu]: If(kvec_zero, 0, vector[mu] - eff_k[mu] / kmag**2 * div)
-             for mu in range(3)},
-            tmp_instructions=tmp, lsize=(32, 1, 1), rank_shape=fft.shape(True),
-        )
-
         kmag, Kappa = parse('kmag, Kappa')
-        tmp = [assign(kmag, sqrt(sum(kk**2 for kk in eff_k))),
-               assign(Kappa, sqrt(sum(kk**2 for kk in eff_k[:2])))]
+        eps_insns = [assign(kmag, sqrt(sum(kk**2 for kk in eff_k))),
+                     assign(Kappa, sqrt(sum(kk**2 for kk in eff_k[:2])))]
 
         zero = fft.cdtype.type(0)
         kx_ky_zero = LogicalAnd(tuple(Comparison(fabs(eff_k[mu]), '<', 1e-10)
@@ -126,7 +129,7 @@ class Projector:
         kz_nonzero = Comparison(fabs(eff_k[2]), '>', 1e-10)
 
         eps = var('eps')
-        tmp.extend([
+        eps_insns.extend([
             assign(eps[0],
                    If(kx_ky_zero,
                       If(kz_nonzero, fft.cdtype.type(1 / 2**.5), zero),
@@ -138,24 +141,28 @@ class Projector:
             assign(eps[2], If(kx_ky_zero, zero, - Kappa / kmag / 2**.5))
         ])
 
-        args = [
-            lp.TemporaryVariable('eps', shape=(3,)),
-            lp.TemporaryVariable('kmag'),
-            lp.TemporaryVariable('Kappa'),
-            ...
-        ]
-
         plus, minus = Field('plus'), Field('minus')
 
+        plus_tmp, minus_tmp = parse('plus_tmp, minus_tmp')
+        pol_isns = [(plus_tmp, sum(vector[mu] * conj(eps[mu]) for mu in range(3))),
+                    (minus_tmp, sum(vector[mu] * eps[mu] for mu in range(3)))]
+
+        args = [lp.TemporaryVariable('kmag'), lp.TemporaryVariable('Kappa'),
+                lp.TemporaryVariable('eps', shape=(3,)), ...]
+
         self.vec_to_pol_knl = ElementWiseMap(
-            {plus: sum(vector[mu] * conj(eps[mu]) for mu in range(3)),
-             minus: sum(vector[mu] * eps[mu] for mu in range(3))},
-            tmp_instructions=tmp, args=args,
+            {plus: plus_tmp, minus: minus_tmp},
+            tmp_instructions=eps_insns+pol_isns, args=args,
             lsize=(32, 1, 1), rank_shape=fft.shape(True),
         )
+
+        vector_tmp = var('vector_tmp')
+        vec_insns = [(vector_tmp[mu], plus * eps[mu] + minus * conj(eps[mu]))
+                     for mu in range(3)]
+
         self.pol_to_vec_knl = ElementWiseMap(
-            {vector[mu]: plus * eps[mu] + minus * conj(eps[mu]) for mu in range(3)},
-            tmp_instructions=tmp, args=args,
+            {vector[mu]: vector_tmp[mu] for mu in range(3)},
+            tmp_instructions=eps_insns+vec_insns, args=args,
             lsize=(32, 1, 1), rank_shape=fft.shape(True),
         )
 
@@ -166,26 +173,54 @@ class Projector:
         hij_TT = Field('hij_TT', shape=(6,))
 
         Pab = var('P')
-        tmp = {Pab[tid(a, b)]: (If(Comparison(a, '==', b), 1, 0)
-                                - eff_k_hat[a-1] * eff_k_hat[b-1])
-               for a in range(1, 4) for b in range(a, 4)}
+        Pab_insns = [
+            (Pab[tid(a, b)],
+             (If(Comparison(a, '==', b), 1, 0) - eff_k_hat[a-1] * eff_k_hat[b-1]))
+            for a in range(1, 4) for b in range(a, 4)
+        ]
 
-        def projected_hij(a, b):
-            return sum(
-                (Pab[tid(a, c)] * Pab[tid(d, b)]
-                 - Pab[tid(a, b)] * Pab[tid(c, d)] / 2) * hij[tid(c, d)]
-                for c in range(1, 4) for d in range(1, 4)
-            )
-
+        hij_TT_tmp = var('hij_TT_tmp')
+        TT_insns = [
+            (hij_TT_tmp[tid(a, b)],
+             sum((Pab[tid(a, c)] * Pab[tid(d, b)]
+                  - Pab[tid(a, b)] * Pab[tid(c, d)] / 2) * hij[tid(c, d)]
+                 for c in range(1, 4) for d in range(1, 4)))
+            for a in range(1, 4) for b in range(a, 4)
+        ]
+        # note: where conditionals (branch divergence) go can matter:
+        # this kernel is twice as fast when putting the branching in the global
+        # write, rather than when setting hij_TT_tmp
+        write_insns = [(hij_TT[tid(a, b)], If(kvec_zero, 0, hij_TT_tmp[tid(a, b)]))
+                       for a in range(1, 4) for b in range(a, 4)]
         self.tt_knl = ElementWiseMap(
-            {hij_TT[tid(a, b)]: projected_hij(a, b)
-             for a in range(1, 4) for b in range(a, 4)},
-            tmp_instructions=tmp, lsize=(32, 1, 1), rank_shape=fft.shape(True),
+            write_insns, tmp_instructions=Pab_insns+TT_insns,
+            lsize=(32, 1, 1), rank_shape=fft.shape(True),
+        )
+
+        tensor_to_pol_insns = {
+            plus: sum(hij[tid(c, d)] * conj(eps[c-1]) * conj(eps[d-1])
+                      for c in range(1, 4) for d in range(1, 4)),
+            minus: sum(hij[tid(c, d)] * eps[c-1] * eps[d-1]
+                       for c in range(1, 4) for d in range(1, 4))
+        }
+        self.tensor_to_pol_knl = ElementWiseMap(
+            tensor_to_pol_insns, tmp_instructions=eps_insns, args=args,
+            lsize=(32, 1, 1), rank_shape=fft.shape(True),
+        )
+
+        pol_to_tensor_insns = {
+            hij[tid(a, b)]: (plus * eps[a-1] * eps[b-1]
+                             + minus * conj(eps[a-1]) * conj(eps[b-1]))
+            for a in range(1, 4) for b in range(a, 4)
+        }
+        self.pol_to_tensor_knl = ElementWiseMap(
+            pol_to_tensor_insns, tmp_instructions=eps_insns, args=args,
+            lsize=(32, 1, 1), rank_shape=fft.shape(True),
         )
 
     def transversify(self, queue, vector, vector_T=None):
         """
-        Projects out longitudinal modes of a vector field.
+        Projects out the longitudinal component of a vector field.
 
         :arg queue: A :class:`pyopencl.CommandQueue`.
 
@@ -202,14 +237,15 @@ class Projector:
         :returns: The :class:`pyopencl.Event` associated with the kernel invocation.
         """
 
-        vector_T = vector_T or vector
+        if vector_T is None:
+            vector_T = vector
         evt, _ = self.transversify_knl(queue, **self.eff_mom,
-                                       vector=vector, vector_T=vector)
+                                       vector=vector, vector_T=vector_T)
         return evt
 
     def pol_to_vec(self, queue, plus, minus, vector):
         """
-        Projects the plus and minus polarizations of a vector field onto the
+        Projects the plus and minus polarizations of a vector field onto its
         vector components.
 
         :arg queue: A :class:`pyopencl.CommandQueue`.
@@ -276,9 +312,57 @@ class Projector:
         :returns: The :class:`pyopencl.Event` associated with the kernel invocation.
         """
 
-        hij_TT = hij_TT or hij
+        if hij_TT is None:
+            hij_TT = hij
         evt, _ = self.tt_knl(queue, hij=hij, hij_TT=hij_TT, **self.eff_mom)
+        return evt
 
-        # re-set to zero
-        for mu in range(6):
-            self.fft.zero_corner_modes(hij_TT[mu])
+    def tensor_to_pol(self, queue, plus, minus, hij):
+        """
+        Projects the components of a rank-2 tensor field onto the basis of plus and
+        minus polarizations.
+
+        :arg queue: A :class:`pyopencl.CommandQueue`.
+
+        :arg plus: The array into which will be stored the
+            momentum-space field of the plus polarization.
+
+        :arg minus: The array into which will be stored the
+            momentum-space field of the minus polarization.
+
+        :arg hij: The array containing the
+            momentum-space tensor field to be projected.
+            Must have shape ``(6,)+k_shape``, where
+            ``k_shape`` is the shape of a single momentum-space field array.
+
+        :returns: The :class:`pyopencl.Event` associated with the kernel invocation.
+        """
+
+        evt, _ = self.tensor_to_pol_knl(queue, **self.eff_mom,
+                                        hij=hij, plus=plus, minus=minus)
+        return evt
+
+    def pol_to_tensor(self, queue, plus, minus, hij):
+        """
+        Projects the plus and minus polarizations of a rank-2 tensor field onto its
+        tensor components.
+
+        :arg queue: A :class:`pyopencl.CommandQueue`.
+
+        :arg plus: The array into which will be stored the
+            momentum-space field of the plus polarization.
+
+        :arg minus: The array into which will be stored the
+            momentum-space field of the minus polarization.
+
+        :arg hij: The array containing the
+            momentum-space tensor field to be projected.
+            Must have shape ``(6,)+k_shape``, where
+            ``k_shape`` is the shape of a single momentum-space field array.
+
+        :returns: The :class:`pyopencl.Event` associated with the kernel invocation.
+        """
+
+        evt, _ = self.pol_to_tensor_knl(queue, **self.eff_mom,
+                                        hij=hij, plus=plus, minus=minus)
+        return evt

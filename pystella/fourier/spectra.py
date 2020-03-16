@@ -41,6 +41,7 @@ class PowerSpectra:
     .. automethod:: bin_power
     .. automethod:: polarization
     .. automethod:: gw
+    .. automethod:: gw_polarization
     """
 
     def __init__(self, decomp, fft, dk, volume, **kwargs):
@@ -164,7 +165,8 @@ class PowerSpectra:
             See the note in the documentation of
             :meth:`SpectralCollocator`.
 
-        :returns: The unnormalized, binned power spectrum of ``fk``.
+        :returns: A :class:`numpy.ndarray` containing the unnormalized, binned power
+            spectrum of ``fk``.
         """
 
         queue = queue or fk.queue
@@ -207,7 +209,8 @@ class PowerSpectra:
             See the note in the documentation of
             :meth:`SpectralCollocator`.
 
-        :returns: The binned momentum-space power spectrum of ``fx``.
+        :returns: A :class:`numpy.ndarray` containing the binned momentum-space
+            power spectrum of ``fx``, with shape ``fx.shape[:-3]+(num_bins,)``.
         """
 
         queue = queue or fx.queue
@@ -241,6 +244,9 @@ class PowerSpectra:
         :arg projector: A :class:`Projector`.
 
         The remaining arguments are the same as those to :meth:`__call__`.
+
+        :returns: A :class:`numpy.ndarray` containing the polarization spectra
+            with shape ``vector.shape[:-4]+(2, num_bins)``.
         """
 
         queue = queue or vector.queue
@@ -271,7 +277,7 @@ class PowerSpectra:
 
         .. math::
 
-            \\Delta_t^2(k)
+            \\Delta_h^2(k)
             = \\frac{1}{24 \\pi^{2} \\mathcal{H}^{2}}
                 \\frac{1}{V}
                 \\sum_{i, j} \\int \\mathrm{d} \\Omega \\,
@@ -287,6 +293,8 @@ class PowerSpectra:
         :arg hubble: The current value of the conformal Hubble parameter.
 
         The remaining arguments are the same as those to :meth:`__call__`.
+
+        :returns: A :class:`numpy.ndarray` containing :math:`\\Delta_{h}^2(k)`.
         """
 
         queue = queue or hij.queue
@@ -311,3 +319,50 @@ class PowerSpectra:
                      for i in range(1, 4) for j in range(1, 4))
 
         return self.norm / 12 / hubble**2 * gw_tot
+
+    def gw_polarization(self, hij, projector, hubble, queue=None, k_power=3,
+                        allocator=None):
+        """
+        Computes the polarization components of the present gravitational wave
+        power spectrum.
+
+        .. math::
+
+            \\Delta_{h_\\lambda}^2(k)
+            = \\frac{1}{24 \\pi^{2} \\mathcal{H}^{2}}
+                \\frac{1}{V}
+                \\int \\mathrm{d} \\Omega \\,
+                \\left\\vert \\mathbf{k} \\right\\vert^3
+                \\left\\vert h_\\lambda^{\\prime}(k) \\right \\vert^{2}
+
+        :arg hij: The array containing the
+            position-space tensor field whose power spectrum is to be computed.
+            Must be 4-dimensional, with the first axis being length-6.
+
+        :arg projector: A :class:`Projector`.
+
+        :arg hubble: The current value of the conformal Hubble parameter.
+
+        The remaining arguments are the same as those to :meth:`__call__`.
+
+        :returns: A :class:`numpy.ndarray` containing
+            :math:`\\Delta_{h_\\lambda}^2(k)` with shape ``(2, num_bins)``.
+        """
+
+        queue = queue or hij.queue
+
+        hij_k = cla.empty(queue, (6,)+self.kshape, self.cdtype, allocator=None)
+        # overwrite hij_k
+        plus = hij_k[0]
+        minus = hij_k[1]
+
+        for mu in range(6):
+            self.fft.dft(hij[mu], hij_k[mu])
+
+        projector.tensor_to_pol(queue, plus, minus, hij_k)
+
+        result = np.zeros((2, self.num_bins,), self.rdtype)
+        result[0] = self.bin_power(plus, queue, k_power, allocator=allocator)
+        result[1] = self.bin_power(minus, queue, k_power, allocator=allocator)
+
+        return self.norm / 12 / hubble**2 * result
