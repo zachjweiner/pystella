@@ -37,6 +37,8 @@ class Histogrammer(ElementWiseMap):
 
     .. automethod:: __init__
     .. automethod:: __call__
+
+    .. versionadded:: 2019.6
     """
 
     def parallelize(self, knl, lsize):
@@ -198,6 +200,8 @@ class FieldHistogrammer(Histogrammer):
 
     .. automethod:: __init__
     .. automethod:: __call__
+
+    .. versionadded:: 2019.6
     """
 
     def __init__(self, decomp, num_bins, rank_shape, dtype, **kwargs):

@@ -188,6 +188,12 @@ class ElementWiseMap:
             creation.
 
         Any remaining keyword arguments are passed to :func:`loopy.make_kernel`.
+
+        .. versionchanged:: 2019.6
+
+            Arguments ``map_instructions`` and ``tmp_instructions`` replaced
+            ``map_dict`` and ``tmp_dict`` and are allowed to be :class:`list`'s
+            with entries of :class:`loopy.Assignment`'s and/or tuples.
         """
 
         if 'map_dict' in kwargs:

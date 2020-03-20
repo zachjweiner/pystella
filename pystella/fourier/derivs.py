@@ -54,7 +54,7 @@ class SpectralCollocator:
         k_names = ('k_x', 'k_y', 'k_z')
         self.momenta = {}
         for mu, (name, kk) in enumerate(zip(k_names, sub_k)):
-            kk_mu = dk[mu] * kk.astype(fft.dtype)
+            kk_mu = dk[mu] * kk.astype(fft.rdtype)
             self.momenta[name+'_2'] = cla.to_device(queue, kk_mu)
 
             # zero Nyquist mode for first derivatives
@@ -64,9 +64,9 @@ class SpectralCollocator:
 
         args = [
             lp.GlobalArg('fk', shape="(Nx, Ny, Nz)"),
-            lp.GlobalArg("k_x_1, k_x_2", self.fft.dtype, shape=('Nx',)),
-            lp.GlobalArg("k_y_1, k_y_2", self.fft.dtype, shape=('Ny',)),
-            lp.GlobalArg("k_z_1, k_z_2", self.fft.dtype, shape=('Nz',)),
+            lp.GlobalArg("k_x_1, k_x_2", fft.rdtype, shape=('Nx',)),
+            lp.GlobalArg("k_y_1, k_y_2", fft.rdtype, shape=('Ny',)),
+            lp.GlobalArg("k_z_1, k_z_2", fft.rdtype, shape=('Nz',)),
         ]
 
         from pystella.field import Field

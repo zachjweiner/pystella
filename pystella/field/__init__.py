@@ -123,11 +123,11 @@ class Field(pp.AlgebraicLeaf):
         :func:`shift_fields` may specify offset array accesses by modifying
         :attr:`offset`.
 
+    .. autoattribute:: index_tuple
+
     .. versionchanged:: 2019.6
 
         Added :attr:`shape`.
-
-    .. autoattribute:: index_tuple
     """
 
     init_arg_names = ('child', 'offset', 'shape', 'indices',
@@ -406,6 +406,10 @@ def index_fields(expr, prepend_with=None):
         of any :class:`Field`'s in ``expr`` (unless a given :class:`Field` has
         :attr:`ignore_prepends` set to *False*. Passed by keyword.
         Defaults to an empty :class:`tuple`.
+
+    .. versionadded:: 2019.6
+
+        Replaced :func:`Indexer`.
     """
 
     return IndexMapper()(expr, prepend_with=prepend_with)
@@ -506,6 +510,10 @@ def get_field_args(expressions, unpadded_shape=None, prepend_with=None):
 
         >>> [lp.GlobalArg('f', shape='(Nx+2*h, Ny+2*h, Nz+2*h)', offset=lp.auto),
         ...  lp.GlobalArg('g', shape='(3, a, Nx+2, Ny+2, Nz+2)', offset=lp.auto)]
+
+    .. versionchanged:: 2019.6
+
+        Uses :attr:`Field.shape` to determine the full array shape.
     """
 
     from pymbolic import parse

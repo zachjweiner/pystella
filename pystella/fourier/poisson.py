@@ -36,7 +36,9 @@ class SpectralPoissonSolver:
 
     .. math::
 
-        \\nabla^2 f = \\rho.
+        \\nabla^2 f - m^2 f = \\rho,
+
+    allowing a term linear in :math:`f` with coefficient :math:`m^2`.
 
     .. automethod:: __init__
     .. automethod:: __call__
@@ -70,14 +72,15 @@ class SpectralPoissonSolver:
         self.momenta = {}
         self.momenta = {}
         for mu, (name, kk) in enumerate(zip(k_names, sub_k)):
-            kk_mu = effective_k(dk[mu] * kk.astype(fft.dtype), dx[mu])
+            kk_mu = effective_k(dk[mu] * kk.astype(fft.rdtype), dx[mu])
             self.momenta[name] = cla.to_device(queue, kk_mu)
 
         args = [
-            lp.GlobalArg('fk', self.fft.cdtype, shape="(Nx, Ny, Nz)"),
-            lp.GlobalArg("k_x", self.fft.dtype, shape=('Nx',)),
-            lp.GlobalArg("k_y", self.fft.dtype, shape=('Ny',)),
-            lp.GlobalArg("k_z", self.fft.dtype, shape=('Nz',)),
+            lp.GlobalArg('fk', fft.cdtype, shape="(Nx, Ny, Nz)"),
+            lp.GlobalArg("k_x", fft.rdtype, shape=('Nx',)),
+            lp.GlobalArg("k_y", fft.rdtype, shape=('Ny',)),
+            lp.GlobalArg("k_z", fft.rdtype, shape=('Nz',)),
+            lp.ValueArg('m_squared', fft.rdtype),
         ]
 
         from pystella.field import Field
@@ -87,16 +90,16 @@ class SpectralPoissonSolver:
 
         from pymbolic.primitives import Variable, If, Comparison
         mom_vars = tuple(Variable(name) for name in k_names)
-        kmag_sq = sum(kk_i[x_i] for kk_i, x_i in zip(mom_vars, indices))
-        sol = rhok / kmag_sq * (1/grid_size)
+        minus_k_squared = sum(kk_i[x_i] for kk_i, x_i in zip(mom_vars, indices))
+        sol = rhok / (minus_k_squared - Variable('m_squared')) * (1/grid_size)
 
-        solution = {Field('fk'): If(Comparison(kmag_sq, '<', 0), sol, 0)}
+        solution = {Field('fk'): If(Comparison(minus_k_squared, '<', 0), sol, 0)}
 
         from pystella.elementwise import ElementWiseMap
         options = lp.Options(return_dict=True)
         self.knl = ElementWiseMap(solution, args=args, halo_shape=0, options=options)
 
-    def __call__(self, queue, fx, rho, allocator=None):
+    def __call__(self, queue, fx, rho, m_squared=0, allocator=None):
         """
         Executes the Poisson solver.
 
@@ -106,11 +109,20 @@ class SpectralPoissonSolver:
 
         :arg rho: The array containing the right-hand--side, :math:`\\rho`.
 
+        :arg m_squared: The value of the coefficient :math:`m^2` of the
+            linear term in the Poisson equation to be solved.
+            Defaults to ``0``.
+
         :arg allocator: A :mod:`pyopencl` allocator used to allocate temporary
             arrays, i.e., most usefully a :class:`pyopencl.tools.MemoryPool`.
             See the note in the documentation of :meth:`SpectralCollocator`.
+
+        .. versionchanged:: 2019.6
+
+            Added `m_squared` to support solving with a linear term :math:`m^2 f`.
         """
 
         rhok = self.fft.dft(rho)
-        evt, out = self.knl(queue, rhok=rhok, **self.momenta, allocator=allocator)
+        evt, out = self.knl(queue, rhok=rhok, m_squared=m_squared,
+                            **self.momenta, allocator=allocator)
         self.fft.idft(out['fk'], fx)

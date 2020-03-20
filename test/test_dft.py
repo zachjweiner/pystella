@@ -46,9 +46,7 @@ def test_dft(ctx_factory, grid_shape, proc_shape, dtype, timing=False):
 
     fft = ps.DFT(mpi, ctx, queue, grid_shape, dtype)
     grid_size = np.product(grid_shape)
-
-    from pystella.fourier import get_real_dtype_with_matching_prec
-    rdtype = get_real_dtype_with_matching_prec(dtype)
+    rdtype = fft.rdtype
 
     if fft.is_real:
         np_dft = np.fft.rfftn

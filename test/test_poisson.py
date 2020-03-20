@@ -75,21 +75,26 @@ def test_spectral_poisson(ctx_factory, grid_shape, proc_shape, h, dtype,
     rho = clr.rand(queue, rank_shape, dtype)
     rho -= statistics(rho)['mean']
     lap = cla.empty(queue, rank_shape, dtype)
+    rho_h = rho.get()
 
-    solver(queue, fx, rho)
+    for m_squared in (0, 1.2, 19.2):
+        solver(queue, fx, rho, m_squared=m_squared)
+        fx_h = fx.get()
+        if h > 0:
+            fx_h = fx_h[h:-h, h:-h, h:-h]
 
-    derivs(queue, fx=fx, lap=lap)
+        derivs(queue, fx=fx, lap=lap)
 
-    diff = clm.fabs(lap - rho)
-    max_err = cla.max(diff) / cla.max(clm.fabs(rho))
-    avg_err = cla.sum(diff) / cla.sum(clm.fabs(rho))
+        diff = np.fabs(lap.get() - rho_h - m_squared * fx_h)
+        max_err = np.max(diff) / cla.max(clm.fabs(rho))
+        avg_err = np.sum(diff) / cla.sum(clm.fabs(rho))
 
-    max_rtol = 1.e-12 if dtype == np.float64 else 1.e-4
-    avg_rtol = 1.e-13 if dtype == np.float64 else 1.e-5
+        max_rtol = 1.e-12 if dtype == np.float64 else 1.e-4
+        avg_rtol = 1.e-13 if dtype == np.float64 else 1.e-5
 
-    assert max_err < max_rtol and avg_err < avg_rtol, \
-        "solution inaccurate for halo_shape=%s, grid_shape=%s, proc_shape=%s" \
-        % (h, grid_shape, proc_shape)
+        assert max_err < max_rtol and avg_err < avg_rtol, \
+            "solution inaccurate for halo_shape=%s, grid_shape=%s, proc_shape=%s" \
+            % (h, grid_shape, proc_shape)
 
 
 if __name__ == "__main__":

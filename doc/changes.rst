@@ -1,6 +1,8 @@
 User-visible Changes
 ====================
 
+.. currentmodule:: pystella
+
 Version 2019.6
 --------------
 
@@ -8,10 +10,12 @@ Version 2019.6
 
     This version is currently under development.
 
-* :func:`Indexer` renamed to :func:`~pystella.index_fields`.
+* :func:`Indexer` renamed to :func:`index_fields`.
 * :meth:`Sector.get_args` deprecated in favor of using
-  :func:`~pystella.get_field_args`.
-* Add :class:`~pystella.Histogrammer` and :class:`~pystella.FieldHistogrammer`.
+  :func:`get_field_args`.
+* Added :class:`Histogrammer` and :class:`FieldHistogrammer`.
+* Added :meth:`Projector.tensor_to_pol`, :meth:`Projector.pol_to_tensor`,
+  and :meth:`PowerSpectra.gw_polarization`.
 * Various improvements and bug fixes.
 
 Version 2019.5

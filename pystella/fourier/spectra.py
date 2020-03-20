@@ -42,6 +42,10 @@ class PowerSpectra:
     .. automethod:: polarization
     .. automethod:: gw
     .. automethod:: gw_polarization
+
+    .. versionchanged:: 2019.6
+
+        Support for complex fields.
     """
 
     def __init__(self, decomp, fft, dk, volume, **kwargs):
@@ -68,8 +72,7 @@ class PowerSpectra:
         self.grid_shape = fft.grid_shape
 
         self.dtype = fft.dtype
-        from pystella.fourier import get_real_dtype_with_matching_prec
-        self.rdtype = get_real_dtype_with_matching_prec(self.dtype)
+        self.rdtype = fft.rdtype
         self.cdtype = fft.cdtype
 
         self.kshape = self.fft.shape(True)
@@ -347,6 +350,8 @@ class PowerSpectra:
 
         :returns: A :class:`numpy.ndarray` containing
             :math:`\\Delta_{h_\\lambda}^2(k)` with shape ``(2, num_bins)``.
+
+        .. versionadded:: 2019.6
         """
 
         queue = queue or hij.queue

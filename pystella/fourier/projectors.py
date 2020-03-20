@@ -78,7 +78,7 @@ class Projector:
         eff_mom_names = ('eff_mom_x', 'eff_mom_y', 'eff_mom_z')
         self.eff_mom = {}
         for mu, (name, kk) in enumerate(zip(eff_mom_names, sub_k)):
-            eff_k = effective_k(kk.astype(fft.dtype) * dk_dx[mu], 1)
+            eff_k = effective_k(kk.astype(fft.rdtype) * dk_dx[mu], 1)
             eff_k[abs(sub_k[mu]) == fft.grid_shape[mu]//2] = 0.
             eff_k[sub_k[mu] == 0] = 0.
 
@@ -336,6 +336,8 @@ class Projector:
             ``k_shape`` is the shape of a single momentum-space field array.
 
         :returns: The :class:`pyopencl.Event` associated with the kernel invocation.
+
+        .. versionadded:: 2019.6
         """
 
         evt, _ = self.tensor_to_pol_knl(queue, **self.eff_mom,
@@ -361,6 +363,8 @@ class Projector:
             ``k_shape`` is the shape of a single momentum-space field array.
 
         :returns: The :class:`pyopencl.Event` associated with the kernel invocation.
+
+        .. versionadded:: 2019.6
         """
 
         evt, _ = self.pol_to_tensor_knl(queue, **self.eff_mom,

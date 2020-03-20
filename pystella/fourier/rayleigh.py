@@ -71,6 +71,10 @@ class RayleighGenerator:
 
     .. automethod:: generate_WKB
     .. automethod:: init_WKB_fields
+
+    .. versionchanged:: 2019.6
+
+        Support for generating complex fields.
     """
 
     def get_wkb_knl(self):
@@ -135,8 +139,7 @@ class RayleighGenerator:
 
         self.fft = fft
         self.dtype = fft.dtype
-        from pystella.fourier import get_real_dtype_with_matching_prec
-        self.rdtype = get_real_dtype_with_matching_prec(self.dtype)
+        self.rdtype = fft.rdtype
         self.cdtype = fft.cdtype
         self.volume = volume
 

@@ -309,6 +309,10 @@ class pDFT(BaseDFT):
     See :class:`pystella.fourier.dft.BaseDFT`.
 
     .. automethod:: __init__
+
+    .. versionchanged:: 2019.6
+
+        Support for complex-to-complex transforms.
     """
 
     def __init__(self, decomp, queue, grid_shape, dtype, **kwargs):
@@ -337,6 +341,8 @@ class pDFT(BaseDFT):
 
         from pystella.fourier import get_complex_dtype_with_matching_prec
         self.cdtype = get_complex_dtype_with_matching_prec(self.dtype)
+        from pystella.fourier import get_real_dtype_with_matching_prec
+        self.rdtype = get_real_dtype_with_matching_prec(self.dtype)
 
         if self.proc_shape[0] > 1 and self.proc_shape[1] == 1:
             slab = True
@@ -387,6 +393,10 @@ class gDFT(BaseDFT):
     See :class:`pystella.fourier.dft.BaseDFT`.
 
     .. automethod:: __init__
+
+    .. versionchanged:: 2019.6
+
+        Support for complex-to-complex transforms.
     """
 
     def __init__(self, decomp, context, queue, grid_shape, dtype):
@@ -412,6 +422,8 @@ class gDFT(BaseDFT):
 
         from pystella.fourier import get_complex_dtype_with_matching_prec
         self.cdtype = cdtype = get_complex_dtype_with_matching_prec(self.dtype)
+        from pystella.fourier import get_real_dtype_with_matching_prec
+        self.rdtype = get_real_dtype_with_matching_prec(self.dtype)
 
         self.fx = cla.zeros(queue, grid_shape, dtype)
         self.fk = cla.zeros(queue, self.shape(is_real), cdtype)
