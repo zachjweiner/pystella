@@ -92,19 +92,20 @@ class SpectralCollocator:
         lap = {Field('lap_k'): - kmag_sq * fk * (1/grid_size)}
 
         from pystella.elementwise import ElementWiseMap
-        common_args = dict(halo_shape=0, args=args,
+        common_args = dict(halo_shape=0, args=args, lsize=(16, 2, 1),
                            options=lp.Options(return_dict=True))
         self.pdx_knl = ElementWiseMap(pdx, **common_args)
         self.pdy_knl = ElementWiseMap(pdy, **common_args)
         self.pdz_knl = ElementWiseMap(pdz, **common_args)
-        self.lap_knl = ElementWiseMap(lap, **common_args)
-        self.grad_knl = ElementWiseMap({**pdx, **pdy, **pdz}, **common_args)
-        self.grad_lap_knl = ElementWiseMap({**pdx, **pdy, **pdz, **lap},
-                                           **common_args)
-
         self.pdx_incr_knl = ElementWiseMap(pdx_incr, **common_args)
         self.pdy_incr_knl = ElementWiseMap(pdy_incr, **common_args)
         self.pdz_incr_knl = ElementWiseMap(pdz_incr, **common_args)
+        self.lap_knl = ElementWiseMap(lap, **common_args)
+
+        common_args['lsize'] = (16, 1, 1)
+        self.grad_knl = ElementWiseMap({**pdx, **pdy, **pdz}, **common_args)
+        self.grad_lap_knl = ElementWiseMap({**pdx, **pdy, **pdz, **lap},
+                                           **common_args)
 
     def __call__(self, queue, fx, *,
                  lap=None, pdx=None, pdy=None, pdz=None, grd=None,

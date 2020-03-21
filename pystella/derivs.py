@@ -280,7 +280,7 @@ class FiniteDifferencer:
         self.grad_lap_knl = SS({**pdx, **pdy, **pdz, **lap}, **common_args)
 
     def __call__(self, queue, fx, *,
-                 lap=None, pdx=None, pdy=None, pdz=None, grd=None):
+                 lap=None, pdx=None, pdy=None, pdz=None, grd=None, allocator=None):
         """
         Computes requested derivatives of the input ``fx``.
 
@@ -368,7 +368,7 @@ class FiniteDifferencer:
 
         return evt
 
-    def divergence(self, queue, vec, div):
+    def divergence(self, queue, vec, div, allocator=None):
         """
         Computes the divergence of the input ``vec``.
 

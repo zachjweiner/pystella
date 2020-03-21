@@ -150,10 +150,12 @@ def test_gradient_laplacian(ctx_factory, grid_shape, proc_shape, h, dtype,
         from common import timer
 
         base_args = dict(queue=queue, fx=fx)
+        div_args = dict(queue=queue, vec=vec, div=div)
         if h == 0:
             import pyopencl.tools as clt
             pool = clt.MemoryPool(clt.ImmediateAllocator(queue))
             base_args['allocator'] = pool
+            div_args['allocator'] = pool
 
         times = {}
         times['gradient and laplacian'] = timer(
@@ -164,9 +166,7 @@ def test_gradient_laplacian(ctx_factory, grid_shape, proc_shape, h, dtype,
         times['pdx'] = timer(lambda: derivs(pdx=grd[0], **base_args))
         times['pdy'] = timer(lambda: derivs(pdy=grd[1], **base_args))
         times['pdz'] = timer(lambda: derivs(pdz=grd[2], **base_args))
-        times['divergence'] = timer(
-            lambda: derivs.divergence(queue, vec=vec, div=div)
-        )
+        times['divergence'] = timer(lambda: derivs.divergence(**div_args))
 
         if mpi.rank == 0:
             print("grid_shape=%s, halo_shape=%s, proc_shape=%s"
