@@ -84,20 +84,23 @@ class SpectralPoissonSolver:
         ]
 
         from pystella.field import Field
+        from pymbolic.primitives import Variable, If, Comparison
+
         fk = Field('fk')
         indices = fk.indices
-        rhok = Field('rhok')
+        rho_tmp = Variable('rho_tmp')
+        tmp_insns = [(rho_tmp, Field('rhok') * (1/grid_size))]
 
-        from pymbolic.primitives import Variable, If, Comparison
         mom_vars = tuple(Variable(name) for name in k_names)
         minus_k_squared = sum(kk_i[x_i] for kk_i, x_i in zip(mom_vars, indices))
-        sol = rhok / (minus_k_squared - Variable('m_squared')) * (1/grid_size)
+        sol = rho_tmp / (minus_k_squared - Variable('m_squared'))
 
         solution = {Field('fk'): If(Comparison(minus_k_squared, '<', 0), sol, 0)}
 
         from pystella.elementwise import ElementWiseMap
         options = lp.Options(return_dict=True)
-        self.knl = ElementWiseMap(solution, args=args, halo_shape=0, options=options)
+        self.knl = ElementWiseMap(solution, args=args, halo_shape=0, options=options,
+                                  tmp_instructions=tmp_insns, lsize=(16, 2, 1))
 
     def __call__(self, queue, fx, rho, m_squared=0, allocator=None):
         """
@@ -113,16 +116,12 @@ class SpectralPoissonSolver:
             linear term in the Poisson equation to be solved.
             Defaults to ``0``.
 
-        :arg allocator: A :mod:`pyopencl` allocator used to allocate temporary
-            arrays, i.e., most usefully a :class:`pyopencl.tools.MemoryPool`.
-            See the note in the documentation of :meth:`SpectralCollocator`.
-
         .. versionchanged:: 2019.6
 
             Added `m_squared` to support solving with a linear term :math:`m^2 f`.
         """
 
         rhok = self.fft.dft(rho)
-        evt, out = self.knl(queue, rhok=rhok, m_squared=m_squared,
-                            **self.momenta, allocator=allocator)
+        evt, out = self.knl(queue, rhok=rhok, fk=rhok, m_squared=m_squared,
+                            **self.momenta)
         self.fft.idft(out['fk'], fx)

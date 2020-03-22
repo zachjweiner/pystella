@@ -96,6 +96,14 @@ def test_spectral_poisson(ctx_factory, grid_shape, proc_shape, h, dtype,
             "solution inaccurate for halo_shape=%s, grid_shape=%s, proc_shape=%s" \
             % (h, grid_shape, proc_shape)
 
+    if timing:
+        from common import timer
+        time = timer(lambda: solver(queue, fx, rho, m_squared=m_squared))
+
+        if mpi.rank == 0:
+            print("poisson took", "%.3f" % time,
+                  "ms for grid_shape=%s, proc_shape=%s" % (grid_shape, proc_shape))
+
 
 if __name__ == "__main__":
     args = {'grid_shape': (256,)*3, 'proc_shape': (1,)*3, 'dtype': np.float64,

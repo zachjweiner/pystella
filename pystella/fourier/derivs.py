@@ -78,21 +78,24 @@ class SpectralCollocator:
         from pymbolic import var
         mom_vars = tuple(var(name+'_1') for name in k_names)
 
-        pdx, pdy, pdz = \
-            ({pdi: kk_i[indices[i]] * 1j * fk * (1/grid_size)}
-             for i, (pdi, kk_i) in enumerate(zip(pd, mom_vars)))
+        fk_tmp = var('fk_tmp')
+        tmp_insns = [(fk_tmp, fk * (1/grid_size))]
+
+        pdx, pdy, pdz = ({pdi: kk_i[indices[i]] * 1j * fk_tmp}
+                         for i, (pdi, kk_i) in enumerate(zip(pd, mom_vars)))
 
         pdx_incr, pdy_incr, pdz_incr = (
-            {Field('div'): Field('div') + kk_i[indices[i]] * 1j * fk * (1/grid_size)}
+            {Field('div'): Field('div') + kk_i[indices[i]] * 1j * fk_tmp}
             for i, kk_i in enumerate(mom_vars)
         )
 
         mom_vars = tuple(var(name+'_2') for name in k_names)
         kmag_sq = sum(kk_i[x_i]**2 for kk_i, x_i in zip(mom_vars, indices))
-        lap = {Field('lap_k'): - kmag_sq * fk * (1/grid_size)}
+        lap = {Field('lap_k'): - kmag_sq * fk_tmp}
 
         from pystella.elementwise import ElementWiseMap
         common_args = dict(halo_shape=0, args=args, lsize=(16, 2, 1),
+                           tmp_instructions=tmp_insns,
                            options=lp.Options(return_dict=True))
         self.pdx_knl = ElementWiseMap(pdx, **common_args)
         self.pdy_knl = ElementWiseMap(pdy, **common_args)
@@ -121,8 +124,8 @@ class SpectralCollocator:
 
         .. note::
 
-            This method allocates a fairly significant amount of memory
-            (one array per each derivative being computed), since in-place DFTs
+            This method allocates extra temporary arrays
+            (when computing more than one derivative), since in-place DFTs
             are not yet supported.
             Passing a :class:`pyopencl.tools.MemoryPool` is highly recommended to
             amortize the cost of memory allocation at each invocation, e.g.::
@@ -148,18 +151,17 @@ class SpectralCollocator:
 
             if (lap is not None and pdx is not None
                     and pdy is not None and pdz is not None):
-                evt, out = \
-                    self.grad_lap_knl(**arguments)
+                evt, out = self.grad_lap_knl(**arguments, lap_k=fk)
             elif pdx is not None and pdy is not None and pdz is not None:
-                evt, out = self.grad_knl(**arguments, filter_args=True)
+                evt, out = self.grad_knl(**arguments, pdx_k=fk, filter_args=True)
             elif lap is not None:
-                evt, out = self.lap_knl(**arguments, filter_args=True)
+                evt, out = self.lap_knl(**arguments, lap_k=fk, filter_args=True)
             elif pdx is not None:
-                evt, out = self.pdx_knl(**arguments, filter_args=True)
+                evt, out = self.pdx_knl(**arguments, pdx_k=fk, filter_args=True)
             elif pdy is not None:
-                evt, out = self.pdy_knl(**arguments, filter_args=True)
+                evt, out = self.pdy_knl(**arguments, pdy_k=fk, filter_args=True)
             elif pdz is not None:
-                evt, out = self.pdz_knl(**arguments, filter_args=True)
+                evt, out = self.pdz_knl(**arguments, pdz_k=fk, filter_args=True)
 
             if 'lap_k' in out:
                 self.fft.idft(out['lap_k'], lap[s])
