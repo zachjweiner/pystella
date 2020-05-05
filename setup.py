@@ -57,7 +57,7 @@ setup(name="pystella",
       install_requires=[
           "numpy",
           "pyopencl",
-          "loo.py",
+          "loo.py>=2018.2",
           ],
 
       author="Zachary J Weiner",
