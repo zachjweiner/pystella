@@ -13,9 +13,9 @@ sphinx:
 formats: []
 
 python:
-  version: 3.6
+  version: 3.8
   install:
+    - requirements: doc/requirements.txt
     - method: setuptools
       path: .
-    - requirements: doc/requirements.txt
   system_packages: false

@@ -1,4 +1,4 @@
 numpy
 pyopencl
-loo.py
+git+git://github.com/inducer/loopy@master#egg=loo.py
 sphinx==2.2.0
