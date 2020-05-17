@@ -352,7 +352,7 @@ class pDFT(BaseDFT):
         from mpi4py_fft.pencil import Subcomm
         default_kwargs = dict(
             axes=([0], [1], [2]), threads=16, backend='fftw', collapse=True,
-            )
+        )
         default_kwargs.update(kwargs)
         comm = decomp.comm if slab else Subcomm(decomp.comm, self.proc_shape)
 

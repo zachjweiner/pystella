@@ -28,7 +28,7 @@ import pystella as ps
 import pytest
 
 from pyopencl.tools import (  # noqa
-        pytest_generate_tests_for_pyopencl as pytest_generate_tests)
+    pytest_generate_tests_for_pyopencl as pytest_generate_tests)
 
 
 @pytest.mark.parametrize("dtype", [np.float64, np.float32])
@@ -74,20 +74,20 @@ def test_elementwise(ctx_factory, grid_shape, proc_shape, dtype, timing=False):
     rtol = 5.e-14 if dtype == np.float64 else 1.e-5
 
     assert np.allclose(x.get(), x_true.get(), rtol=rtol, atol=0), \
-            "x innaccurate for grid_shape=%s, proc_shape=%s" \
-            % (grid_shape, proc_shape)
+        "x innaccurate for grid_shape=%s, proc_shape=%s" \
+        % (grid_shape, proc_shape)
 
     assert np.allclose(z.get(), z_true.get(), rtol=rtol, atol=0), \
-            "z innaccurate for grid_shape=%s, proc_shape=%s" \
-            % (grid_shape, proc_shape)
+        "z innaccurate for grid_shape=%s, proc_shape=%s" \
+        % (grid_shape, proc_shape)
 
     # test success of single instruction
     ew_map_single = ps.ElementWiseMap(single_insn)
     ew_map_single(queue, x=x, y=y, z=z)
 
     assert np.allclose(x.get(), y.get() + z.get(), rtol=rtol, atol=0), \
-            "x innaccurate for grid_shape=%s, proc_shape=%s" \
-            % (grid_shape, proc_shape)
+        "x innaccurate for grid_shape=%s, proc_shape=%s" \
+        % (grid_shape, proc_shape)
 
     if timing:
         from common import timer

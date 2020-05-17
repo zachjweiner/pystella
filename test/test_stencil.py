@@ -28,7 +28,7 @@ import pystella as ps
 import pytest
 
 from pyopencl.tools import (  # noqa
-        pytest_generate_tests_for_pyopencl as pytest_generate_tests)
+    pytest_generate_tests_for_pyopencl as pytest_generate_tests)
 
 
 @pytest.mark.filterwarnings(
@@ -52,12 +52,14 @@ def test_stencil(ctx_factory, grid_shape, proc_shape, dtype, stream, h=1,
     i, j, k = var('i'), var('j'), var('k')
 
     map_dict = {}
-    map_dict[y[i, j, k]] = x[i + h + h, j + h, k + h] \
-                           + x[i + h, j + h + h, k + h] \
-                           + x[i + h, j + h, k + h + h] \
-                           + x[i - h + h, j + h, k + h] \
-                           + x[i + h, j - h + h, k + h] \
-                           + x[i + h, j + h, k - h + h]
+    map_dict[y[i, j, k]] = (
+        x[i + h + h, j + h, k + h]
+        + x[i + h, j + h + h, k + h]
+        + x[i + h, j + h, k + h + h]
+        + x[i - h + h, j + h, k + h]
+        + x[i + h, j - h + h, k + h]
+        + x[i + h, j + h, k - h + h]
+    )
 
     if stream:
         try:
@@ -73,20 +75,22 @@ def test_stencil(ctx_factory, grid_shape, proc_shape, dtype, stream, h=1,
     y = clr.rand(queue, rank_shape, dtype)
 
     x_h = x.get()
-    y_true = (x_h[2*h:, h:-h, h:-h]
-              + x_h[h:-h, 2*h:, h:-h]
-              + x_h[h:-h, h:-h, 2*h:]
-              + x_h[:-2*h, h:-h, h:-h]
-              + x_h[h:-h, :-2*h, h:-h]
-              + x_h[h:-h, h:-h, :-2*h])
+    y_true = (
+        x_h[2*h:, h:-h, h:-h]
+        + x_h[h:-h, 2*h:, h:-h]
+        + x_h[h:-h, h:-h, 2*h:]
+        + x_h[:-2*h, h:-h, h:-h]
+        + x_h[h:-h, :-2*h, h:-h]
+        + x_h[h:-h, h:-h, :-2*h]
+    )
 
     stencil_map(queue, x=x, y=y)
 
     rtol = 5.e-14 if dtype == np.float64 else 1.e-5
 
     assert np.allclose(y.get(), y_true, rtol=rtol, atol=0), \
-           "average innaccurate for grid_shape=%s, halo_shape=%s, proc_shape=%s" \
-           % (grid_shape, h, proc_shape)
+        "average innaccurate for grid_shape=%s, halo_shape=%s, proc_shape=%s" \
+        % (grid_shape, h, proc_shape)
 
     if timing:
         from common import timer

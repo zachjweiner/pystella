@@ -28,7 +28,7 @@ import pystella as ps
 import pytest
 
 from pyopencl.tools import (  # noqa
-        pytest_generate_tests_for_pyopencl as pytest_generate_tests)
+    pytest_generate_tests_for_pyopencl as pytest_generate_tests)
 
 
 @pytest.mark.parametrize("h", [1, 2])
@@ -88,8 +88,8 @@ def test_scalar_energy(ctx_factory, grid_shape, proc_shape, h, dtype, timing=Fal
 
     for key, value in energy.items():
         assert np.allclose(value, energy_test[key], rtol=rtol, atol=0), \
-               "%s energy inaccurate for nscalars=%d, grid_shape=%s, proc_shape=%s" \
-               % (key, nscalars, grid_shape, proc_shape)
+            "%s energy inaccurate for nscalars=%d, grid_shape=%s, proc_shape=%s" \
+            % (key, nscalars, grid_shape, proc_shape)
 
     if timing:
         from common import timer

@@ -28,7 +28,7 @@ import pystella as ps
 import pytest
 
 from pyopencl.tools import (  # noqa
-        pytest_generate_tests_for_pyopencl as pytest_generate_tests)
+    pytest_generate_tests_for_pyopencl as pytest_generate_tests)
 
 
 @pytest.mark.filterwarnings(
@@ -75,7 +75,7 @@ def test_histogram(ctx_factory, grid_shape, proc_shape, dtype, timing=False):
     err = np.abs((res - np_res) / np.maximum(np.abs(res), np.abs(np_res)))
 
     assert np.max(err) < max_rtol and np.average(err) < avg_rtol, \
-           "Histogrammer inaccurate for grid_shape=%s" % (grid_shape,)
+        "Histogrammer inaccurate for grid_shape=%s" % (grid_shape,)
 
     res = result['squared']
     np_res = np.histogram(fx_h, bins=np.linspace(0, 1, num_bins+1),
@@ -84,7 +84,7 @@ def test_histogram(ctx_factory, grid_shape, proc_shape, dtype, timing=False):
     err = np.abs((res - np_res) / np.maximum(np.abs(res), np.abs(np_res)))
 
     assert np.max(err) < max_rtol and np.average(err) < avg_rtol, \
-           "Histogrammer with weights inaccurate for grid_shape=%s" % (grid_shape,)
+        "Histogrammer with weights inaccurate for grid_shape=%s" % (grid_shape,)
 
     if timing:
         from common import timer

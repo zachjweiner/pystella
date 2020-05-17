@@ -30,7 +30,7 @@ import pystella as ps
 import pytest
 
 from pyopencl.tools import (  # noqa
-        pytest_generate_tests_for_pyopencl as pytest_generate_tests)
+    pytest_generate_tests_for_pyopencl as pytest_generate_tests)
 
 
 @pytest.mark.filterwarnings(

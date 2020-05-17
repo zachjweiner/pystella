@@ -33,7 +33,7 @@ import pytest
 from test_rayleigh import is_hermitian
 
 from pyopencl.tools import (  # noqa
-        pytest_generate_tests_for_pyopencl as pytest_generate_tests)
+    pytest_generate_tests_for_pyopencl as pytest_generate_tests)
 
 
 @pytest.mark.parametrize("h", [1, 2, 3, 4])

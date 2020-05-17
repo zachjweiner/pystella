@@ -28,7 +28,7 @@ import pystella as ps
 import pytest
 
 from pyopencl.tools import (  # noqa
-        pytest_generate_tests_for_pyopencl as pytest_generate_tests)
+    pytest_generate_tests_for_pyopencl as pytest_generate_tests)
 
 
 def make_data(*shape):
@@ -108,7 +108,7 @@ def test_spectra(ctx_factory, grid_shape, proc_shape, dtype, L, timing=False):
     # skip the Nyquist mode and the zero mode
     err = np.abs((spectrum[1:-2] - hist[1:-2]) / hist[1:-2])
     assert np.max(err) < max_rtol and np.average(err) < avg_rtol, \
-           "power spectrum inaccurate for grid_shape=%s" % (grid_shape,)
+        "power spectrum inaccurate for grid_shape=%s" % (grid_shape,)
 
     if timing:
         from common import timer
@@ -170,11 +170,11 @@ def test_pol_spectra(ctx_factory, grid_shape, proc_shape, dtype, timing=False):
     # skip the Nyquist mode and the zero mode
     err = np.abs((plus_ps_1[1:-2] - plus_ps_2[1:-2]) / plus_ps_1[1:-2])
     assert np.max(err) < max_rtol and np.average(err) < avg_rtol, \
-           "plus power spectrum inaccurate for grid_shape=%s" % (grid_shape,)
+        "plus power spectrum inaccurate for grid_shape=%s" % (grid_shape,)
 
     err = np.abs((minus_ps_1[1:-2] - minus_ps_2[1:-2]) / minus_ps_1[1:-2])
     assert np.max(err) < max_rtol and np.average(err) < avg_rtol, \
-           "minus power spectrum inaccurate for grid_shape=%s" % (grid_shape,)
+        "minus power spectrum inaccurate for grid_shape=%s" % (grid_shape,)
 
     hij = cl.clrandom.rand(queue, (6,)+rank_shape, dtype)
     gw_spec = spec.gw(hij, project, 1.3)
@@ -186,7 +186,7 @@ def test_pol_spectra(ctx_factory, grid_shape, proc_shape, dtype, timing=False):
     diff = gw_spec - gw_pol_spec[0] - gw_pol_spec[1]
     err = diff[1:-1] / gw_spec[1:-1]
     assert np.max(err) < max_rtol and np.average(err) < avg_rtol, \
-           "gw pol don't add up to gw for grid_shape=%s" % (grid_shape,)
+        "gw pol don't add up to gw for grid_shape=%s" % (grid_shape,)
 
 
 if __name__ == "__main__":

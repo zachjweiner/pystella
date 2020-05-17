@@ -29,7 +29,7 @@ import pystella as ps
 import pytest
 
 from pyopencl.tools import (  # noqa
-        pytest_generate_tests_for_pyopencl as pytest_generate_tests)
+    pytest_generate_tests_for_pyopencl as pytest_generate_tests)
 
 
 @pytest.mark.parametrize("dtype", ['float64', 'complex128'])
@@ -72,13 +72,13 @@ def test_dft(ctx_factory, grid_shape, proc_shape, dtype, timing=False):
 
         rtol = 1.e-11 if dtype in ('float64', 'complex128') else 2.e-3
         assert np.allclose(fx1, fx2 / grid_size, rtol=rtol, atol=0), \
-                "IDFT(DFT(f)) != f for grid_shape=%s" % (grid_shape,)
+            "IDFT(DFT(f)) != f for grid_shape=%s" % (grid_shape,)
 
         assert np.allclose(fk_np, fk1, rtol=rtol, atol=0), \
-                "DFT disagrees with numpy for grid_shape=%s" % (grid_shape,)
+            "DFT disagrees with numpy for grid_shape=%s" % (grid_shape,)
 
         assert np.allclose(fx_np, fx2 / grid_size, rtol=rtol, atol=0), \
-                "IDFT disagrees with numpy for grid_shape=%s" % (grid_shape,)
+            "IDFT disagrees with numpy for grid_shape=%s" % (grid_shape,)
     else:
         mpi0 = ps.DomainDecomposition(proc_shape, 0, rank_shape)
         if mpi0.rank == 0:
@@ -101,7 +101,7 @@ def test_dft(ctx_factory, grid_shape, proc_shape, dtype, timing=False):
         if mpi.rank == 0:
             rtol = 1.e-11 if dtype in ('float64', 'complex128') else 2.e-3
             assert np.allclose(fx1, fx2 / grid_size, rtol=rtol, atol=0), \
-                    "IDFT(DFT(f)) != f for grid_shape=%s" % (grid_shape,)
+                "IDFT(DFT(f)) != f for grid_shape=%s" % (grid_shape,)
 
             # assert np.allclose(fk_np, fk1, rtol=rtol, atol=0), \
             #         "DFT disagrees with numpy for grid_shape=%s" % (grid_shape,)

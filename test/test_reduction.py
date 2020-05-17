@@ -28,7 +28,7 @@ import pystella as ps
 import pytest
 
 from pyopencl.tools import (  # noqa
-        pytest_generate_tests_for_pyopencl as pytest_generate_tests)
+    pytest_generate_tests_for_pyopencl as pytest_generate_tests)
 
 
 @pytest.mark.parametrize("dtype", [np.float64, np.float32])
@@ -76,8 +76,8 @@ def test_reduction(ctx_factory, grid_shape, proc_shape, dtype, op,
 
     rtol = 5.e-14 if dtype == np.float64 else 1.e-5
     assert np.allclose(avg, avg_test, rtol=rtol, atol=0), \
-            "%s reduction innaccurate for grid_shape=%s, proc_shape=%s" \
-            % (op, grid_shape, proc_shape)
+        "%s reduction innaccurate for grid_shape=%s, proc_shape=%s" \
+        % (op, grid_shape, proc_shape)
 
     if timing:
         from common import timer
@@ -121,8 +121,8 @@ def test_reduction_with_new_shape(ctx_factory, grid_shape, proc_shape, dtype, op
 
     rtol = 5.e-14 if dtype == np.float64 else 1.e-5
     assert np.allclose(avg, avg_test, rtol=rtol, atol=0), \
-            "%s reduction innaccurate for grid_shape=%s, proc_shape=%s" \
-            % (op, grid_shape, proc_shape)
+        "%s reduction innaccurate for grid_shape=%s, proc_shape=%s" \
+        % (op, grid_shape, proc_shape)
 
     # test call to reducer with new shape
     grid_shape = tuple(Ni // 2 for Ni in grid_shape)
@@ -137,8 +137,8 @@ def test_reduction_with_new_shape(ctx_factory, grid_shape, proc_shape, dtype, op
 
     rtol = 5.e-14 if dtype == np.float64 else 1.e-5
     assert np.allclose(avg, avg_test, rtol=rtol, atol=0), \
-            "%s reduction w/new shape innaccurate for grid_shape=%s, proc_shape=%s" \
-            % (op, grid_shape, proc_shape)
+        "%s reduction w/new shape innaccurate for grid_shape=%s, proc_shape=%s" \
+        % (op, grid_shape, proc_shape)
 
 
 @pytest.mark.parametrize("dtype", [np.float64])
@@ -184,12 +184,12 @@ def test_field_statistics(ctx_factory, grid_shape, proc_shape, dtype, _grid_shap
     rtol = 5.e-14 if dtype == np.float64 else 1.e-5
 
     assert np.allclose(avg, avg_test, rtol=rtol, atol=0), \
-            "average innaccurate for grid_shape=%s, proc_shape=%s" \
-            % (grid_shape, proc_shape)
+        "average innaccurate for grid_shape=%s, proc_shape=%s" \
+        % (grid_shape, proc_shape)
 
     assert np.allclose(var, var_test, rtol=rtol, atol=0), \
-            "variance innaccurate for grid_shape=%s, proc_shape=%s" \
-            % (grid_shape, proc_shape)
+        "variance innaccurate for grid_shape=%s, proc_shape=%s" \
+        % (grid_shape, proc_shape)
 
     if timing:
         from common import timer

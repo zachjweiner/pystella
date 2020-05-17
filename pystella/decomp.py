@@ -102,8 +102,8 @@ class DomainDecomposition:
         """
 
         self.proc_shape = proc_shape
-        self.halo_shape = (halo_shape,)*3 if isinstance(halo_shape, int) \
-                          else halo_shape
+        self.halo_shape = ((halo_shape,)*3 if isinstance(halo_shape, int)
+                           else halo_shape)
         self.buffer_arrays = {}
         self.rank_shape = rank_shape
 

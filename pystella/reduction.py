@@ -22,7 +22,7 @@ THE SOFTWARE.
 
 
 import numpy as np
-import pyopencl.array as cla  # noqa: F401
+import pyopencl.array as cla
 import loopy as lp
 from pystella.elementwise import ElementWiseMap
 
@@ -44,7 +44,7 @@ def get_mpi_reduction_op(op):
         "prod": MPI.PROD,
         "max": MPI.MAX,
         "min": MPI.MIN,
-        }
+    }
 
     if op in _MPI_REDUCTION_OPS:
         return _MPI_REDUCTION_OPS[op]
@@ -59,7 +59,7 @@ def get_numpy_reduction_op(op):
         "prod": np.prod,
         "max": np.max,
         "min": np.min,
-        }
+    }
 
     if op in _NUMPY_REDUCTION_OPS:
         return _NUMPY_REDUCTION_OPS[op]
@@ -73,7 +73,7 @@ def get_cl_reduction_op(op):
         "sum": cla.sum,
         "max": cla.max,
         "min": cla.min,
-        }
+    }
 
     if op in _CL_REDUCTION_OPS:
         return _CL_REDUCTION_OPS[op]

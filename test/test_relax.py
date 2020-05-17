@@ -29,7 +29,7 @@ import pystella as ps
 import pytest
 
 from pyopencl.tools import (  # noqa
-        pytest_generate_tests_for_pyopencl as pytest_generate_tests)
+    pytest_generate_tests_for_pyopencl as pytest_generate_tests)
 
 from pystella.multigrid import JacobiIterator, NewtonIterator
 
@@ -120,7 +120,7 @@ def test_relax(ctx_factory, grid_shape, proc_shape, h, dtype, Solver, timing=Fal
 
     for k, errs in errors.items():
         errs = np.array(errs)
-        iters = np.arange(1, errs.shape[0]+1)  # pylint: disable=E1136
+        iters = np.arange(1, errs.shape[0]+1)
         assert (errs[10:, 0] * iters[10:] / errs[0, 0] < 1.).all(), \
             "relaxation not converging at least linearly for " \
             "grid_shape=%s, h=%d, proc_shape=%s" \

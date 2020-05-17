@@ -29,11 +29,12 @@ import pystella as ps
 import pytest
 
 from pyopencl.tools import (  # noqa
-        pytest_generate_tests_for_pyopencl as pytest_generate_tests)
-
+    pytest_generate_tests_for_pyopencl as pytest_generate_tests)
 
 # this only tests Stepper's correctness as an ODE solver
 from pystella.step import all_steppers
+
+
 @pytest.mark.parametrize("dtype", [np.float64])
 @pytest.mark.parametrize("Stepper", all_steppers)
 def test_step(ctx_factory, proc_shape, dtype, Stepper):
@@ -104,7 +105,7 @@ def test_step(ctx_factory, proc_shape, dtype, Stepper):
         order = stepper.expected_order
         rtol = dtlist[-1]**order if dtype == np.float64 else 1.e-1
         assert list(max_errs.values())[-1] < rtol, \
-               "Stepper solution inaccurate for n=%f" % (n)
+            "Stepper solution inaccurate for n=%f" % (n)
 
         for a, b in zip(dtlist[:-1], dtlist[1:]):
             assert max_errs[a] / max_errs[b] > .9 * (a/b)**order, \

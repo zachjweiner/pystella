@@ -26,7 +26,7 @@ import pystella as ps
 import pytest
 
 from pyopencl.tools import (  # noqa
-        pytest_generate_tests_for_pyopencl as pytest_generate_tests)
+    pytest_generate_tests_for_pyopencl as pytest_generate_tests)
 
 
 @pytest.mark.parametrize("dtype", [np.float64])
@@ -70,10 +70,10 @@ def test_expansion(ctx_factory, proc_shape, dtype, Stepper, timing=False):
               expand.constraint(energy(expand.a[slc])))
 
         assert np.allclose(expand.a[slc], sol(w, t), rtol=rtol, atol=0), \
-                "FLRW solution inaccurate for w=%f" % (w)
+            "FLRW solution inaccurate for w=%f" % (w)
 
         assert expand.constraint(energy(expand.a[slc])) < rtol, \
-                "FLRW solution disobeying constraint for w=%f" % (w)
+            "FLRW solution disobeying constraint for w=%f" % (w)
 
 
 if __name__ == "__main__":
