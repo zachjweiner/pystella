@@ -51,7 +51,7 @@ write_git_revision("pystella")
 
 setup(
     name="pystella",
-    version="2019.6",
+    version="2020.1",
     description="A code generator for grid-based PDE solving on CPUs and GPUs",
     long_description=open("README.rst", "rt").read(),
     install_requires=[
