@@ -10,6 +10,8 @@ pystella: a distributed and accelerated framework for PDE solving
 .. image:: https://readthedocs.org/projects/pystella/badge/?version=latest
     :target: https://pystella.readthedocs.io/en/latest/?badge=latest
     :alt: Documentation Status
+.. image:: https://badge.fury.io/py/pystella.svg
+    :target: https://badge.fury.io/py/pystella
 
 ``pystella`` enables the easy expression of both PDE systems and the algorithms
 to solve them in high-performance computing environments within Python.

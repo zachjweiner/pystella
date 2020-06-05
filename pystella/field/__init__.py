@@ -125,7 +125,7 @@ class Field(pp.AlgebraicLeaf):
 
     .. autoattribute:: index_tuple
 
-    .. versionchanged:: 2019.6
+    .. versionchanged:: 2020.1
 
         Added :attr:`shape`.
     """
@@ -217,7 +217,7 @@ class DynamicField(Field):
 
     .. automethod:: d
 
-    .. versionchanged:: 2019.6
+    .. versionchanged:: 2020.1
 
         Specifying the names of :attr:`dot`, :attr:`lap`, and :attr:`pd` was
         replaced by passing actual :class:`Field` instances.
@@ -407,7 +407,7 @@ def index_fields(expr, prepend_with=None):
         :attr:`ignore_prepends` set to *False*. Passed by keyword.
         Defaults to an empty :class:`tuple`.
 
-    .. versionadded:: 2019.6
+    .. versionadded:: 2020.1
 
         Replaced :func:`Indexer`.
     """
@@ -432,7 +432,7 @@ def shift_fields(expr, shift):
 
     :arg shift: A :class:`tuple`.
 
-    .. versionadded:: 2019.6
+    .. versionadded:: 2020.1
     """
 
     return Shifter()(expr, shift=shift)
@@ -511,7 +511,7 @@ def get_field_args(expressions, unpadded_shape=None, prepend_with=None):
         >>> [lp.GlobalArg('f', shape='(Nx+2*h, Ny+2*h, Nz+2*h)', offset=lp.auto),
         ...  lp.GlobalArg('g', shape='(3, a, Nx+2, Ny+2, Nz+2)', offset=lp.auto)]
 
-    .. versionchanged:: 2019.6
+    .. versionchanged:: 2020.1
 
         Uses :attr:`Field.shape` to determine the full array shape.
     """

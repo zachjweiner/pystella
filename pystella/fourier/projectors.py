@@ -337,7 +337,7 @@ class Projector:
 
         :returns: The :class:`pyopencl.Event` associated with the kernel invocation.
 
-        .. versionadded:: 2019.6
+        .. versionadded:: 2020.1
         """
 
         evt, _ = self.tensor_to_pol_knl(queue, **self.eff_mom,
@@ -364,7 +364,7 @@ class Projector:
 
         :returns: The :class:`pyopencl.Event` associated with the kernel invocation.
 
-        .. versionadded:: 2019.6
+        .. versionadded:: 2020.1
         """
 
         evt, _ = self.pol_to_tensor_knl(queue, **self.eff_mom,

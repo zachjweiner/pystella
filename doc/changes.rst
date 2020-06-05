@@ -3,12 +3,8 @@ User-visible Changes
 
 .. currentmodule:: pystella
 
-Version 2019.6
+Version 2020.1
 --------------
-
-.. note::
-
-    This version is currently under development.
 
 * :func:`Indexer` renamed to :func:`index_fields`.
 * :meth:`Sector.get_args` deprecated in favor of using

@@ -43,7 +43,7 @@ class PowerSpectra:
     .. automethod:: gw
     .. automethod:: gw_polarization
 
-    .. versionchanged:: 2019.6
+    .. versionchanged:: 2020.1
 
         Support for complex fields.
     """
@@ -351,7 +351,7 @@ class PowerSpectra:
         :returns: A :class:`numpy.ndarray` containing
             :math:`\\Delta_{h_\\lambda}^2(k)` with shape ``(2, num_bins)``.
 
-        .. versionadded:: 2019.6
+        .. versionadded:: 2020.1
         """
 
         queue = queue or hij.queue

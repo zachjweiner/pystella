@@ -310,7 +310,7 @@ class pDFT(BaseDFT):
 
     .. automethod:: __init__
 
-    .. versionchanged:: 2019.6
+    .. versionchanged:: 2020.1
 
         Support for complex-to-complex transforms.
     """
@@ -394,7 +394,7 @@ class gDFT(BaseDFT):
 
     .. automethod:: __init__
 
-    .. versionchanged:: 2019.6
+    .. versionchanged:: 2020.1
 
         Support for complex-to-complex transforms.
     """

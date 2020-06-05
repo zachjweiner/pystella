@@ -189,7 +189,7 @@ class ElementWiseMap:
 
         Any remaining keyword arguments are passed to :func:`loopy.make_kernel`.
 
-        .. versionchanged:: 2019.6
+        .. versionchanged:: 2020.1
 
             Arguments ``map_instructions`` and ``tmp_instructions`` replaced
             ``map_dict`` and ``tmp_dict`` and are allowed to be :class:`list`'s

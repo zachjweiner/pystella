@@ -116,7 +116,7 @@ class SpectralPoissonSolver:
             linear term in the Poisson equation to be solved.
             Defaults to ``0``.
 
-        .. versionchanged:: 2019.6
+        .. versionchanged:: 2020.1
 
             Added `m_squared` to support solving with a linear term :math:`m^2 f`.
         """

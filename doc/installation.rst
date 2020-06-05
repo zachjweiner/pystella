@@ -8,6 +8,11 @@ Installation
 At the bare minimum, :mod:`pystella` requires :mod:`numpy`,
 :mod:`loopy` for code generation, and :mod:`pyopencl`
 (plus an OpenCL implementation) for kernel execution.
+This minimal installation can be achieved with ``pip``;
+to do so, you must first install :mod:`loopy` from GitHub::
+
+    python -m pip install git+https://github.com/inducer/loopy pystella
+
 Optional dependencies (and what they are needed for) are:
 
 * :mod:`mpi4py` (and an MPI implementation) for distributed, multi-device execution
@@ -23,52 +28,46 @@ Optional dependencies (and what they are needed for) are:
 * :mod:`sympy`, to interoperate with :mod:`pymbolic`
 
 Fortunately, :mod:`conda` greatly simplifies the installation process of any
-of these dependencies.
-The included :file:`environment.yml` file provides a complete
-installation by default, but one can remove any optional dependencies.
+of these dependencies (especially those which are not available on PyPI).
+The included `environment file <https://github.com/zachjweiner/pystella/blob/master/environment.yml>`_
+provides a complete installation.
 
-Note that installation has only been tested on Linux, but similar steps should work
-on macOS.
 
-Installation steps
-------------------
-
-Install via the following steps
-(first modifying :file:`environment.yml` as desired):
+Steps for a complete installation
+---------------------------------
 
 1. Install `miniconda <https://docs.conda.io/en/latest/miniconda.html>`_ (if you
    haven't already installed :mod:`conda`).
 
-2. Clone the repository::
+2. Create a :mod:`pystella` environment as specified by :file:`environment.yml`::
 
-    git clone https://github.com/zachjweiner/pystella.git
-
-3. Create a :mod:`pystella` environment as specified by :file:`environment.yml`::
-
-    conda env create --file pystella/environment.yml
+    conda env create --file environment.yml
 
    -  This will clone and install (i.e., as if via
       :command:`python setup.py install`) :mod:`gpyfft` and :mod:`loopy` into
-      :command:`src/`. To change this, first define the environment variable
-      :command:`PIP_SRC` to be your desired directory,
+      :command:`src/`. You may want to first define the environment variable
+      :command:`PIP_SRC` to set your desired source directory,
       e.g., to your home directory with::
 
         export PIP_SRC=~
 
   Alternatively, update your active environment via::
 
-    conda env update --file pystella/environment.yml
+    conda env update --file environment.yml
 
-4. Activate the environment (if you created a new one)::
+3. Activate the environment (if you created a new one)::
 
     conda activate pystella
 
-  and set up :mod:`pystella`::
+You can also clone the repository from GitHub to obtain::
 
-    cd pystella/ && python setup.py develop
+    git clone https://github.com/zachjweiner/pystella.git
+    cd pystella; pip install -e .
 
 To test that installation was successful, try running an example
-(e.g., :code:`python examples/scalar-preheating.py`) or run the tests with :mod:`pytest`.
+(e.g., :code:`python examples/scalar-preheating.py`) or run the tests with :mod:`pytest`
+(if you cloned the source).
+
 
 Running on other devices (GPUs, etc.)
 -------------------------------------
@@ -87,19 +86,15 @@ the :file:`nvidia.icd` file via::
 
     cp /etc/OpenCL/vendors/nvidia.icd $CONDA_PREFIX/etc/OpenCL/vendors
 
+
 Using an existing MPI implementation
 ------------------------------------
 
 To enable MPI support without :mod:`conda` installing its own MPI implementation
 (e.g., to use the optimized implementation already provided on a cluster, etc.),
-simply move :mod:`mpi4py` (and :mod:`mpi4py_fft`) below the :code:`pip` line
-in :file:`environment.yml`::
+simply install :mod:`mpi4py` (and :mod:`mpi4py_fft`, if desired) from PyPI::
 
-    ...
-    - pip:
-      - mpi4py
-      - mpi4py-fft
-     ...
+    python -m pip install mpi4py mpi4pyfft
 
 :mod:`pip`-installing :mod:`mpi4py` assumes that :code:`mpicc` is available
 (check the output of :code:`which mpicc`).

@@ -72,7 +72,7 @@ class RayleighGenerator:
     .. automethod:: generate_WKB
     .. automethod:: init_WKB_fields
 
-    .. versionchanged:: 2019.6
+    .. versionchanged:: 2020.1
 
         Support for generating complex fields.
     """
