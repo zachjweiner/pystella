@@ -100,9 +100,6 @@ class Expansion:
                                    halo_shape=0, dtype=dtype,
                                    target=lp.ExecutableCTarget())
 
-        if self.is_low_storage:
-            self.k_tmp = np.zeros(shape=(2,), dtype=dtype)
-
     def adot_friedmann_1(self, a, energy):
         """
         :arg a: The current scale factor, :math:`a`.
@@ -157,8 +154,6 @@ class Expansion:
 
         arg_dict = dict(a=self.a, adot=self.adot, dt=dt,
                         energy=energy, pressure=pressure)
-        if self.is_low_storage:
-            arg_dict['k_tmp'] = self.k_tmp
 
         self.stepper(stage, **arg_dict)
         self.hubble[()] = self.adot / self.a

@@ -230,11 +230,9 @@ from time import time
 start = time()
 last_out = time()
 
-k_tmp = cla.empty(queue, (stepper.num_unknowns,)+rank_shape, dtype)
-
 while t < end_time and expand.a[0] < end_scale_factor:
     for s in range(stepper.num_stages):
-        stepper(s, queue=queue, k_tmp=k_tmp, a=expand.a, hubble=expand.hubble,
+        stepper(s, queue=queue, a=expand.a, hubble=expand.hubble,
                 f=f, dfdt=dfdt, dfdx=dfdx, lap_f=lap_f,
                 hij=hij, dhijdt=dhijdt, lap_hij=lap_hij, filter_args=True)
         expand.step(s, energy['total'], energy['pressure'], dt)

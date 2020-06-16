@@ -26,6 +26,7 @@ import loopy as lp
 from pystella.field import Field, index_fields
 from pystella.elementwise import ElementWiseMap
 from pymbolic import var
+from pymbolic.primitives import Subscript, Variable
 
 __doc__ = """
 .. currentmodule:: pystella.step
@@ -216,7 +217,6 @@ class RungeKuttaStepper(Stepper):
             for i, f in enumerate(self.rhs_dict.keys()):
                 # ensure that key is either a Field or a Subscript of a Field
                 # so that index_fields can prepend the q index
-                from pymbolic.primitives import Subscript
                 key_has_field = False
                 if isinstance(f, Field):
                     key_has_field = True
@@ -414,6 +414,33 @@ class RungeKutta2Ralston(RungeKuttaStepper):
             return {fq[0]: fq[0] + dt*3/4 * rhs}
 
 
+def get_name(expr):
+    if isinstance(expr, Field):
+        return get_name(expr.child)
+    elif isinstance(expr, Subscript):
+        return get_name(expr.aggregate)
+    elif isinstance(expr, Variable):
+        return expr.name
+    elif isinstance(expr, str):
+        return expr
+
+
+def gen_tmp_name(expr):
+    name = get_name(expr)
+    return '_' + name + '_tmp'
+
+
+def copy_and_rename(expr):
+    if isinstance(expr, Field):
+        return expr.copy(child=copy_and_rename(expr.child))
+    elif isinstance(expr, Subscript):
+        return Subscript(copy_and_rename(expr.aggregate), expr.index)
+    elif isinstance(expr, Variable):
+        return Variable(gen_tmp_name(expr))
+    elif isinstance(expr, str):
+        return gen_tmp_name(expr)
+
+
 class LowStorageRKStepper(Stepper):
     """
     The base implementation of low-storage, explicit Runge-Kutta time steppers,
@@ -423,36 +450,45 @@ class LowStorageRKStepper(Stepper):
     The substeps are expressed in a standard form, drawing coefficients from
     a subclass's provided values of :attr:`_A`, :attr:`_B`, and :attr:`_C`.
 
-    .. automethod:: __call__
+    Allocation of the auxillary arrays is handled internally by:
+
+    .. automethod:: get_tmp_arrays_like
+
+    :meth:`get_tmp_arrays_like` is called the first time
+    :meth:`__call__` is  called, with the result stored in the attribute
+    :attr:`tmp_arrays`.
+    These arrays must not be modified between substages of a single timestep,
+    but may be safely modified in between timesteps.
+
+    .. versionchanged:: 2020.2
+
+        Auxillary arrays handled internally by :meth:`get_tmp_arrays_like`.
+        Previously, manual allocation (and passing) of a single temporary
+        array ``k_tmp`` was required.
     """
 
     _A = []
     _B = []
     _C = []
 
+    tmp_arrays = {}
+
     def make_steps(self, MapKernel=ElementWiseMap, **kwargs):
         rhs = var('rhs')
         dt = var('dt')
 
-        # filter out indices for zero axes
-        test_array = list(self.rhs_dict.keys())[0]
-        from pymbolic.primitives import Subscript
-        if isinstance(test_array, Subscript):
-            if isinstance(test_array.aggregate, Field):
-                test_array = test_array.aggregate
-        k = Field('k_tmp', indices=test_array.indices, shape=(self.num_unknowns,))
-
+        # collect all field arguments
+        tmp_arrays = [copy_and_rename(key) for key in self.rhs_dict.keys()]
+        self.dof_names = set([get_name(key) for key in self.rhs_dict.keys()])
         rhs_statements = {rhs[i]: value
                           for i, value in enumerate(self.rhs_dict.values())}
 
         steps = []
         for stage in range(self.num_stages):
             RK_dict = {}
-            for i, key in enumerate(self.rhs_dict.keys()):
-                f = key
-                k_i = k[i]
-                RK_dict[k_i] = self._A[stage] * k_i + dt * rhs[i]
-                RK_dict[f] = f + self._B[stage] * k_i
+            for i, (f, k) in enumerate(zip(self.rhs_dict.keys(), tmp_arrays)):
+                RK_dict[k] = self._A[stage] * k + dt * rhs[i]
+                RK_dict[f] = f + self._B[stage] * k
 
             step = MapKernel(RK_dict, tmp_instructions=rhs_statements,
                              args=self.args, **kwargs)
@@ -460,28 +496,36 @@ class LowStorageRKStepper(Stepper):
 
         return steps
 
-    def __call__(self, stage, *, k_tmp, queue=None, **kwargs):
+    def get_tmp_arrays_like(self, **kwargs):
         """
-        Same as :meth:`Stepper.__call__`, but requires the
-        following arguments:
+        Allocates required temporary arrays matching those passed via keyword.
 
-        :arg k_tmp: The array used for temporary
-            calculations. Its outer-/left-most axis (i.e., the axis of largest
-            stride) must have length equal to the total number of unknowns,
-            which may be obtained from :attr:`num_unknowns`.
-            Passed by keyword only.
+        :returns: A :class:`dict` of named arrays, suitable for passing via
+            dictionary expansion.
 
-        For example::
-
-            >>> stepper = LowStorageRK54(rhs_dict)
-            >>> import pyopencl.array as cla
-            >>> temp_shape = (stepper.num_unknowns,) + rank_shape
-            >>> k_tmp = cla.zeros(queue, temp_shape, 'float64')
-            >>> for stage in range(stepper.num_stages):
-            ...    stepper(stage, queue, k_tmp=k_tmp, ...)
+        .. versionadded:: 2020.2
         """
 
-        return super().__call__(stage, queue=queue, k_tmp=k_tmp, **kwargs)
+        tmp_arrays = {}
+        for name in self.dof_names:
+            f = kwargs[name]
+            tmp_name = gen_tmp_name(name)
+            import pyopencl.array as cla
+            if isinstance(f, cla.Array):
+                tmp_arrays[tmp_name] = cla.zeros_like(f)
+            elif isinstance(f, np.ndarray):
+                tmp_arrays[tmp_name] = np.zeros_like(f)
+            else:
+                raise ValueError("Could not generate tmp array for %s of type %s"
+                                 % (f, type(f)))
+
+        return tmp_arrays
+
+    def __call__(self, stage, *, queue=None, **kwargs):
+        if len(self.tmp_arrays) == 0:
+            self.tmp_arrays = self.get_tmp_arrays_like(**kwargs)
+
+        return super().__call__(stage, queue=queue, **kwargs, **self.tmp_arrays)
 
 
 class LowStorageRK54(LowStorageRKStepper):

@@ -3,6 +3,16 @@ User-visible Changes
 
 .. currentmodule:: pystella
 
+Version 2020.2
+--------------
+
+.. note::
+
+    This version is currently under development.
+
+* Low-storage Runge-Kutta timesteppers handle temporary arrays internally
+  and no longer constrain all degrees of freedom to have identical datatypes and shapes.
+
 Version 2020.1
 --------------
 

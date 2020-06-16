@@ -56,13 +56,10 @@ rhs_dict = {
 stepper = ps.LowStorageRK54(rhs_dict, dt=dt, halo_shape=halo_shape)
 derivs = ps.FiniteDifferencer(decomp, halo_shape, dx)
 
-# temporary array for low-storage integrator
-k_tmp = cla.empty(queue, (stepper.num_unknowns,)+rank_shape, dtype)
-
 t = 0.
 # loop over time
 while t < 10.:
     for s in range(stepper.num_stages):
         derivs(queue, fx=f, lap=lap_f)
-        stepper(s, queue=queue, k_tmp=k_tmp, f=f, dfdt=dfdt, lap_f=lap_f)
+        stepper(s, queue=queue, f=f, dfdt=dfdt, lap_f=lap_f)
     t += dt
