@@ -123,7 +123,17 @@ class Field(pp.AlgebraicLeaf):
         :func:`shift_fields` may specify offset array accesses by modifying
         :attr:`offset`.
 
+    .. attribute:: dtype
+
+        The datatype of the field.
+        Defaults to *None*, in which case datatypes are inferred by :mod:`loopy`
+        at kernel invocation.
+
     .. autoattribute:: index_tuple
+
+    .. versionchanged:: 2020.2
+
+        Added :attr:`dtype`.
 
     .. versionchanged:: 2020.1
 
@@ -131,10 +141,10 @@ class Field(pp.AlgebraicLeaf):
     """
 
     init_arg_names = ('child', 'offset', 'shape', 'indices',
-                      'ignore_prepends', 'base_offset')
+                      'ignore_prepends', 'base_offset', 'dtype')
 
     def __init__(self, child, offset=0, shape=tuple(), indices=('i', 'j', 'k'),
-                 ignore_prepends=False, base_offset=None):
+                 ignore_prepends=False, base_offset=None, dtype=None):
         self.child = parse_if_str(child)
         if isinstance(self.child, pp.Subscript):
             self.name = self.child.aggregate.name
@@ -153,6 +163,7 @@ class Field(pp.AlgebraicLeaf):
         self.indices = tuple(parse_if_str(i) for i in indices)
         self.shape = shape
         self.ignore_prepends = ignore_prepends
+        self.dtype = dtype
 
     def __getinitargs__(self):
         return (self.child, self.offset, self.shape, self.indices,
@@ -224,21 +235,23 @@ class DynamicField(Field):
     """
 
     init_arg_names = ('child', 'offset', 'shape', 'indices', 'base_offset',
-                      'dot', 'lap', 'pd')
+                      'dot', 'lap', 'pd', 'dtype')
 
     def __init__(self, child, offset='0', shape=tuple(), indices=('i', 'j', 'k'),
-                 base_offset=None, dot=None, lap=None, pd=None):
+                 base_offset=None, dot=None, lap=None, pd=None, dtype=None):
         super().__init__(child, offset=offset, indices=indices,
-                         base_offset=base_offset, shape=shape)
+                         base_offset=base_offset, shape=shape, dtype=dtype)
 
         self.dot = dot or Field('d%sdt' % str(child), shape=shape,
-                                offset=offset, indices=indices)
+                                offset=offset, indices=indices, dtype=dtype)
 
         self.lap = lap or Field('lap_%s' % str(child), shape=shape,
-                                offset=0, indices=indices, ignore_prepends=True)
+                                offset=0, indices=indices, ignore_prepends=True,
+                                dtype=dtype)
 
         self.pd = pd or Field('d%sdx' % str(child), shape=shape+(3,),
-                              offset=0, indices=indices, ignore_prepends=True)
+                              offset=0, indices=indices, ignore_prepends=True,
+                              dtype=dtype)
 
     def __getinitargs__(self):
         return (self.child, self.offset, self.shape, self.indices, self.base_offset,
@@ -533,7 +546,8 @@ def get_field_args(expressions, unpadded_shape=None, prepend_with=None):
         if full_shape == tuple():
             arg = lp.ValueArg(f.name)
         else:
-            arg = lp.GlobalArg(f.name, shape=full_shape, offset=lp.auto)
+            arg = lp.GlobalArg(f.name, shape=full_shape, offset=lp.auto,
+                               dtype=f.dtype)
 
         if f.name in field_args:
             other_arg = field_args[f.name]
