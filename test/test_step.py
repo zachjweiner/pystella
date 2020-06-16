@@ -182,6 +182,19 @@ def test_low_storage_edge_codegen_and_tmp_alloc(ctx_factory, proc_shape, dtype=N
     stepper(1, queue=queue, y=y)
     assert tmp_for_check is stepper.tmp_arrays['_y_tmp']
 
+    rhs_dict = {
+        ps.Field('y'): 1,
+        ps.Field('z'): 1,
+    }
+    stepper = LowStorageRK54(rhs_dict, dt=.1, halo_shape=0)
+    y = cla.zeros(queue, (12, 12, 12), 'float64')
+    z = cla.zeros(queue, (12, 12, 12), 'complex128')
+    tmp_arrays = stepper.get_tmp_arrays_like(y=y, z=z)
+    assert tmp_arrays['_y_tmp'].shape == y.shape
+    assert tmp_arrays['_y_tmp'].dtype == y.dtype
+    assert tmp_arrays['_z_tmp'].shape == z.shape
+    assert tmp_arrays['_z_tmp'].dtype == z.dtype
+
 
 if __name__ == "__main__":
     test_low_storage_edge_codegen_and_tmp_alloc(None, (1, 1, 1), np.float64)

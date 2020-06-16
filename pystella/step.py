@@ -425,9 +425,9 @@ def get_name(expr):
         return expr
 
 
-def gen_tmp_name(expr):
+def gen_tmp_name(expr, prefix='_', suffix='_tmp'):
     name = get_name(expr)
-    return '_' + name + '_tmp'
+    return prefix + name + suffix
 
 
 def copy_and_rename(expr):
@@ -474,20 +474,17 @@ class LowStorageRKStepper(Stepper):
     tmp_arrays = {}
 
     def make_steps(self, MapKernel=ElementWiseMap, **kwargs):
-        rhs = var('rhs')
-        dt = var('dt')
-
-        # collect all field arguments
         tmp_arrays = [copy_and_rename(key) for key in self.rhs_dict.keys()]
         self.dof_names = set([get_name(key) for key in self.rhs_dict.keys()])
-        rhs_statements = {rhs[i]: value
-                          for i, value in enumerate(self.rhs_dict.values())}
+        rhs_statements = {var(gen_tmp_name(key, suffix=f'_rhs_{i}')): val
+                          for i, (key, val) in enumerate(self.rhs_dict.items())}
 
         steps = []
         for stage in range(self.num_stages):
             RK_dict = {}
             for i, (f, k) in enumerate(zip(self.rhs_dict.keys(), tmp_arrays)):
-                RK_dict[k] = self._A[stage] * k + dt * rhs[i]
+                rhs = var(gen_tmp_name(f, suffix=f'_rhs_{i}'))
+                RK_dict[k] = self._A[stage] * k + var('dt') * rhs
                 RK_dict[f] = f + self._B[stage] * k
 
             step = MapKernel(RK_dict, tmp_instructions=rhs_statements,
