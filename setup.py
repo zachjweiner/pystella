@@ -56,7 +56,7 @@ setup(
     long_description=open("README.rst", "rt").read(),
     install_requires=[
         "numpy",
-        "pyopencl",
+        "pyopencl>=2020.2",
         "loo.py>=2018.2",
     ],
     author="Zachary J Weiner",
