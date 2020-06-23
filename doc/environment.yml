@@ -1,0 +1,11 @@
+channels:
+- conda-forge
+- defaults
+
+dependencies:
+- python=3
+- pip
+- pyopencl
+
+- pip:
+    - git+https://github.com/inducer/loopy.git

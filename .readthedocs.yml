@@ -12,10 +12,12 @@ sphinx:
 # Non-HTML is useless until the docs are much longer
 formats: []
 
+conda:
+  environment: doc/environment.yml
+
 python:
   version: 3.8
   install:
-    - requirements: doc/requirements.txt
     - method: setuptools
       path: .
   system_packages: false

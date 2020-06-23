@@ -1,4 +1,0 @@
-numpy
-pyopencl==2020.1
-git+git://github.com/inducer/loopy@master#egg=loo.py
-sphinx==2.2.0
