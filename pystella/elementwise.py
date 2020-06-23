@@ -139,24 +139,24 @@ class ElementWiseMap:
         """
         :arg map_instructions: A :class:`list` of instructions which write to global
             arrays.
-            Entries may be :class:`loopy.Assignment`'s or tuples
+            Entries may be :class:`loopy.Assignment`\\ s or :class:`tuple`\\ s
             ``(assignee, expression)`` of :mod:`pymbolic` expressions, the latter
-            of which can include :class:`Field`'s.
+            of which can include :class:`Field`\\ s.
             All entries will be processed with :func:`index_fields`.
 
         The following keyword-only arguments are recognized:
 
         :arg tmp_instructions: A :class:`list` of instructions
             which write to temporary variables (i.e., local or private memory).
-            Entries may be :class:`loopy.Assignment`'s or tuples
+            Entries may be :class:`loopy.Assignment`\\ s or :class:`tuple`\\ s
             ``(assignee, expression)`` of :mod:`pymbolic` expressions, the latter
-            of which can include :class:`Field`'s.
+            of which can include :class:`Field`\\ s.
             The expressions will be processed with :func:`index_fields`.
             The statements produced from ``tmp_instructions`` will precede those of
             ``map_instructions``, and :class:`loopy.TemporaryVariable` arguments
             will be inferred as needed.
 
-        :arg args: A list of :class:`loopy.KernelArgument`'s
+        :arg args: A list of :class:`loopy.KernelArgument`\\ s
             to be specified to :func:`loopy.make_kernel`.
             By default, all arguments (and their shapes) are inferred using
             :func:`get_field_args`, while any remaining (i.e., non-:class:`Field`)
@@ -165,7 +165,7 @@ class ElementWiseMap:
             of the above options.
 
         :arg dtype: The default datatype of arrays to assume.
-            Will only be applied to all :class:`loopy.KernelArgument`'s
+            Will only be applied to all :class:`loopy.KernelArgument`\\ s
             whose datatypes were not already specified by any input ``args``.
             Defaults to *None*.
 
@@ -192,8 +192,8 @@ class ElementWiseMap:
         .. versionchanged:: 2020.1
 
             Arguments ``map_instructions`` and ``tmp_instructions`` replaced
-            ``map_dict`` and ``tmp_dict`` and are allowed to be :class:`list`'s
-            with entries of :class:`loopy.Assignment`'s and/or tuples.
+            ``map_dict`` and ``tmp_dict`` and are allowed to be :class:`list`\\ s
+            with entries of :class:`loopy.Assignment`\\ s and/or :class:`tuple`\\ s.
         """
 
         if 'map_dict' in kwargs:

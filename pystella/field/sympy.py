@@ -115,24 +115,25 @@ class SympyToPymbolicMapperWithField(SympyToPymbolicMapperMathLookup):
             return f
 
 
-#: A mapper which converts :class:`pymbolic.primitives.Expression`'s into
-#: :mod:`sympy` expressions and understands :class:`~pystella.Field`'s.
+#: A mapper which converts :class:`pymbolic.primitives.Expression`\\ s into
+#: :mod:`sympy` expressions and understands :class:`~pystella.Field`\\ s.
 #: The result can be converted back to a :class:`pymbolic.primitives.Expression`
-#: with all :class:`~pystella.Field`'s in place, accomplished via a subclass
+#: with all :class:`~pystella.Field`\\ s in place, accomplished via a subclass
 #: of :class:`sympy.Symbol` which retains a copy of the :class:`~pystella.Field`.
 #:
 #: :arg expr: The :mod:`pymbolic` expression to be mapped.
 #:
 #: .. warning::
 #:
-#:    Currently, :class:`~pystella.Field`'s of the form
+#:    Currently, :class:`~pystella.Field`\\ s of the form
 #:    ``Field('f[0]')`` will not be processed correctly.
 #:
 pymbolic_to_sympy = PymbolicToSympyMapperWithField()
 
 #: A mapper which converts :mod:`sympy` expressions into
-#: :class:`pymbolic.primitives.Expression`'s and understands the custom :mod:`sympy`
-#: type used to represent :class:`~pystella.Field`'s by :func:`pymbolic_to_sympy`.
+#: :class:`pymbolic.primitives.Expression`\\ s and understands the
+#: custom :mod:`sympy` type used to represent
+#: :class:`~pystella.Field`\\ s by :func:`pymbolic_to_sympy`.
 #:
 #: :arg expr: The :mod:`sympy` expression to be mapped.
 #:
@@ -141,7 +142,7 @@ pymbolic_to_sympy = PymbolicToSympyMapperWithField()
 #:    Currently, any modifications to the indices of a :class:`SympyField`
 #:    will not be reflected when mapped back to a :class:`~pystella.Field`.
 #:    Use :class:`pymbolic.primitives.Subscript` instead (i.e., process
-#:    :class:`~pystella.Field`'s with :func:`~pystella.index_fields` first).
+#:    :class:`~pystella.Field`\\ s with :func:`~pystella.index_fields` first).
 #:
 sympy_to_pymbolic = SympyToPymbolicMapperWithField()
 

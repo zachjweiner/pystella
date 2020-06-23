@@ -111,7 +111,7 @@ class ScalarSector(Sector):
         :arg f: The :class:`DynamicField` of scalar fields.
             Defaults to ``DynamicField('f', offset='h', shape=(nscalars,))``.
 
-        :arg potential: A :class:`callable` which takes as input a
+        :arg potential: A :class:`~collections.abc.Callable` which takes as input a
             :mod:`pymbolic` expression or a :class:`list` thereof, returning
             the potential of the scalar fields.
             Defaults to ``lambda x: 0``.
@@ -186,7 +186,7 @@ class TensorPerturbationSector:
 
     def __init__(self, sectors, **kwargs):
         """
-        :arg sectors: The :class:`Sector`'s whose :meth:`~Sector.stress_tensor`'s
+        :arg sectors: The :class:`Sector`\\ s whose :meth:`~Sector.stress_tensor`\\ s
             source the tensor perturbations.
 
         The following keyword-only arguments are recognized:

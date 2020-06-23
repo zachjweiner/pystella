@@ -410,13 +410,13 @@ def index_fields(expr, prepend_with=None):
     """
     Appends subscripts to :class:`Field`
     instances in an expression, turning them into ordinary
-    :class:`pymbolic.primitives.Subscript`'s.
+    :class:`pymbolic.primitives.Subscript`\\ s.
     See the documentation of :class:`Field` for examples.
 
     :arg expr: The expression(s) to be mapped.
 
     :arg prepend_with: A :class:`tuple` of indices to prepend to the subscript
-        of any :class:`Field`'s in ``expr`` (unless a given :class:`Field` has
+        of any :class:`Field`\\ s in ``expr`` (unless a given :class:`Field` has
         :attr:`ignore_prepends` set to *False*. Passed by keyword.
         Defaults to an empty :class:`tuple`.
 
@@ -438,7 +438,7 @@ class Shifter(IdentityMapper):
 
 def shift_fields(expr, shift):
     """
-    Returns an expression with all :class:`Field`'s shifted by ``shift``--i.e.,
+    Returns an expression with all :class:`Field`\\ s shifted by ``shift``--i.e.,
     with ``shift`` added elementwise to each :class:`Field`'s ``offset`` attribute.
 
     :arg expr: The expression(s) to be mapped.
@@ -493,26 +493,27 @@ class FieldCollector(CombineMapper, Collector):
 
 def get_field_args(expressions, unpadded_shape=None, prepend_with=None):
     """
-    Collects all :class:`~pystella.Field`'s from ``expressions`` and returns a
-    corresponding list of :class:`loopy.ArrayArg`'s, using their ``offset``
+    Collects all :class:`~pystella.Field`\\ s from ``expressions`` and returns a
+    corresponding list of :class:`loopy.ArrayArg`\\ s, using their ``offset``
     and ``shape`` attributes to determine their full shape.
 
     :arg expressions: The expressions from which to collect
-        :class:`~pystella.Field`'s.
+        :class:`~pystella.Field`\\ s.
 
     The following keyword arguments are recognized:
 
-    :arg unpadded_shape: The shape of :class:`~pystella.Field`'s in ``expressions``
+    :arg unpadded_shape: The shape of :class:`~pystella.Field`\\ s in ``expressions``
         (sans padding).
         Defaults to ``(Nx, Ny, Nz)``.
 
     :arg prepend_with: A :class:`tuple` to prepend to the shape
-        of any :class:`Field`'s in ``expressions`` (unless a given :class:`Field` has
+        of any :class:`Field`\\ s in ``expressions``
+        (unless a given :class:`Field` has
         :attr:`ignore_prepends` set to *False*.
         Passed by keyword.
         Defaults to an empty :class:`tuple`.
 
-    :returns: A :class:`list` of :class:`loopy.ArrayArg`'s.
+    :returns: A :class:`list` of :class:`loopy.ArrayArg`\\ s.
 
     Example::
 

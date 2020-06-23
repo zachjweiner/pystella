@@ -111,9 +111,9 @@ class Stepper:
             * a :class:`~pystella.Sector`. In this case, the right-hand side
               dictionary will be obtained from :attr:`~pystella.Sector.rhs_dict`.
 
-            * a :class:`list` of :class:`~pystella.Sector`'s. In this case, the input
-              obtained from each :class:`~pystella.Sector` (as described above) will
-              be combined.
+            * a :class:`list` of :class:`~pystella.Sector`\\ s. In this case,
+              the input obtained from each :class:`~pystella.Sector`
+              (as described above) will be combined.
 
         The following keyword arguments are recognized:
 
@@ -190,7 +190,7 @@ class RungeKuttaStepper(Stepper):
         *globally* (unless otherwise noted).
 
     :raises ValueError: if the keys of :attr:`rhs_dict` are not
-        :class:`~pystella.Field`'s (or :class:`pymbolic.primitives.Subscript`'s
+        :class:`~pystella.Field`\\ s (or :class:`pymbolic.primitives.Subscript`\\ s
         thereof). This is required for :meth:`make_steps` to be able to prepend
         unknown arrays' subscripts with the index corresponding to the temporary
         storage axis.

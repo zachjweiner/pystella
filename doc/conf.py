@@ -69,7 +69,7 @@ intersphinx_mapping = {
     'mpi4py': ('https://mpi4py.readthedocs.io/en/stable/', None),
     'h5py': ('http://docs.h5py.org/en/stable/', None),
     'mpi4py_fft': ('https://mpi4py-fft.readthedocs.io/en/latest/', None),
-    }
+}
 
 latex_elements = {
     'maxlistdepth': '99',
@@ -173,4 +173,4 @@ def linkcode_resolve(domain, info):
     fn = relpath(fn, start=dirname(pystella.__file__))
 
     return "https://github.com/zachjweiner/pystella/blob/master/pystella/%s%s" % (
-           fn, linespec)
+           fn, linespec)  # noqa

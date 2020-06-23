@@ -56,7 +56,8 @@ class SpectralPoissonSolver:
 
         :arg dx: A 3-:class:`tuple` specifying the grid spacing of each axis.
 
-        :arg effective_k: A :class:`callable` with signature ``(k, dx)`` returning
+        :arg effective_k: A :class:`~collections.abc.Callable` with signature
+            ``(k, dx)`` returning
             the eigenvalue of the second-difference stencil corresponding to
             :math:`\\nabla^2`.
             That is, the solver is implemented relative to the stencil

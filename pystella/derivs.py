@@ -41,7 +41,7 @@ def expand_stencil(f, coefs):
     :arg f: A :class:`~pystella.Field`.
 
     :arg coefs: A :class:`dict` whose values are the coefficients of the stencil
-        at an offset given by the key. The keys must be 3-:class:`tuple`'s, and the
+        at an offset given by the key. The keys must be 3-:class:`tuple`\\ s, and the
         values may be :mod:`pymbolic` expressions or constants.
 
     Example::
@@ -214,7 +214,7 @@ class FiniteDifferencer:
 
         The following keyword-only arguments are recognized:
 
-        :arg first_stencil: A :class:`callable` with signature
+        :arg first_stencil: A :class:`~collections.abc.Callable` with signature
             ``(f, direction)`` where f is a :class:`Field` and ``direction``
             indicates the spatial axis (1, 2, or 3) along which the stencil is taken,
             returning the (symbolic) first-order stencil.

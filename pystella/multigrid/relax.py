@@ -79,8 +79,8 @@ class RelaxationBase:
         :arg queue: A :class:`pyopencl.CommandQueue`.
 
         :arg lhs_dict: A :class:`dict` representing the set of equations to be
-            solved, whose keys must be :class:`~pystella.Field`'s representing the
-            unknown degrees of freedom and values are :class:`tuple`'s
+            solved, whose keys must be :class:`~pystella.Field`\\ s representing the
+            unknown degrees of freedom and values are :class:`tuple`\\ s
             ``(lhs, rho)`` representing the left-hand side :math:`L(f)`
             and right-hand side :math:`\\rho` of that unknown's equation.
 
@@ -90,13 +90,13 @@ class RelaxationBase:
             be instances of---i.e., one of :class:`~pystella.ElementWiseMap` or its
             subclasses. Defaults to :class:`~pystella.Stencil`.
 
-        :arg unknown_args: A list of :class:`loopy.ArrayArg`'s representing
+        :arg unknown_args: A list of :class:`loopy.ArrayArg`\\ s representing
             the unknown degrees of freedom.
             Defaults to *None*, in which case the correct arguments
             (in particular, their shapes) are (attempted to be) inferred
             from the keys of ``lhs_dict``.
 
-        :arg rho_args: A list of :class:`loopy.ArrayArg`'s representing
+        :arg rho_args: A list of :class:`loopy.ArrayArg`\\ s representing
             the static right-hand side arrays (i.e., those independent
             of the degrees of freedom).
             Defaults to *None*, in which case the correct arguments
@@ -250,7 +250,7 @@ class RelaxationBase:
 
         All required arrays must be passed by keyword.
 
-        :returns: A :class:`dict` whose values are :class:`list`'s of the
+        :returns: A :class:`dict` whose values are :class:`list`\\ s of the
             :math:`L_\\infty` (maximum absolute) and :math:`L_2` (Euclidean)
             norms of the residual equation corresponding to the unknown denoted
             by the keys of the dictionary.

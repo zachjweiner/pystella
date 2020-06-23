@@ -47,7 +47,8 @@ class Projector:
         :arg fft: An FFT object as returned by :func:`DFT`.
             ``grid_shape`` and ``dtype`` are determined by ``fft``'s attributes.
 
-        :arg effective_k: A :class:`callable` with signature ``(k, dx)`` returning
+        :arg effective_k: A :class:`~collections.abc.Callable`
+            with signature ``(k, dx)`` returning
             the effective momentum of the corresponding stencil :math:`\\Delta`,
             i.e., :math:`k_\\mathrm{eff}` such that
             :math:`\\Delta e^{i k x} = i k_\\mathrm{eff} e^{i k x}`.

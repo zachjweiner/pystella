@@ -95,7 +95,7 @@ class OutputFile(h5py.File):
 
         Versions and git revisions (when available) of :mod:`pystella` and its
         dependencies are saved as ``'versions'`` and ``'git_revs'``
-        :class:`h5py:Dataset`'s. The hostname is recorded in the ``'hostname'``
+        :class:`h5py:Dataset`\\ s. The hostname is recorded in the ``'hostname'``
         key of the :attr:`attrs` dictionary.
         """
 
@@ -138,9 +138,10 @@ class OutputFile(h5py.File):
             self.attrs['runfile'] = content
 
         # output current dependency versions
-        dependencies = ['pystella', 'numpy', 'scipy',
+        dependencies = {'pystella', 'numpy', 'scipy',
                         'pyopencl', 'loo.py', 'pymbolic',
-                        'mpi4py', 'gpyfft', 'mpi4py_fft', 'h5py']
+                        'mpi4py', 'gpyfft', 'mpi4py_fft', 'h5py'}
+        dependencies |= set(kwargs.pop('dependencies', {}))
         versions, git_revs = get_versions(dependencies)
 
         self.create_group('versions')

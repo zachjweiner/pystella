@@ -69,7 +69,7 @@ def mu_cycle(mu, i, nu1, nu2, max_depth):
     :arg max_depth: The lowest level to traverse to.
 
     :returns: A generic multigrid cycle in the form of a :class:`list` of
-        :class:`tuple`'s ``(level, iterations)``, representing the order of levels
+        :class:`tuple`\\ s ``(level, iterations)``, representing the order of levels
         to visit and how many smoothing iterations to perform on each.
     """
 
@@ -98,7 +98,7 @@ def v_cycle(nu1, nu2, max_depth):
     :arg max_depth: The lowest level to traverse to.
 
     :returns: A V-cycle in the form of a :class:`list` of
-        :class:`tuple`'s ``(level, iterations)``, representing the order of levels
+        :class:`tuple`\\ s ``(level, iterations)``, representing the order of levels
         to visit and how many smoothing iterations to perform on each.
     """
 
@@ -124,7 +124,7 @@ def w_cycle(nu1, nu2, max_depth):
     :arg max_depth: The lowest level to traverse to.
 
     :returns: A W-cycle in the form of a :class:`list` of
-        :class:`tuple`'s ``(level, iterations)``, representing the order of levels
+        :class:`tuple`\\ s ``(level, iterations)``, representing the order of levels
         to visit and how many smoothing iterations to perform on each.
     """
 
@@ -156,7 +156,7 @@ def f_cycle(nu1, nu2, max_depth):
     :arg max_depth: The lowest level to traverse to.
 
     :returns: An F-cycle in the form of a :class:`list` of
-        :class:`tuple`'s ``(level, iterations)``, representing the order of levels
+        :class:`tuple`\\ s ``(level, iterations)``, representing the order of levels
         to visit and how many smoothing iterations to perform on each.
     """
 
@@ -307,7 +307,7 @@ class FullApproximationScheme:
     def coarse_level_like(self, dict_1):
         """
         A wrapper to :meth:`coarse_array_like` with returns a :class:`dict`
-        like ``dict_1`` whose values are new :class:`pyopencl.array.Array`'s
+        like ``dict_1`` whose values are new :class:`pyopencl.array.Array`\\ s
         with shape appropriate for the next-coarser level.
         """
 

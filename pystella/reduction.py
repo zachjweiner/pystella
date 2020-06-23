@@ -104,7 +104,7 @@ class Reduction(ElementWiseMap):
             * a :class:`dict`. The output of :meth:`__call__` will be a dictionary
               with the same keys whose values are the corresponding reductions
               of the :class:`dict`'s values. The values may either be lists of
-              :mod:`pymbolic` expressions or a lists of :class:`tuple`'s
+              :mod:`pymbolic` expressions or a lists of :class:`tuple`\\ s
               ``(expr, op)``, where ``expr`` is a :mod:`pymbolic` expression and
               ``op`` is the reduction operation to perform. Valid options are
               ``'avg'`` (default), ``'sum'``, ``'prod'``, ``'max'``, and ``'min'``.
@@ -112,7 +112,7 @@ class Reduction(ElementWiseMap):
             * a :class:`Sector`. In this case, the reduction dictionary will be
               obtained from :attr:`Sector.reducers`.
 
-            * a :class:`list` of :class:`Sector`'s. In this case, the input
+            * a :class:`list` of :class:`Sector`\\ s. In this case, the input
               obtained from each :class:`Sector` (as described above) will be
               combined.
 
@@ -124,7 +124,8 @@ class Reduction(ElementWiseMap):
             Defaults to *None*, in which case it will be inferred at
             :meth:`__call__` (if averages are being performed).
 
-        :arg callback: A :class:`callable` used to process the reduction results
+        :arg callback: A :class:`~collections.abc.Callable`
+            used to process the reduction results
             before :meth:`__call__` returns.
             Defaults to ``lambda x: x``, i.e., doing nothing.
         """

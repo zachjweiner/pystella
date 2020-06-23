@@ -40,7 +40,7 @@ def DFT(decomp, context, queue, grid_shape, dtype, **kwargs):
     A wrapper to the creation of various FFT class options which determines
     whether to use :class:`pystella.fourier.gDFT` (for single-device, OpenCL-based
     FFTs via :mod:`gpyfft`) or :class:`pystella.fourier.pDFT`
-    (for distributed, CPU FFTs via :class:`mpi4py_fft.PFFT`),
+    (for distributed, CPU FFTs via :class:`mpi4py_fft.mpifft.PFFT`),
     based on the processor shape ``proc_shape`` attribute of ``decomp``
     and a flag ``use_fftw``.
 
@@ -91,6 +91,14 @@ class BaseDFT:
     .. automethod:: dft
     .. automethod:: idft
     .. automethod:: zero_corner_modes
+
+    .. attribute:: fx
+
+        The (default) position-space array for transforms.
+
+    .. attribute:: fk
+
+        The (default) momentum-space array for transforms.
     """
 
     # pylint: disable=no-member
@@ -303,7 +311,7 @@ def get_sliced_momenta(grid_shape, dtype, slc, queue):
 
 class pDFT(BaseDFT):
     """
-    A wrapper to :class:`mpi4py_fft.PFFT` to compute distributed Fast Fourier
+    A wrapper to :class:`mpi4py_fft.mpifft.PFFT` to compute distributed Fast Fourier
     transforms.
 
     See :class:`pystella.fourier.dft.BaseDFT`.
@@ -330,7 +338,7 @@ class pDFT(BaseDFT):
             The complex datatype for momentum-space arrays is chosen to have
             the same precision.
 
-        Any keyword arguments are passed to :meth:`mpi4py_fft.PFFT.__init__()`.
+        Any keyword arguments are passed to :class:`mpi4py_fft.mpifft.PFFT`.
         """
 
         self.decomp = decomp

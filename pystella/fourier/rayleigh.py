@@ -196,7 +196,7 @@ class RayleighGenerator:
             of mode amplitudes.
             Defaults to *True*.
 
-        :arg field_ps: A :class:`callable` returning the desired
+        :arg field_ps: A :class:`~collections.abc.Callable` returning the desired
             power spectrum of the field as a function of momentum ``kmag``.
             Defaults to the Bunch-Davies vacuum,
             ``lambda kmag: 1/2/kmag``.
@@ -205,8 +205,8 @@ class RayleighGenerator:
             power spectra.
             Defaults to ``1``.
 
-        :arg window: A :class:`callable` window function filtering initial mode
-            amplitudes.
+        :arg window: A :class:`~collections.abc.Callable` window function
+            filtering initial mode amplitudes.
             Defaults to ``lambda kmag: 1``, i.e., no filter.
 
         :returns: An :class:`numpy.ndarray` containing the generated Fourier modes
@@ -294,10 +294,12 @@ class RayleighGenerator:
 
         :arg vector: The array in which the vector field will be stored.
 
-        :arg plus_ps: A :class:`callable` returning the power spectrum of the
+        :arg plus_ps: A :class:`~collections.abc.Callable`
+            returning the power spectrum of the
             plus polarization as a function of momentum ``kmag``.
 
-        :arg minus_ps: A :class:`callable` returning the power spectrum of the
+        :arg minus_ps: A :class:`~collections.abc.Callable`
+            returning the power spectrum of the
             minus polarization as a function of momentum ``kmag``.
 
         The following keyword arguments are recognized:
@@ -335,13 +337,13 @@ class RayleighGenerator:
         Arguments match those of :meth:`generate`, with the following
         exceptions/additions:
 
-        :arg field_ps: A :class:`callable` returning the desired
+        :arg field_ps: A :class:`~collections.abc.Callable` returning the desired
             power spectrum of the field as a function of :math:`\\omega(k)``.
             Defaults to the Bunch-Davies vacuum, ``lambda wk: 1/2/wk``,
             where ``wk=omega_k(kmag)``.
 
-        :arg omega_k: A :class:`callable` defining the dispersion relation
-            of the field.
+        :arg omega_k: A :class:`~collections.abc.Callable` defining the
+            dispersion relation of the field.
             Defaults to ``lambda kmag: kmag``.
 
         :arg hubble: The value of the (conformal) Hubble parameter to use in

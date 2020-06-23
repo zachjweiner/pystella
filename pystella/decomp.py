@@ -500,7 +500,7 @@ class DomainDecomposition:
         .. note::
 
             Since :meth:`share_halos` is not currently implemented for
-            :class:`numpy.ndarray`'s, this method does not automatically
+            :class:`numpy.ndarray`\\ s, this method does not automatically
             share halos after they are restored.
             Thus, halos must be shared manually after the fact (for now).
 
@@ -546,7 +546,7 @@ class DomainDecomposition:
         .. note::
 
             Since :meth:`share_halos` is not currently implemented for
-            :class:`numpy.ndarray`'s, this method does not automatically
+            :class:`numpy.ndarray`\\ s, this method does not automatically
             share halos after scattering.
             Thus, halos must be shared manually after the fact (for now).
 

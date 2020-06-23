@@ -57,7 +57,7 @@ class FieldDifferentiationMapper(DifferentiationMapper):
 def diff(f, *x, allowed_nonsmoothness='discontinuous'):
     """
     A differentiator which computes :math:`\\partial f / \\partial x` and understands
-    :class:`Field`'s. If ``x`` is one of ``t``, ``x``, ``y``, or ``z`` and ``f``
+    :class:`Field`\\ s. If ``x`` is one of ``t``, ``x``, ``y``, or ``z`` and ``f``
     is a :class:`DynamicField`, the corresponding derivative :class:`Field` is
     returned.
 
