@@ -255,9 +255,21 @@ class FiniteDifferencer:
         common_args = dict(halo_shape=halo_shape, prefetch_args=['fx'],
                            rank_shape=rank_shape)
 
+        if rank_shape is not None:
+            if rank_shape[2] % 64 == 0:
+                lsize_z = (64, 2, 2)
+            elif rank_shape[2] % 32 == 0:
+                lsize_z = (32, 4, 2)
+            elif rank_shape[2] % 16 == 0:
+                lsize_z = (16, 8, 2)
+            else:
+                raise ValueError("grid dimensions must be divisble by 16")
+        else:
+            lsize_z = (64, 2, 2)
+
         self.pdx_knl = Stencil(pdx, lsize=(16, 2, 16), **common_args)
         self.pdy_knl = Stencil(pdy, lsize=(16, 16, 2), **common_args)
-        self.pdz_knl = Stencil(pdz, lsize=(64, 2, 2), **common_args)
+        self.pdz_knl = Stencil(pdz, lsize=lsize_z, **common_args)
 
         pdx_incr, pdy_incr, pdz_incr = (
             {Field('div'): Field('div') + first_stencil(fx, i+1) * (1/dxi)}
@@ -266,7 +278,7 @@ class FiniteDifferencer:
 
         self.pdx_incr_knl = Stencil(pdx_incr, lsize=(16, 2, 16), **common_args)
         self.pdy_incr_knl = Stencil(pdy_incr, lsize=(16, 16, 2), **common_args)
-        self.pdz_incr_knl = Stencil(pdz_incr, lsize=(64, 2, 2), **common_args)
+        self.pdz_incr_knl = Stencil(pdz_incr, lsize=lsize_z, **common_args)
 
         if stream:
             common_args['lsize'] = (16, 4, 8)

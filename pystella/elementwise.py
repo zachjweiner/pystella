@@ -254,6 +254,7 @@ class ElementWiseMap:
             )
 
         self.knl = self.parallelize(knl, self.lsize)
+        self.knl = lp.remove_unused_inames(self.knl)
 
     def __call__(self, queue=None, filter_args=False, **kwargs):
         """
