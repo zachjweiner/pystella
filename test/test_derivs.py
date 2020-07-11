@@ -50,7 +50,8 @@ def test_gradient_laplacian(ctx_factory, grid_shape, proc_shape, h, dtype,
 
     queue = cl.CommandQueue(ctx)
     rank_shape = tuple(Ni // pi for Ni, pi in zip(grid_shape, proc_shape))
-    mpi = ps.DomainDecomposition(proc_shape, h, rank_shape)
+    mpi = ps.DomainDecomposition(proc_shape, h, grid_shape=grid_shape)
+    rank_shape, start = mpi.get_rank_shape_start(grid_shape)
 
     L = (3, 5, 7)
     dx = tuple(Li / Ni for Li, Ni in zip(L, grid_shape))
@@ -83,8 +84,8 @@ def test_gradient_laplacian(ctx_factory, grid_shape, proc_shape, h, dtype,
     # set up test data
     fx_h = np.empty(pencil_shape, dtype)
     kvec = np.array(dk) * np.array([-5, 4, -3]).astype(dtype)
-    xvec = np.meshgrid(*[dxi * np.arange(ri*ni, (ri+1)*ni)
-                         for dxi, ri, ni in zip(dx, mpi.rank_tuple, rank_shape)],
+    xvec = np.meshgrid(*[dxi * np.arange(si, si + ni)
+                         for dxi, si, ni in zip(dx, start, rank_shape)],
                        indexing='ij')
 
     phases = sum(ki * xi for ki, xi in zip(kvec, xvec))

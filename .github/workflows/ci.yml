@@ -71,3 +71,4 @@ jobs:
                 curl -L -O -k https://gitlab.tiker.net/inducer/ci-support/raw/master/build-py-project-within-miniconda.sh
                 . ./build-py-project-within-miniconda.sh
                 mpiexec --oversubscribe -np 4 pytest --proc_shape 2,2,1 -rw --durations=10 --tb=native -rxs
+                mpiexec --oversubscribe -np 3 pytest test/test_decomp.py test/test_derivs.py --proc_shape 3,1,1 -rw --durations=10 --tb=native -rxs

@@ -242,10 +242,6 @@ class ElementWiseMap:
         knl = self.make_kernel(self.map_instructions, self.tmp_instructions,
                                self.args, domains, **kernel_kwargs)
 
-        if rank_shape is not None:
-            knl = lp.fix_parameters(
-                knl, Nx=rank_shape[0], Ny=rank_shape[1], Nz=rank_shape[2]
-            )
         if isinstance(halo_shape, int):
             knl = lp.fix_parameters(knl, h=halo_shape)
         elif isinstance(halo_shape, (tuple, list)):
@@ -253,8 +249,12 @@ class ElementWiseMap:
                 knl, hx=halo_shape[0], hy=halo_shape[1], hz=halo_shape[2]
             )
 
-        self.knl = self.parallelize(knl, self.lsize)
-        self.knl = lp.remove_unused_inames(self.knl)
+        knl = self.parallelize(knl, self.lsize)
+        if rank_shape is not None:
+            knl = lp.fix_parameters(
+                knl, Nx=rank_shape[0], Ny=rank_shape[1], Nz=rank_shape[2]
+            )
+        self.knl = lp.remove_unused_inames(knl)
 
     def __call__(self, queue=None, filter_args=False, **kwargs):
         """

@@ -35,16 +35,17 @@ from pyopencl.tools import (  # noqa
 params = [
     (1, None, True),
     (1, (128, 64, 32), True),
+    (1, (109, 67, 32), True),
     (1, None, False),
     ((2, 0, 3), None, True),
     ((0, 2, 1), None, True),
 ]
 
 
-@pytest.mark.parametrize("h, _grid_shape, pass_rank_shape", params)
+@pytest.mark.parametrize("h, _grid_shape, pass_grid_shape", params)
 @pytest.mark.parametrize("dtype", [np.float64])
 def test_share_halos(ctx_factory, grid_shape, proc_shape, h, dtype,
-                     _grid_shape, pass_rank_shape, timing=False):
+                     _grid_shape, pass_grid_shape, timing=False):
     if ctx_factory:
         ctx = ctx_factory()
     else:
@@ -55,10 +56,10 @@ def test_share_halos(ctx_factory, grid_shape, proc_shape, h, dtype,
 
     queue = cl.CommandQueue(ctx)
     grid_shape = _grid_shape or grid_shape
-    rank_shape = tuple(Ni // pi for Ni, pi in zip(grid_shape, proc_shape))
     mpi = ps.DomainDecomposition(
-        proc_shape, h, rank_shape=(rank_shape if pass_rank_shape else None)
+        proc_shape, h, grid_shape=(grid_shape if pass_grid_shape else None)
     )
+    rank_shape, substart = mpi.get_rank_shape_start(grid_shape)
 
     # data will be same on each rank
     rng = clr.ThreefryGenerator(ctx, seed=12321)
@@ -76,8 +77,8 @@ def test_share_halos(ctx_factory, grid_shape, proc_shape, h, dtype,
         data[:, :, -h[2]:] = data[:, :, h[2]:2*h[2]]
 
     subdata = np.empty(tuple(ni + 2*hi for ni, hi in zip(rank_shape, h)), dtype)
-    rank_slice = tuple(slice(ri * ni + hi, (ri+1) * ni + hi)
-                       for ri, ni, hi in zip(mpi.rank_tuple, rank_shape, h))
+    rank_slice = tuple(slice(si + hi, si + ni + hi)
+                       for ni, si, hi in zip(rank_shape, substart, h))
     unpadded_slc = tuple(slice(hi, -hi) if hi > 0 else slice(None) for hi in h)
     subdata[unpadded_slc] = data[rank_slice]
 
@@ -85,13 +86,13 @@ def test_share_halos(ctx_factory, grid_shape, proc_shape, h, dtype,
     mpi.share_halos(queue, subdata_device)
     subdata2 = subdata_device.get()
 
-    pencil_slice = tuple(slice(ri * ni, (ri+1) * ni + 2*hi)
-                         for ri, ni, hi in zip(mpi.rank_tuple, rank_shape, h))
+    pencil_slice = tuple(slice(si, si + ri + 2*hi)
+                         for ri, si, hi in zip(rank_shape, substart, h))
     assert (subdata2 == data[pencil_slice]).all(), \
         "rank %d %s has incorrect halo data \n" % (mpi.rank, mpi.rank_tuple)
 
     # test that can call with different-shaped input
-    if not pass_rank_shape:
+    if not pass_grid_shape:
         subdata_device_new = clr.rand(
             queue, tuple(ni//2 + 2*hi for ni, hi in zip(rank_shape, h)), dtype
         )
@@ -106,10 +107,10 @@ def test_share_halos(ctx_factory, grid_shape, proc_shape, h, dtype,
                   % (t, grid_shape, h, proc_shape))
 
 
-@pytest.mark.parametrize("h, _grid_shape, pass_rank_shape", params)
+@pytest.mark.parametrize("h, _grid_shape, pass_grid_shape", params)
 @pytest.mark.parametrize("dtype", [np.float64])
 def test_gather_scatter(ctx_factory, grid_shape, proc_shape, h, dtype,
-                        _grid_shape, pass_rank_shape, timing=False):
+                        _grid_shape, pass_grid_shape, timing=False):
     if ctx_factory:
         ctx = ctx_factory()
     else:
@@ -120,11 +121,11 @@ def test_gather_scatter(ctx_factory, grid_shape, proc_shape, h, dtype,
 
     queue = cl.CommandQueue(ctx)
     grid_shape = _grid_shape or grid_shape
-    rank_shape = tuple(Ni // pi for Ni, pi in zip(grid_shape, proc_shape))
     mpi = ps.DomainDecomposition(proc_shape, h)
+    rank_shape, substart = mpi.get_rank_shape_start(grid_shape)
 
-    rank_slice = tuple(slice(ri * ni, (ri+1) * ni)
-                       for ri, ni in zip(mpi.rank_tuple, rank_shape))
+    rank_slice = tuple(slice(si, si + ri)
+                       for ri, si, hi in zip(rank_shape, substart, h))
     pencil_shape = tuple(ni + 2*hi for ni, hi in zip(rank_shape, h))
 
     unpadded_slc = tuple(slice(hi, -hi) if hi > 0 else slice(None) for hi in h)
@@ -135,46 +136,46 @@ def test_gather_scatter(ctx_factory, grid_shape, proc_shape, h, dtype,
 
     # cl.Array -> cl.Array
     subdata = cla.zeros(queue, pencil_shape, dtype)
-    mpi.scatter_array(queue, data, subdata, 0)
+    mpi.scatter_array(queue, data if mpi.rank == 0 else None, subdata, 0)
     sub_h = subdata.get()
     data_h = data.get()
     assert (sub_h[unpadded_slc] == data_h[rank_slice]).all()
 
     data_test = cla.zeros_like(data)
-    mpi.gather_array(queue, subdata, data_test, 0)
+    mpi.gather_array(queue, subdata, data_test if mpi.rank == 0 else None, 0)
     data_test_h = data_test.get()
     if mpi.rank == 0:
         assert (data_test_h == data_h).all()
 
     # np.ndarray -> np.ndarray
-    mpi.scatter_array(queue, data_h, sub_h, 0)
+    mpi.scatter_array(queue, data_h if mpi.rank == 0 else None, sub_h, 0)
     assert (sub_h[unpadded_slc] == data_h[rank_slice]).all()
 
-    mpi.gather_array(queue, sub_h, data_test_h, 0)
+    mpi.gather_array(queue, sub_h, data_test_h if mpi.rank == 0 else None, 0)
     if mpi.rank == 0:
         assert (data_test_h == data_h).all()
 
     # scatter cl.Array -> np.ndarray
     sub_h[:] = 0
-    mpi.scatter_array(queue, data, sub_h, 0)
+    mpi.scatter_array(queue, data if mpi.rank == 0 else None, sub_h, 0)
     assert (sub_h[unpadded_slc] == data_h[rank_slice]).all()
 
     # gather np.ndarray -> cl.Array
     data_test[:] = 0
-    mpi.gather_array(queue, sub_h, data_test, 0)
+    mpi.gather_array(queue, sub_h, data_test if mpi.rank == 0 else None, 0)
     data_test_h = data_test.get()
     if mpi.rank == 0:
         assert (data_test_h == data_h).all()
 
     # scatter np.ndarray -> cl.Array
     subdata[:] = 0
-    mpi.scatter_array(queue, data_h, subdata, 0)
+    mpi.scatter_array(queue, data_h if mpi.rank == 0 else None, subdata, 0)
     sub_h = subdata.get()
     assert (sub_h[unpadded_slc] == data_h[rank_slice]).all()
 
     # gather cl.Array -> np.ndarray
     data_test_h[:] = 0
-    mpi.gather_array(queue, subdata, data_test_h, 0)
+    mpi.gather_array(queue, subdata, data_test_h if mpi.rank == 0 else None, 0)
     if mpi.rank == 0:
         assert (data_test_h == data_h).all()
 
@@ -213,5 +214,5 @@ if __name__ == "__main__":
             'dtype': np.float64, '_grid_shape': None}
     from common import get_exec_arg_dict
     args.update(get_exec_arg_dict())
-    test_share_halos(None, **args, pass_rank_shape=True, timing=True)
-    test_gather_scatter(None, **args, pass_rank_shape=True, timing=True)
+    test_share_halos(None, **args, pass_grid_shape=True, timing=True)
+    test_gather_scatter(None, **args, pass_grid_shape=True, timing=True)
