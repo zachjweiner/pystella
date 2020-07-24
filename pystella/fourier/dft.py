@@ -68,7 +68,7 @@ def DFT(decomp, context, queue, grid_shape, dtype, **kwargs):
     """
 
     use_fftw = kwargs.pop('use_fftw', False)
-    if decomp.proc_shape == (1, 1, 1) and not use_fftw:
+    if tuple(decomp.proc_shape) == (1, 1, 1) and not use_fftw:
         return gDFT(decomp, context, queue, grid_shape, dtype)
     else:
         return pDFT(decomp, queue, grid_shape, dtype, **kwargs)

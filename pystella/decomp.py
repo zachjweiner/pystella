@@ -107,7 +107,7 @@ class DomainDecomposition:
     """
 
     def __init__(self, proc_shape, halo_shape, rank_shape=None, grid_shape=None):
-        self.proc_shape = proc_shape
+        self.proc_shape = tuple(proc_shape)
         self.halo_shape = ((halo_shape,)*3 if isinstance(halo_shape, int)
                            else halo_shape)
         self.buffer_arrays = {}
