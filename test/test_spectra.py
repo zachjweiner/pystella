@@ -139,6 +139,7 @@ def test_pol_spectra(ctx_factory, grid_shape, proc_shape, dtype, timing=False):
 
     L = (10, 8, 7)
     dk = tuple(2 * np.pi / Li for Li in L)
+    dx = tuple(Li / Ni for Li, Ni in zip(L, grid_shape))
     cdtype = fft.cdtype
     spec = ps.PowerSpectra(mpi, fft, dk, np.product(L))
 
@@ -155,7 +156,7 @@ def test_pol_spectra(ctx_factory, grid_shape, proc_shape, dtype, timing=False):
     plus_ps_1 = spec.bin_power(plus, queue=queue, k_power=k_power)
     minus_ps_1 = spec.bin_power(minus, queue=queue, k_power=k_power)
 
-    project = ps.Projector(fft, h)
+    project = ps.Projector(fft, h, dk, dx)
 
     vector = cla.empty(queue, (3,)+fft.shape(True), cdtype)
     project.pol_to_vec(queue, plus, minus, vector)

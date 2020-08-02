@@ -14,6 +14,8 @@ Version 2020.2
   and no longer constrain all degrees of freedom to have identical datatypes and shapes.
 * Added support for :class:`DomainDecomposition`\ s
   with processor grid dimensions that do not evenly divide the global computational grid.
+* :class:`Projector` now requires arguments ``dk`` and ``dx``.
+* Added :meth:`Projector.decompose_vector`.
 
 Version 2020.1
 --------------

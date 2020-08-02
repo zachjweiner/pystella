@@ -97,9 +97,10 @@ def test_vector_projector(ctx_factory, grid_shape, proc_shape, h, dtype,
 
     queue = cl.CommandQueue(ctx)
     rank_shape = tuple(Ni // pi for Ni, pi in zip(grid_shape, proc_shape))
+    pencil_shape = tuple(ni+2*h for ni in rank_shape)
     mpi = ps.DomainDecomposition(proc_shape, h, rank_shape)
 
-    L = (10,)*3
+    L = (10, 8, 11.5)
     dx = tuple(Li / Ni for Li, Ni in zip(L, grid_shape))
     dk = tuple(2 * np.pi / Li for Li in L)
 
@@ -107,13 +108,13 @@ def test_vector_projector(ctx_factory, grid_shape, proc_shape, h, dtype,
     cdtype = fft.cdtype
     if h > 0:
         stencil = FirstCenteredDifference(h)
-        project = ps.Projector(fft, stencil.get_eigenvalues)
+        project = ps.Projector(fft, stencil.get_eigenvalues, dk, dx)
         derivs = ps.FiniteDifferencer(mpi, h, dx)
     else:
-        project = ps.Projector(fft, lambda k, dx: k)
+        project = ps.Projector(fft, lambda k, dx: k, dk, dx)
         derivs = ps.SpectralCollocator(fft, dk)
 
-    vector_x = cla.empty(queue, (3,)+tuple(ni+2*h for ni in rank_shape), dtype)
+    vector_x = cla.empty(queue, (3,)+pencil_shape, dtype)
     div = cla.empty(queue, rank_shape, dtype)
     pdx = cla.empty(queue, (3,)+rank_shape, dtype)
 
@@ -196,6 +197,34 @@ def test_vector_projector(ctx_factory, grid_shape, proc_shape, h, dtype,
         "in-place vec_to_pol failed grid_shape=%s, halo_shape=%s" % \
         (grid_shape, h)
 
+    # reset and test longitudinal component
+    for mu in range(3):
+        vector[mu] = make_data(queue, fft).astype(cdtype)
+        fft.idft(vector[mu], vector_x[mu])
+
+    long = cla.zeros_like(minus)
+    project.decompose_vector(queue, vector, plus1, minus1, long)
+
+    long_x = cla.empty(queue, pencil_shape, dtype)
+    fft.idft(long, long_x)
+
+    div_true = cla.empty(queue, rank_shape, dtype)
+    derivs.divergence(queue, vector_x, div_true)
+
+    derivs(queue, fx=long_x, grd=pdx)
+    div_long = cla.empty(queue, rank_shape, dtype)
+    if h != 0:
+        pdx_h = cla.empty(queue, (3,)+pencil_shape, dtype)
+        for mu in range(3):
+            mpi.restore_halos(queue, pdx[mu], pdx_h[mu])
+        derivs.divergence(queue, pdx_h, div_long)
+    else:
+        derivs.divergence(queue, pdx, div_long)
+
+    diff = div_true.get() / div_long.get()
+    print(np.max(np.abs(diff - 1)))
+    assert np.allclose(div_true.get(), div_long.get(), atol=0., rtol=1e-6)
+
     if timing:
         from common import timer
         ntime = 10
@@ -207,6 +236,11 @@ def test_vector_projector(ctx_factory, grid_shape, proc_shape, h, dtype,
         t = timer(lambda: project.vec_to_pol(queue, plus, minus, vector),
                   ntime=ntime)
         print("vec_to_pol took %.3f ms for grid_shape=%s" % (t, grid_shape))
+        t = timer(
+            lambda: project.decompose_vector(queue, vector, plus, minus, long),
+            ntime=ntime
+        )
+        print("decompose_vector took %.3f ms for grid_shape=%s" % (t, grid_shape))
 
 
 def tensor_id(i, j):
@@ -231,7 +265,7 @@ def test_tensor_projector(ctx_factory, grid_shape, proc_shape, h, dtype,
     rank_shape = tuple(Ni // pi for Ni, pi in zip(grid_shape, proc_shape))
     mpi = ps.DomainDecomposition(proc_shape, h, rank_shape)
 
-    L = (10,)*3
+    L = (10, 8, 11.5)
     dx = tuple(Li / Ni for Li, Ni in zip(L, grid_shape))
     dk = tuple(2 * np.pi / Li for Li in L)
 
@@ -239,10 +273,10 @@ def test_tensor_projector(ctx_factory, grid_shape, proc_shape, h, dtype,
     cdtype = fft.cdtype
     if h > 0:
         stencil = FirstCenteredDifference(h)
-        project = ps.Projector(fft, stencil.get_eigenvalues)
+        project = ps.Projector(fft, stencil.get_eigenvalues, dk, dx)
         derivs = ps.FiniteDifferencer(mpi, h, dx)
     else:
-        project = ps.Projector(fft, lambda k, dx: k)
+        project = ps.Projector(fft, lambda k, dx: k, dk, dx)
         derivs = ps.SpectralCollocator(fft, dk)
 
     vector_x = cla.empty(queue, (3,)+tuple(ni+2*h for ni in rank_shape), dtype)

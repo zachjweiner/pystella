@@ -111,7 +111,7 @@ else:
 statistics = ps.FieldStatistics(decomp, halo_shape, rank_shape=rank_shape,
                                 grid_size=grid_size)
 spectra = ps.PowerSpectra(decomp, fft, dk, volume)
-projector = ps.Projector(fft, halo_shape)
+projector = ps.Projector(fft, halo_shape, dk, dx)
 hist = ps.FieldHistogrammer(decomp, 1000, rank_shape, dtype)
 
 a_sq_rho = (3 * mpl**2 * ps.Field('hubble', indices=[])**2 / 8 / np.pi)

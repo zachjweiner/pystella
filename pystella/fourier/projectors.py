@@ -33,8 +33,28 @@ class Projector:
     polarization basis, to project out the longitudinal component of a vector,
     and to project a tensor field to its transverse and traceless component.
 
-    .. automethod:: __init__
+    :arg fft: An FFT object as returned by :func:`DFT`.
+        ``grid_shape`` and ``dtype`` are determined by ``fft``'s attributes.
+
+    :arg effective_k: A :class:`~collections.abc.Callable`
+        with signature ``(k, dx)`` returning
+        the effective momentum of the corresponding stencil :math:`\\Delta`,
+        i.e., :math:`k_\\mathrm{eff}` such that
+        :math:`\\Delta e^{i k x} = i k_\\mathrm{eff} e^{i k x}`.
+        That is, projections are implemented relative to the stencil
+        whose eigenvalues (divided by :math:`i`) are returned by this function.
+
+    :arg dk: A 3-:class:`tuple` of the momentum-space grid spacing of each
+        axis (i.e., the infrared cutoff of the grid in each direction).
+
+    :arg dx: A 3-:class:`tuple` specifying the grid spacing of each axis.
+
+    .. versionchanged:: 2020.2
+
+        Added new required arguments ``dk`` and ``dx``.
+
     .. automethod:: transversify
+    .. automethod:: decompose_vector
     .. automethod:: pol_to_vec
     .. automethod:: vec_to_pol
     .. automethod:: transverse_traceless
@@ -42,20 +62,7 @@ class Projector:
     .. automethod:: pol_to_tensor
     """
 
-    def __init__(self, fft, effective_k):
-        """
-        :arg fft: An FFT object as returned by :func:`DFT`.
-            ``grid_shape`` and ``dtype`` are determined by ``fft``'s attributes.
-
-        :arg effective_k: A :class:`~collections.abc.Callable`
-            with signature ``(k, dx)`` returning
-            the effective momentum of the corresponding stencil :math:`\\Delta`,
-            i.e., :math:`k_\\mathrm{eff}` such that
-            :math:`\\Delta e^{i k x} = i k_\\mathrm{eff} e^{i k x}`.
-            That is, projections are implemented relative to the stencil
-            whose eigenvalues (divided by :math:`i`) are returned by this function.
-        """
-
+    def __init__(self, fft, effective_k, dk, dx):
         self.fft = fft
 
         if not callable(effective_k):
@@ -67,19 +74,12 @@ class Projector:
                 def effective_k(k, dx):  # pylint: disable=function-redefined
                     return k
 
-        from math import pi
-        grid_shape = fft.grid_shape
-        # since projectors only need the unit momentum vectors, can pass
-        # k = k_hat * dk * dx = k_hat * 2 * pi * grid_shape and dx = 1,
-        # where k_hat is the integer momentum gridpoint
-        dk_dx = tuple(2 * pi / Ni for Ni in grid_shape)
-
         queue = self.fft.sub_k['momenta_x'].queue
         sub_k = list(x.get().astype('int') for x in self.fft.sub_k.values())
         eff_mom_names = ('eff_mom_x', 'eff_mom_y', 'eff_mom_z')
         self.eff_mom = {}
         for mu, (name, kk) in enumerate(zip(eff_mom_names, sub_k)):
-            eff_k = effective_k(kk.astype(fft.rdtype) * dk_dx[mu], 1)
+            eff_k = effective_k(dk[mu] * kk.astype(fft.rdtype), dx[mu])
             eff_k[abs(sub_k[mu]) == fft.grid_shape[mu]//2] = 0.
             eff_k[sub_k[mu] == 0] = 0.
 
@@ -142,7 +142,7 @@ class Projector:
             assign(eps[2], If(kx_ky_zero, zero, - Kappa / kmag / 2**.5))
         ])
 
-        plus, minus = Field('plus'), Field('minus')
+        plus, minus, lng = Field('plus'), Field('minus'), Field('lng')
 
         plus_tmp, minus_tmp = parse('plus_tmp, minus_tmp')
         pol_isns = [(plus_tmp, sum(vector[mu] * conj(eps[mu]) for mu in range(3))),
@@ -164,6 +164,14 @@ class Projector:
         self.pol_to_vec_knl = ElementWiseMap(
             {vector[mu]: vector_tmp[mu] for mu in range(3)},
             tmp_instructions=eps_insns+vec_insns, args=args,
+            lsize=(32, 1, 1), rank_shape=fft.shape(True),
+        )
+
+        ksq = sum(kk**2 for kk in eff_k)
+        lng_rhs = If(kvec_zero, 0, - div / ksq * 1j)
+        self.vec_decomp_knl = ElementWiseMap(
+            {plus: plus_tmp, minus: minus_tmp, lng: lng_rhs},
+            tmp_instructions=eps_insns+pol_isns+div_insn, args=args,
             lsize=(32, 1, 1), rank_shape=fft.shape(True),
         )
 
@@ -292,6 +300,36 @@ class Projector:
 
         evt, _ = self.vec_to_pol_knl(queue, **self.eff_mom,
                                      vector=vector, plus=plus, minus=minus)
+        return evt
+
+    def decompose_vector(self, queue, vector, plus, minus, lng):
+        """
+        Decomposes a vector field into its two transverse polarizations and
+        longitudinal component.
+
+        :arg queue: A :class:`pyopencl.CommandQueue`.
+
+        :arg vector: The array whose polarization
+            components will be computed.
+            Must have shape ``(3,)+k_shape``, where ``k_shape`` is the shape of a
+            single momentum-space field array.
+
+        :arg plus: The array into which will be stored the
+            momentum-space field of the plus polarization.
+
+        :arg minus: The array into which will be stored the
+            momentum-space field of the minus polarization.
+
+        :arg lng: The array into which will be stored the
+            momentum-space field of the longitudinal mode.
+
+        :returns: The :class:`pyopencl.Event` associated with the kernel invocation.
+
+        .. versionadded:: 2020.2
+        """
+
+        evt, _ = self.vec_decomp_knl(queue, **self.eff_mom,
+                                     vector=vector, plus=plus, minus=minus, lng=lng)
         return evt
 
     def transverse_traceless(self, queue, hij, hij_TT=None):
