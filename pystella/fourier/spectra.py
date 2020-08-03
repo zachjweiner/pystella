@@ -312,7 +312,7 @@ class PowerSpectra:
             for mu in range(3):
                 self.fft.dft(vector[s][mu], vec_k[mu])
 
-            projector.decompose_vector(queue, plus, minus, vec_k, lng,
+            projector.decompose_vector(queue, vec_k, plus, minus, lng,
                                        times_abs_k=True)
             result[s][0] = self.bin_power(plus, queue, k_power, allocator=allocator)
             result[s][1] = self.bin_power(minus, queue, k_power, allocator=allocator)
