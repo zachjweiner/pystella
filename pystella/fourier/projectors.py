@@ -54,7 +54,6 @@ class Projector:
         Added new required arguments ``dk`` and ``dx``.
 
     .. automethod:: transversify
-    .. automethod:: decompose_vector
     .. automethod:: pol_to_vec
     .. automethod:: vec_to_pol
     .. automethod:: transverse_traceless
@@ -170,6 +169,12 @@ class Projector:
         ksq = sum(kk**2 for kk in eff_k)
         lng_rhs = If(kvec_zero, 0, - div / ksq * 1j)
         self.vec_decomp_knl = ElementWiseMap(
+            {plus: plus_tmp, minus: minus_tmp, lng: lng_rhs},
+            tmp_instructions=eps_insns+pol_isns+div_insn, args=args,
+            lsize=(32, 1, 1), rank_shape=fft.shape(True),
+        )
+        lng_rhs = If(kvec_zero, 0, - div / ksq**.5 * 1j)
+        self.vec_decomp_knl_times_abs_k = ElementWiseMap(
             {plus: plus_tmp, minus: minus_tmp, lng: lng_rhs},
             tmp_instructions=eps_insns+pol_isns+div_insn, args=args,
             lsize=(32, 1, 1), rank_shape=fft.shape(True),
@@ -302,7 +307,8 @@ class Projector:
                                      vector=vector, plus=plus, minus=minus)
         return evt
 
-    def decompose_vector(self, queue, vector, plus, minus, lng):
+    def decompose_vector(self, queue, vector, plus, minus, lng,
+                         *, times_abs_k=False):
         """
         Decomposes a vector field into its two transverse polarizations and
         longitudinal component.
@@ -328,8 +334,17 @@ class Projector:
         .. versionadded:: 2020.2
         """
 
-        evt, _ = self.vec_decomp_knl(queue, **self.eff_mom,
-                                     vector=vector, plus=plus, minus=minus, lng=lng)
+        if not times_abs_k:
+            evt, _ = self.vec_decomp_knl(
+                queue, **self.eff_mom, lng=lng, vector=vector,
+                plus=plus, minus=minus
+            )
+        else:
+            evt, _ = self.vec_decomp_knl_times_abs_k(
+                queue, **self.eff_mom, lng=lng, vector=vector,
+                plus=plus, minus=minus
+            )
+
         return evt
 
     def transverse_traceless(self, queue, hij, hij_TT=None):

@@ -36,7 +36,22 @@ class PowerSpectra:
     """
     A class for computing power spectra of fields.
 
-    .. automethod:: __init__
+    :arg decomp: A :class:`DomainDecomposition`.
+
+    :arg fft: An FFT object as returned by :func:`DFT`.
+        The datatype of position-space arrays will match that
+        of the passed FFT object.
+
+    :arg dk: A 3-:class:`tuple` of the momentum-space grid spacing of each
+        axis (i.e., the infrared cutoff of the grid in each direction).
+
+    :arg volume: The physical volume of the grid.
+
+    The following keyword-only arguments are also recognized:
+
+    :arg bin_with: A :class:`float` specifying the bin width to use.
+        Defaults to ``min(dk)``.
+
     .. automethod:: __call__
     .. automethod:: bin_power
     .. automethod:: polarization
@@ -49,24 +64,6 @@ class PowerSpectra:
     """
 
     def __init__(self, decomp, fft, dk, volume, **kwargs):
-        """
-        :arg decomp: A :class:`DomainDecomposition`.
-
-        :arg fft: An FFT object as returned by :func:`DFT`.
-            The datatype of position-space arrays will match that
-            of the passed FFT object.
-
-        :arg dk: A 3-:class:`tuple` of the momentum-space grid spacing of each
-            axis (i.e., the infrared cutoff of the grid in each direction).
-
-        :arg volume: The physical volume of the grid.
-
-        The following keyword-only arguments are also recognized:
-
-        :arg bin_with: A :class:`float` specifying the bin width to use.
-            Defaults to ``min(dk)``.
-        """
-
         self.decomp = decomp
         self.fft = fft
         self.grid_shape = fft.grid_shape
@@ -271,6 +268,55 @@ class PowerSpectra:
             projector.vec_to_pol(queue, plus, minus, vec_k)
             result[s][0] = self.bin_power(plus, queue, k_power, allocator=allocator)
             result[s][1] = self.bin_power(minus, queue, k_power, allocator=allocator)
+
+        return self.norm * result
+
+    def vector_decomposition(self, vector, projector, queue=None, k_power=3,
+                             allocator=None):
+        """
+        Computes the power spectra of the plus and minus polarizations and
+        longitudinal component of a vector field.
+
+        :arg vector: The array containing the position-space vector field
+            whose power spectrum is to be computed.
+            If ``vector`` has more than four axes, all the outer axes are
+            looped over.
+            As an example, if ``vector`` has shape ``(2, 3, 3, 130, 130, 130)``
+            (where the fourth-to-last axis is the vector-component axis),
+            this method loops over the outermost two axes with shape ``(2, 3)``, and
+            the resulting output data would have the shape ``(2, 3, 2, num_bins)``
+            (where the second-to-last axis is the polarization axis).
+
+        :arg projector: A :class:`Projector`.
+
+        The remaining arguments are the same as those to :meth:`__call__`.
+
+        :returns: A :class:`numpy.ndarray` containing the polarization and
+            longitudinal spectra with shape ``vector.shape[:-4]+(3, num_bins)``.
+        """
+
+        queue = queue or vector.queue
+
+        vec_k = cla.empty(queue, (3,)+self.kshape, self.cdtype, allocator=None)
+        # overwrite vec_k
+        plus = vec_k[0]
+        minus = vec_k[1]
+        lng = vec_k[2]
+
+        outer_shape = vector.shape[:-4]
+        from itertools import product
+        slices = list(product(*[range(n) for n in outer_shape]))
+
+        result = np.zeros(outer_shape+(3, self.num_bins,), self.rdtype)
+        for s in slices:
+            for mu in range(3):
+                self.fft.dft(vector[s][mu], vec_k[mu])
+
+            projector.decompose_vector(queue, plus, minus, vec_k, lng,
+                                       times_abs_k=True)
+            result[s][0] = self.bin_power(plus, queue, k_power, allocator=allocator)
+            result[s][1] = self.bin_power(minus, queue, k_power, allocator=allocator)
+            result[s][2] = self.bin_power(lng, queue, k_power, allocator=allocator)
 
         return self.norm * result
 

@@ -58,8 +58,8 @@ def test_spectra(ctx_factory, grid_shape, proc_shape, dtype, L, timing=False):
 
     queue = cl.CommandQueue(ctx)
     h = 1
-    rank_shape = tuple(Ni // pi for Ni, pi in zip(grid_shape, proc_shape))
-    mpi = ps.DomainDecomposition(proc_shape, h, rank_shape)
+    mpi = ps.DomainDecomposition(proc_shape, h, grid_shape=grid_shape)
+    rank_shape, _ = mpi.get_rank_shape_start(grid_shape)
 
     fft = ps.DFT(mpi, ctx, queue, grid_shape, dtype)
 
@@ -132,8 +132,8 @@ def test_pol_spectra(ctx_factory, grid_shape, proc_shape, dtype, timing=False):
 
     queue = cl.CommandQueue(ctx)
     h = 1
-    rank_shape = tuple(Ni // pi for Ni, pi in zip(grid_shape, proc_shape))
-    mpi = ps.DomainDecomposition(proc_shape, h, rank_shape)
+    mpi = ps.DomainDecomposition(proc_shape, h, grid_shape=grid_shape)
+    rank_shape, _ = mpi.get_rank_shape_start(grid_shape)
 
     fft = ps.DFT(mpi, ctx, queue, grid_shape, dtype)
 
@@ -176,6 +176,33 @@ def test_pol_spectra(ctx_factory, grid_shape, proc_shape, dtype, timing=False):
     err = np.abs((minus_ps_1[1:-2] - minus_ps_2[1:-2]) / minus_ps_1[1:-2])
     assert np.max(err) < max_rtol and np.average(err) < avg_rtol, \
         "minus power spectrum inaccurate for grid_shape=%s" % (grid_shape,)
+
+    vec_sum = sum(spec.bin_power(vector[mu], k_power=k_power) for mu in range(3))
+    pol_sum = plus_ps_1 + minus_ps_1
+    err = np.abs((vec_sum[1:-2] - pol_sum[1:-2]) / vec_sum[1:-2])
+    assert np.max(err) < max_rtol and np.average(err) < avg_rtol, \
+        "polarization power spectrum don't match vector sum for grid_shape=%s" \
+        % (grid_shape,)
+
+    # reset
+    for mu in range(3):
+        fk = make_data(*fft.shape(True)).astype(cdtype)
+        fk = make_hermitian(fk, fft).astype(cdtype)
+        vector[mu].set(fk)
+
+    long = cla.zeros_like(plus)
+    project.decompose_vector(queue, vector, plus, minus, long, times_abs_k=True)
+    plus_ps = spec.bin_power(plus, k_power=k_power)
+    minus_ps = spec.bin_power(minus, k_power=k_power)
+    long_ps = spec.bin_power(long, k_power=k_power)
+
+    vec_sum = sum(spec.bin_power(vector[mu], k_power=k_power) for mu in range(3))
+    dec_sum = plus_ps + minus_ps + long_ps
+    err = np.abs((vec_sum[1:-2] - dec_sum[1:-2]) / vec_sum[1:-2])
+    print(np.max(err), np.mean(err))
+    assert np.max(err) < max_rtol and np.average(err) < avg_rtol, \
+        "decomp power spectrum don't match vector sum for grid_shape=%s" \
+        % (grid_shape,)
 
     hij = cl.clrandom.rand(queue, (6,)+rank_shape, dtype)
     gw_spec = spec.gw(hij, project, 1.3)

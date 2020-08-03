@@ -96,9 +96,9 @@ def test_vector_projector(ctx_factory, grid_shape, proc_shape, h, dtype,
         ctx = ps.choose_device_and_make_context()
 
     queue = cl.CommandQueue(ctx)
-    rank_shape = tuple(Ni // pi for Ni, pi in zip(grid_shape, proc_shape))
+    mpi = ps.DomainDecomposition(proc_shape, h, grid_shape=grid_shape)
+    rank_shape, _ = mpi.get_rank_shape_start(grid_shape)
     pencil_shape = tuple(ni+2*h for ni in rank_shape)
-    mpi = ps.DomainDecomposition(proc_shape, h, rank_shape)
 
     L = (10, 8, 11.5)
     dx = tuple(Li / Ni for Li, Ni in zip(L, grid_shape))
@@ -221,9 +221,13 @@ def test_vector_projector(ctx_factory, grid_shape, proc_shape, h, dtype,
     else:
         derivs.divergence(queue, pdx, div_long)
 
-    diff = div_true.get() / div_long.get()
-    print(np.max(np.abs(diff - 1)))
-    assert np.allclose(div_true.get(), div_long.get(), atol=0., rtol=1e-6)
+    diff = (div_true - div_long).get()
+    max_err = np.max(np.abs(diff))
+    avg_err = np.average(np.abs(diff))
+    print(max_err, avg_err)
+    assert max_err < 1e-6 and avg_err < 1e-9, \
+        "lap(longitudinal) != div vector for grid_shape=%s, halo_shape=%s" \
+        % (grid_shape, h)
 
     if timing:
         from common import timer
@@ -262,8 +266,8 @@ def test_tensor_projector(ctx_factory, grid_shape, proc_shape, h, dtype,
         ctx = ps.choose_device_and_make_context()
 
     queue = cl.CommandQueue(ctx)
-    rank_shape = tuple(Ni // pi for Ni, pi in zip(grid_shape, proc_shape))
-    mpi = ps.DomainDecomposition(proc_shape, h, rank_shape)
+    mpi = ps.DomainDecomposition(proc_shape, h, grid_shape=grid_shape)
+    rank_shape, _ = mpi.get_rank_shape_start(grid_shape)
 
     L = (10, 8, 11.5)
     dx = tuple(Li / Ni for Li, Ni in zip(L, grid_shape))
