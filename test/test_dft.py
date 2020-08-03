@@ -41,8 +41,8 @@ def test_dft(ctx_factory, grid_shape, proc_shape, dtype, timing=False):
 
     queue = cl.CommandQueue(ctx)
     h = 1
-    rank_shape = tuple(Ni // pi for Ni, pi in zip(grid_shape, proc_shape))
-    mpi = ps.DomainDecomposition(proc_shape, h, rank_shape)
+    mpi = ps.DomainDecomposition(proc_shape, h, grid_shape=grid_shape)
+    rank_shape, _ = mpi.get_rank_shape_start(grid_shape)
 
     fft = ps.DFT(mpi, ctx, queue, grid_shape, dtype)
     grid_size = np.product(grid_shape)

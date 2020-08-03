@@ -45,8 +45,8 @@ def test_reduction(ctx_factory, grid_shape, proc_shape, dtype, op,
     queue = cl.CommandQueue(ctx)
     h = 1
     grid_shape = _grid_shape or grid_shape
-    rank_shape = tuple(Ni // pi for Ni, pi in zip(grid_shape, proc_shape))
-    mpi = ps.DomainDecomposition(proc_shape, h, rank_shape)
+    mpi = ps.DomainDecomposition(proc_shape, h, grid_shape=grid_shape)
+    rank_shape, _ = mpi.get_rank_shape_start(grid_shape)
 
     from pymbolic import var
     from pystella import Field
@@ -102,8 +102,8 @@ def test_reduction_with_new_shape(ctx_factory, grid_shape, proc_shape, dtype, op
     queue = cl.CommandQueue(ctx)
     h = 1
     grid_shape = _grid_shape or grid_shape
-    rank_shape = tuple(Ni // pi for Ni, pi in zip(grid_shape, proc_shape))
-    mpi = ps.DomainDecomposition(proc_shape, h, rank_shape)
+    mpi = ps.DomainDecomposition(proc_shape, h, grid_shape=grid_shape)
+    rank_shape, _ = mpi.get_rank_shape_start(grid_shape)
 
     from pystella import Field
     reducers = {}
@@ -126,7 +126,7 @@ def test_reduction_with_new_shape(ctx_factory, grid_shape, proc_shape, dtype, op
 
     # test call to reducer with new shape
     grid_shape = tuple(Ni // 2 for Ni in grid_shape)
-    rank_shape = tuple(Ni // pi for Ni, pi in zip(grid_shape, proc_shape))
+    rank_shape, _ = mpi.get_rank_shape_start(grid_shape)
     f = clr.rand(queue, rank_shape, dtype=dtype)
     result = reducer(queue, f=f)
     avg = result['avg']
@@ -154,8 +154,8 @@ def test_field_statistics(ctx_factory, grid_shape, proc_shape, dtype, _grid_shap
     queue = cl.CommandQueue(ctx)
     h = 1
     grid_shape = _grid_shape or grid_shape
-    rank_shape = tuple(Ni // pi for Ni, pi in zip(grid_shape, proc_shape))
-    mpi = ps.DomainDecomposition(proc_shape, h, rank_shape)
+    mpi = ps.DomainDecomposition(proc_shape, h, grid_shape=grid_shape)
+    rank_shape, _ = mpi.get_rank_shape_start(grid_shape)
 
     # make select parameters local for convenience
     h = 2

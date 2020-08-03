@@ -40,8 +40,8 @@ def test_scalar_energy(ctx_factory, grid_shape, proc_shape, h, dtype, timing=Fal
         ctx = ps.choose_device_and_make_context()
 
     queue = cl.CommandQueue(ctx)
-    rank_shape = tuple(Ni // pi for Ni, pi in zip(grid_shape, proc_shape))
-    mpi = ps.DomainDecomposition(proc_shape, h, rank_shape)
+    mpi = ps.DomainDecomposition(proc_shape, h, grid_shape=grid_shape)
+    rank_shape, _ = mpi.get_rank_shape_start(grid_shape)
 
     grid_size = np.product(grid_shape)
 

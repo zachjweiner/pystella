@@ -43,8 +43,8 @@ def test_histogram(ctx_factory, grid_shape, proc_shape, dtype, timing=False):
 
     queue = cl.CommandQueue(ctx)
     h = 1
-    rank_shape = tuple(Ni // pi for Ni, pi in zip(grid_shape, proc_shape))
-    mpi = ps.DomainDecomposition(proc_shape, h, rank_shape)
+    mpi = ps.DomainDecomposition(proc_shape, h, grid_shape=grid_shape)
+    rank_shape, _ = mpi.get_rank_shape_start(grid_shape)
 
     num_bins = 193
 
@@ -105,9 +105,9 @@ def test_field_histogram(ctx_factory, grid_shape, proc_shape, dtype, timing=Fals
 
     queue = cl.CommandQueue(ctx)
     h = 1
-    rank_shape = tuple(Ni // pi for Ni, pi in zip(grid_shape, proc_shape))
+    mpi = ps.DomainDecomposition(proc_shape, h, grid_shape=grid_shape)
+    rank_shape, _ = mpi.get_rank_shape_start(grid_shape)
     pencil_shape = tuple(Ni + 2 * h for Ni in rank_shape)
-    mpi = ps.DomainDecomposition(proc_shape, h, rank_shape)
 
     num_bins = 432
 
