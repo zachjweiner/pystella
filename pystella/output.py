@@ -49,7 +49,7 @@ def append(dset, data):
     dset[-1] = data
 
 
-class OutputFile(h5py.File):
+class OutputFile:
     """
     A wrapper to :class:`h5py:File` which collects and saves useful run
     information and provides functionality to append to datasets.
@@ -58,15 +58,15 @@ class OutputFile(h5py.File):
     .. automethod:: output
     """
 
-    def create_from_kwargs(self, group, **kwargs):
-        self.create_group(group)
+    def create_from_kwargs(self, f, group, **kwargs):
+        f.create_group(group)
         for key, val in kwargs.items():
             if not isinstance(val, np.ndarray):
                 val = np.array(val)
             shape = (0,) + val.shape
             maxshape = (None,) + val.shape
-            self[group].create_dataset(key, shape=shape, dtype=val.dtype,
-                                       maxshape=maxshape, chunks=True)
+            f[group].create_dataset(key, shape=shape, dtype=val.dtype,
+                                    maxshape=maxshape, chunks=True)
 
     def __init__(self, context=None, name=None, runfile=None, **kwargs):
         """
@@ -105,8 +105,9 @@ class OutputFile(h5py.File):
 
         while True:
             try:
-                filename = name + '.h5'
-                super().__init__(filename, 'x')
+                self.filename = name + '.h5'
+                self.file = h5py.File(self.filename, 'x')
+                self.file.close()
                 break
             except OSError:
                 import time
@@ -115,42 +116,46 @@ class OutputFile(h5py.File):
 
         if context is not None:
             device, = context.devices
-            self.attrs['device'] = device.name
-            self.attrs['driver_version'] = device.driver_version
-            self.attrs['platform_version'] = device.platform.version
+            with self.open() as f:
+                f.attrs['device'] = device.name
+                f.attrs['driver_version'] = device.driver_version
+                f.attrs['platform_version'] = device.platform.version
 
-        import socket
-        self.attrs['hostname'] = socket.gethostname()
+            import socket
+            f.attrs['hostname'] = socket.gethostname()
 
-        for key, val in kwargs.items():
-            try:
-                self.attrs[key] = val
-            except:  # noqa
-                if isinstance(val, type):
-                    self.attrs[key] = val.__name__
-                else:
-                    self.attrs[key] = str(val)
+            for key, val in kwargs.items():
+                try:
+                    f.attrs[key] = val
+                except:  # noqa
+                    if isinstance(val, type):
+                        f.attrs[key] = val.__name__
+                    else:
+                        f.attrs[key] = str(val)
 
-        if runfile is not None:
-            fp = open(runfile, "r")
-            content = fp.read()
-            fp.close()
-            self.attrs['runfile'] = content
+            if runfile is not None:
+                fp = open(runfile, "r")
+                content = fp.read()
+                fp.close()
+                f.attrs['runfile'] = content
 
-        # output current dependency versions
-        dependencies = {'pystella', 'numpy', 'scipy',
-                        'pyopencl', 'loo.py', 'pymbolic',
-                        'mpi4py', 'gpyfft', 'mpi4py_fft', 'h5py'}
-        dependencies |= set(kwargs.pop('dependencies', {}))
-        versions, git_revs = get_versions(dependencies)
+            # output current dependency versions
+            dependencies = {'pystella', 'numpy', 'scipy',
+                            'pyopencl', 'loo.py', 'pymbolic',
+                            'mpi4py', 'gpyfft', 'mpi4py_fft', 'h5py'}
+            dependencies |= set(kwargs.pop('dependencies', {}))
+            versions, git_revs = get_versions(dependencies)
 
-        self.create_group('versions')
-        for k, v in versions.items():
-            self['versions'][k] = v or ''
+            f.create_group('versions')
+            for k, v in versions.items():
+                f['versions'][k] = v or ''
 
-        self.create_group('git_revs')
-        for k, v in git_revs.items():
-            self['git_revs'][k] = v or ''
+            f.create_group('git_revs')
+            for k, v in git_revs.items():
+                f['git_revs'][k] = v or ''
+
+    def open(self, mode="a"):
+        return h5py.File(self.filename, mode)
 
     def output(self, group, **kwargs):
         """
@@ -169,10 +174,11 @@ class OutputFile(h5py.File):
         """
 
         # create group and datasets if they don't exist
-        if group not in self:
-            self.create_from_kwargs(group, **kwargs)
+        with self.open() as f:
+            if group not in f:
+                self.create_from_kwargs(f, group, **kwargs)
 
-        # ensure that all fields are provided
-        for key in self[group]:
-            val = kwargs.pop(key)
-            append(self[group][key], val)
+            # ensure that all fields are provided
+            for key in f[group]:
+                val = kwargs.pop(key)
+                append(f[group][key], val)
