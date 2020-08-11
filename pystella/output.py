@@ -114,9 +114,9 @@ class OutputFile:
                 time.sleep(1)
                 name = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
-        if context is not None:
-            device, = context.devices
-            with self.open() as f:
+        with self.open() as f:
+            if context is not None:
+                device, = context.devices
                 f.attrs['device'] = device.name
                 f.attrs['driver_version'] = device.driver_version
                 f.attrs['platform_version'] = device.platform.version
