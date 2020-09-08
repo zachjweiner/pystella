@@ -291,12 +291,19 @@ class BaseDFT:
         return array
 
 
+def fftfreq(n):
+    from numpy.fft import fftfreq
+    freq = fftfreq(n, 1/n)
+    if n % 2 == 0:
+        freq[n//2] = np.abs(freq[n//2])
+    return freq
+
+
 def get_sliced_momenta(grid_shape, dtype, slc, queue):
     from pystella.fourier import get_real_dtype_with_matching_prec
     rdtype = get_real_dtype_with_matching_prec(dtype)
 
-    from numpy.fft import fftfreq
-    k = [fftfreq(n, 1/n).astype(rdtype) for n in grid_shape]
+    k = [fftfreq(n).astype(rdtype) for n in grid_shape]
 
     if dtype.kind == 'f':
         from numpy.fft import rfftfreq
