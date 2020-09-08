@@ -93,16 +93,14 @@ def test_spectral_poisson(ctx_factory, grid_shape, proc_shape, h, dtype,
         avg_rtol = 1.e-13 if dtype == np.float64 else 1.e-5
 
         assert max_err < max_rtol and avg_err < avg_rtol, \
-            "solution inaccurate for halo_shape=%s, grid_shape=%s, proc_shape=%s" \
-            % (h, grid_shape, proc_shape)
+            f"solution inaccurate for {h=}, {grid_shape=}, {proc_shape=}"
 
     if timing:
         from common import timer
         time = timer(lambda: solver(queue, fx, rho, m_squared=m_squared))
 
         if mpi.rank == 0:
-            print("poisson took", "%.3f" % time,
-                  "ms for grid_shape=%s, proc_shape=%s" % (grid_shape, proc_shape))
+            print(f"poisson took {time:.3f} ms for {grid_shape=}, {proc_shape=}")
 
 
 if __name__ == "__main__":

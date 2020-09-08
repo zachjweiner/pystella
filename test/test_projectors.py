@@ -147,7 +147,7 @@ def test_vector_projector(ctx_factory, grid_shape, proc_shape, h, dtype,
     max_err, avg_err = get_divergence_error(vector)
     print(max_err, avg_err)
     assert max_err < max_rtol and avg_err < avg_rtol, \
-        "transversify failed for grid_shape=%s, halo_shape=%s" % (grid_shape, h,)
+        f"transversify failed for {grid_shape=}, halo_shape={h}"
 
     plus = make_data(queue, fft).astype(cdtype)
     minus = make_data(queue, fft).astype(cdtype)
@@ -155,14 +155,12 @@ def test_vector_projector(ctx_factory, grid_shape, proc_shape, h, dtype,
 
     if isinstance(fft, gDFT):
         assert all(is_hermitian(vector[i]) for i in range(3)), \
-            "pol->vec is non-hermitian for grid_shape=%s, halo_shape=%s" \
-            % (grid_shape, h)
+            f"pol->vec is non-hermitian for {grid_shape=}, {h=}"
 
     max_err, avg_err = get_divergence_error(vector)
     print(max_err, avg_err)
     assert max_err < max_rtol and avg_err < avg_rtol, \
-        "pol_to_vec result not transverse for grid_shape=%s, halo_shape=%s" % \
-        (grid_shape, h,)
+        f"pol_to_vec result not transverse for {grid_shape=}, {h=}"
 
     vector_h = vector.get()
     vector_2 = cla.zeros_like(vector)
@@ -173,8 +171,7 @@ def test_vector_projector(ctx_factory, grid_shape, proc_shape, h, dtype,
     avg_err = np.average(np.abs(vector_h - vector_2_h))
     print(max_err, avg_err)
     assert max_err < max_rtol and avg_err < avg_rtol, \
-        "pol->vector != its own transverse proj. for grid_shape=%s, halo_shape=%s" \
-        % (grid_shape, h)
+        f"pol->vector != its own transverse proj. for {grid_shape=}, {h=}"
 
     plus1 = cla.zeros_like(plus)
     minus1 = cla.zeros_like(minus)
@@ -182,20 +179,17 @@ def test_vector_projector(ctx_factory, grid_shape, proc_shape, h, dtype,
 
     if isinstance(fft, gDFT):
         assert is_hermitian(plus1) and is_hermitian(minus1), \
-            "polarizations aren't hermitian for grid_shape=%s, halo_shape=%s" %  \
-            (grid_shape, h)
+            f"polarizations aren't hermitian for {grid_shape=}, {h=}"
 
     assert np.allclose(plus1.get(), plus.get(), atol=0., rtol=1.e-11) and \
         np.allclose(minus1.get(), minus.get(), atol=0., rtol=1.e-11), \
-        "pol->vec->pol is not identity for grid_shape=%s, halo_shape=%s" % \
-        (grid_shape, h)
+        f"pol->vec->pol is not identity for {grid_shape=}, {h=}"
 
     project.vec_to_pol(queue, vector[0], vector[1], vector)
 
     assert np.allclose(plus1.get(), vector[0].get(), atol=0., rtol=1.e-11) and \
         np.allclose(minus1.get(), vector[1].get(), atol=0., rtol=1.e-11), \
-        "in-place vec_to_pol failed grid_shape=%s, halo_shape=%s" % \
-        (grid_shape, h)
+        f"in-place vec_to_pol failed {grid_shape=}, {h=}"
 
     # reset and test longitudinal component
     for mu in range(3):
@@ -226,25 +220,24 @@ def test_vector_projector(ctx_factory, grid_shape, proc_shape, h, dtype,
     avg_err = np.average(np.abs(diff))
     print(max_err, avg_err)
     assert max_err < 1e-6 and avg_err < 1e-9, \
-        "lap(longitudinal) != div vector for grid_shape=%s, halo_shape=%s" \
-        % (grid_shape, h)
+        f"lap(longitudinal) != div vector for {grid_shape=}, {h=}"
 
     if timing:
         from common import timer
         ntime = 10
         t = timer(lambda: project.transversify(queue, vector), ntime=ntime)
-        print("transversify took %.3f ms for grid_shape=%s" % (t, grid_shape))
+        print(f"transversify took {t:.3f} ms for {grid_shape=}")
         t = timer(lambda: project.pol_to_vec(queue, plus, minus, vector),
                   ntime=ntime)
-        print("pol_to_vec took %.3f ms for grid_shape=%s" % (t, grid_shape))
+        print(f"pol_to_vec took {t:.3f} ms for {grid_shape=}")
         t = timer(lambda: project.vec_to_pol(queue, plus, minus, vector),
                   ntime=ntime)
-        print("vec_to_pol took %.3f ms for grid_shape=%s" % (t, grid_shape))
+        print(f"vec_to_pol took {t:.3f} ms for {grid_shape=}")
         t = timer(
             lambda: project.decompose_vector(queue, vector, plus, minus, long),
             ntime=ntime
         )
-        print("decompose_vector took %.3f ms for grid_shape=%s" % (t, grid_shape))
+        print(f"decompose_vector took {t:.3f} ms for {grid_shape=}")
 
 
 def tensor_id(i, j):
@@ -331,20 +324,17 @@ def test_tensor_projector(ctx_factory, grid_shape, proc_shape, h, dtype,
 
     if isinstance(fft, gDFT):
         assert all(is_hermitian(hij_h[i]) for i in range(6)), \
-            "TT projection is non-hermitian for grid_shape=%s, halo_shape=%s" \
-            % (grid_shape, h)
+            f"TT projection is non-hermitian for {grid_shape=}, {h=}"
 
     max_err, avg_err = get_divergence_errors(hij)
     print(max_err, avg_err)
     assert all(max_err < div_max_rtol) and all(avg_err < div_avg_rtol), \
-        "TT projection not transverse for grid_shape=%s, halo_shape=%s" \
-        % (grid_shape, h)
+        f"TT projection not transverse for {grid_shape=}, {h=}"
 
     max_err, avg_err = get_trace_errors(hij_h)
     print(max_err, avg_err)
     assert max_err < trace_max_rtol and avg_err < trace_avg_rtol, \
-        "TT projected tensor isn't traceless for grid_shape=%s, halo_shape=%s" \
-        % (grid_shape, h)
+        f"TT projected tensor isn't traceless for {grid_shape=}, {h=}"
 
     plus = make_data(queue, fft).astype(cdtype)
     minus = make_data(queue, fft).astype(cdtype)
@@ -352,21 +342,18 @@ def test_tensor_projector(ctx_factory, grid_shape, proc_shape, h, dtype,
 
     if isinstance(fft, gDFT):
         assert all(is_hermitian(hij[i]) for i in range(6)), \
-            "pol->tensor is non-hermitian for grid_shape=%s, halo_shape=%s" \
-            % (grid_shape, h)
+            f"pol->tensor is non-hermitian for {grid_shape=}, {h=}"
 
     max_err, avg_err = get_divergence_errors(hij)
     print(max_err, avg_err)
     assert all(max_err < div_max_rtol) and all(avg_err < div_avg_rtol), \
-        "pol->tensor not transverse for grid_shape=%s, halo_shape=%s" \
-        % (grid_shape, h)
+        f"pol->tensor not transverse for {grid_shape=}, {h=}"
 
     hij_h = hij.get()
     max_err, avg_err = get_trace_errors(hij_h)
     print(max_err, avg_err)
     assert max_err < trace_max_rtol and avg_err < trace_avg_rtol, \
-        "pol->tensor isn't traceless for grid_shape=%s, halo_shape=%s" \
-        % (grid_shape, h)
+        f"pol->tensor isn't traceless for {grid_shape=}, {h=}"
 
     hij_2 = cla.zeros_like(hij)
     project.transverse_traceless(queue, hij, hij_2)
@@ -376,8 +363,7 @@ def test_tensor_projector(ctx_factory, grid_shape, proc_shape, h, dtype,
     avg_err = np.average(np.abs(hij_h - hij_h_2))
     print(max_err, avg_err)
     assert max_err < div_max_rtol and avg_err < div_avg_rtol, \
-        "pol->tensor != its own TT projection for grid_shape=%s, halo_shape=%s" \
-        % (grid_shape, h)
+        f"pol->tensor != its own TT projection for {grid_shape=}, {h=}"
 
     plus1 = cla.zeros_like(plus)
     minus1 = cla.zeros_like(minus)
@@ -385,32 +371,29 @@ def test_tensor_projector(ctx_factory, grid_shape, proc_shape, h, dtype,
 
     if isinstance(fft, gDFT):
         assert is_hermitian(plus1) and is_hermitian(minus1), \
-            "polarizations aren't hermitian for grid_shape=%s, halo_shape=%s" %  \
-            (grid_shape, h)
+            f"polarizations aren't hermitian for {grid_shape=}, {h=}"
 
     assert np.allclose(plus1.get(), plus.get(), atol=0., rtol=1.e-11) and \
         np.allclose(minus1.get(), minus.get(), atol=0., rtol=1.e-11), \
-        "pol->tensor->pol is not identity for grid_shape=%s, halo_shape=%s" % \
-        (grid_shape, h)
+        f"pol->tensor->pol is not identity for {grid_shape=}, {h=}"
 
     project.tensor_to_pol(queue, hij[0], hij[1], hij)
 
     assert np.allclose(plus1.get(), hij[0].get(), atol=0., rtol=1.e-11) and \
         np.allclose(minus1.get(), hij[1].get(), atol=0., rtol=1.e-11), \
-        "in-place tensor_to_pol failed grid_shape=%s, halo_shape=%s" % \
-        (grid_shape, h)
+        f"in-place tensor_to_pol failed {grid_shape=}, {h=}"
 
     if timing:
         from common import timer
         ntime = 10
         t = timer(lambda: project.transverse_traceless(queue, hij), ntime=ntime)
-        print("TT projection took %.3f ms for grid_shape=%s" % (t, grid_shape))
+        print(f"TT projection took {t:.3f} ms for {grid_shape=}")
         t = timer(lambda: project.pol_to_tensor(queue, plus, minus, hij),
                   ntime=ntime)
-        print("pol->tensor took %.3f ms for grid_shape=%s" % (t, grid_shape))
+        print(f"pol->tensor took {t:.3f} ms for {grid_shape=}")
         t = timer(lambda: project.tensor_to_pol(queue, plus, minus, hij),
                   ntime=ntime)
-        print("tensor->pol took %.3f ms for grid_shape=%s" % (t, grid_shape))
+        print(f"tensor->pol took {t:.3f} ms for {grid_shape=}")
 
 
 if __name__ == "__main__":

@@ -49,7 +49,7 @@ def get_mpi_reduction_op(op):
     if op in _MPI_REDUCTION_OPS:
         return _MPI_REDUCTION_OPS[op]
     else:
-        raise NotImplementedError('MPI allreduce for operation %s' % op)
+        raise NotImplementedError(f"MPI allreduce for operation {op}")
 
 
 def get_numpy_reduction_op(op):
@@ -64,7 +64,7 @@ def get_numpy_reduction_op(op):
     if op in _NUMPY_REDUCTION_OPS:
         return _NUMPY_REDUCTION_OPS[op]
     else:
-        raise NotImplementedError('numpy reduction for operation %s' % op)
+        raise NotImplementedError(f"numpy reduction for operation {op}")
 
 
 def get_cl_reduction_op(op):
@@ -78,7 +78,7 @@ def get_cl_reduction_op(op):
     if op in _CL_REDUCTION_OPS:
         return _CL_REDUCTION_OPS[op]
     else:
-        raise NotImplementedError('pyopencl reduction for operation %s' % op)
+        raise NotImplementedError(f"pyopencl reduction for operation {op}")
 
 
 class Reduction(ElementWiseMap):
@@ -86,7 +86,38 @@ class Reduction(ElementWiseMap):
     A subclass of :class:`ElementWiseMap` which computes (an arbitrary
     number of) reductions.
 
-    .. automethod:: __init__
+    :arg decomp: An instance of :class:`DomainDecomposition`.
+
+    :arg input: May be one of the following:
+
+        * a :class:`dict`. The output of :meth:`__call__` will be a dictionary
+          with the same keys whose values are the corresponding reductions
+          of the :class:`dict`'s values. The values may either be lists of
+          :mod:`pymbolic` expressions or a lists of :class:`tuple`\\ s
+          ``(expr, op)``, where ``expr`` is a :mod:`pymbolic` expression and
+          ``op`` is the reduction operation to perform. Valid options are
+          ``'avg'`` (default), ``'sum'``, ``'prod'``, ``'max'``, and ``'min'``.
+
+        * a :class:`Sector`. In this case, the reduction dictionary will be
+          obtained from :attr:`Sector.reducers`.
+
+        * a :class:`list` of :class:`Sector`\\ s. In this case, the input
+          obtained from each :class:`Sector` (as described above) will be
+          combined.
+
+    The following keyword-only arguments are recognized (in addition to those
+    accepted by :class:`ElementWiseMap`):
+
+    :arg grid_size: The total number of gridpoints on the entire computational
+        grid.
+        Defaults to *None*, in which case it will be inferred at
+        :meth:`__call__` (if averages are being performed).
+
+    :arg callback: A :class:`~collections.abc.Callable`
+        used to process the reduction results
+        before :meth:`__call__` returns.
+        Defaults to ``lambda x: x``, i.e., doing nothing.
+
     .. automethod:: __call__
     """
 
@@ -96,40 +127,6 @@ class Reduction(ElementWiseMap):
         return knl
 
     def __init__(self, decomp, input, **kwargs):
-        """
-        :arg decomp: An instance of :class:`DomainDecomposition`.
-
-        :arg input: May be one of the following:
-
-            * a :class:`dict`. The output of :meth:`__call__` will be a dictionary
-              with the same keys whose values are the corresponding reductions
-              of the :class:`dict`'s values. The values may either be lists of
-              :mod:`pymbolic` expressions or a lists of :class:`tuple`\\ s
-              ``(expr, op)``, where ``expr`` is a :mod:`pymbolic` expression and
-              ``op`` is the reduction operation to perform. Valid options are
-              ``'avg'`` (default), ``'sum'``, ``'prod'``, ``'max'``, and ``'min'``.
-
-            * a :class:`Sector`. In this case, the reduction dictionary will be
-              obtained from :attr:`Sector.reducers`.
-
-            * a :class:`list` of :class:`Sector`\\ s. In this case, the input
-              obtained from each :class:`Sector` (as described above) will be
-              combined.
-
-        The following keyword-only arguments are recognized (in addition to those
-        accepted by :class:`ElementWiseMap`):
-
-        :arg grid_size: The total number of gridpoints on the entire computational
-            grid.
-            Defaults to *None*, in which case it will be inferred at
-            :meth:`__call__` (if averages are being performed).
-
-        :arg callback: A :class:`~collections.abc.Callable`
-            used to process the reduction results
-            before :meth:`__call__` returns.
-            Defaults to ``lambda x: x``, i.e., doing nothing.
-        """
-
         self.decomp = decomp
         from pystella import Sector
         if isinstance(input, Sector):
@@ -227,7 +224,7 @@ class Reduction(ElementWiseMap):
         :returns: A :class:`dict` with the same keys as (interpreted from) ``input``
             whose values are the corresponding (lists of) reduced values.
             Averages are obtained by dividing by :attr:`grid_size`.
-            If ``grid_size`` was not supplied at :meth:`__init__`, it is inferred
+            If ``grid_size`` was not supplied at initialization, it is inferred
             (at a slight performance penalty).
         """
 
@@ -257,31 +254,28 @@ class FieldStatistics(Reduction):
     A subclass of :class:`Reduction` which computes the mean and variance of
     fields.
 
-    .. automethod:: __init__
+    :arg decomp: An instance of :class:`DomainDecomposition`.
+
+    :arg halo_shape: The number of halo layers on (both sides of) each axis of
+        the computational grid.
+        May either be an :class:`int`, interpreted as a value to fix the
+        parameter ``h`` to, or a :class:`tuple`, interpreted as values for
+        ``hx``, ``hy``, and ``hz``.
+        Defaults to *None*, in which case no such values are fixed at kernel
+        creation.
+
+    The following keyword-only arguments are recognized:
+
+    :arg max_min: A :class:`bool` determining whether to also compute the
+        actual and absolute maxima and minima of fields.
+        Defaults to *False*.
+
+    Any remaining keyword arguments are passed to :meth:`Reduction`.
+
     .. automethod:: __call__
     """
 
     def __init__(self, decomp, halo_shape, **kwargs):
-        """
-        :arg decomp: An instance of :class:`DomainDecomposition`.
-
-        :arg halo_shape: The number of halo layers on (both sides of) each axis of
-            the computational grid.
-            May either be an :class:`int`, interpreted as a value to fix the
-            parameter ``h`` to, or a :class:`tuple`, interpreted as values for
-            ``hx``, ``hy``, and ``hz``.
-            Defaults to *None*, in which case no such values are fixed at kernel
-            creation.
-
-        The following keyword-only arguments are recognized:
-
-        :arg max_min: A :class:`bool` determining whether to also compute the
-            actual and absolute maxima and minima of fields.
-            Defaults to *False*.
-
-        Any remaining keyword arguments are passed to :meth:`Reduction.__init__`.
-        """
-
         self.min_max = kwargs.pop('max_min', False)
 
         from pystella import Field

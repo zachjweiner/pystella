@@ -49,7 +49,7 @@ def test_examples(ctx_factory, grid_shape, proc_shape, filename, expected):
 
     result = subprocess.run(['python', filename], stdout=subprocess.PIPE)
 
-    assert result.returncode == 0, '%s failed' % filename
+    assert result.returncode == 0, f"{filename} failed"
 
     if expected is not None:
         from glob import glob
@@ -61,7 +61,7 @@ def test_examples(ctx_factory, grid_shape, proc_shape, filename, expected):
         f.close()
         os.remove(files[-1])
 
-        assert constraint < expected, '%s constraint is wrong' % filename
+        assert constraint < expected, f"{filename} constraint is wrong"
 
 
 if __name__ == "__main__":

@@ -111,8 +111,7 @@ def test_gradient_laplacian(ctx_factory, grid_shape, proc_shape, h, dtype,
     max_rtol = 1.e-11 if dtype == np.float64 else 3.e-4
     avg_rtol = 1.e-12 if dtype == np.float64 else 5.e-5
     assert max_err < max_rtol and avg_err < avg_rtol, \
-        "lap inaccurate for halo_shape=%s, grid_shape=%s, proc_shape=%s" \
-        % (h, grid_shape, proc_shape)
+        f"lap inaccurate for {h=}, {grid_shape=}, {proc_shape=}"
 
     for i in range(3):
         eff_k = get_evals_1(kvec[i], dx[i])
@@ -125,8 +124,7 @@ def test_gradient_laplacian(ctx_factory, grid_shape, proc_shape, h, dtype,
         max_rtol = 1.e-12 if dtype == np.float64 else 1.e-5
         avg_rtol = 1.e-13 if dtype == np.float64 else 3.e-6
         assert max_err < max_rtol and avg_err < avg_rtol, \
-            "pd%d inaccurate for halo_shape=%s, grid_shape=%s, proc_shape=%s" \
-            % (i, h, grid_shape, proc_shape)
+            f"pd{i} inaccurate for {h=}, {grid_shape=}, {proc_shape=}"
 
     vec = cla.empty(queue, (3,)+pencil_shape, dtype)
     for mu in range(3):
@@ -143,8 +141,7 @@ def test_gradient_laplacian(ctx_factory, grid_shape, proc_shape, h, dtype,
     max_rtol = 1.e-14 if dtype == np.float64 else 3.e-4
     avg_rtol = 1.e-15 if dtype == np.float64 else 5.e-5
     assert max_err < max_rtol and avg_err < avg_rtol, \
-        "div inaccurate for halo_shape=%s, grid_shape=%s, proc_shape=%s" \
-        % (h, grid_shape, proc_shape)
+        f"div inaccurate for {h=}, {grid_shape=}, {proc_shape=}"
 
     if timing:
         from common import timer
@@ -169,10 +166,9 @@ def test_gradient_laplacian(ctx_factory, grid_shape, proc_shape, h, dtype,
         times['divergence'] = timer(lambda: derivs.divergence(**div_args))
 
         if mpi.rank == 0:
-            print("grid_shape=%s, halo_shape=%s, proc_shape=%s"
-                  % (grid_shape, h, proc_shape))
+            print(f"{grid_shape=}, {h=}, {proc_shape=}")
             for key, val in times.items():
-                print(key, 'took', '%.3f' % val, 'ms')
+                print(f"{key} took {val:.3f} ms")
 
 
 if __name__ == "__main__":

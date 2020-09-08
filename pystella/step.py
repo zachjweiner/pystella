@@ -69,7 +69,39 @@ class Stepper:
     The base class for time steppers, with no implementation of a particular time
     stepper.
 
-    .. automethod:: __init__
+    :arg input: May be one of the following:
+
+        * a :class:`dict` whose values represent the right-hand side
+          of the ODEs to solve, i.e., `(key, value)` pairs corresponding to
+          :math:`(y, f)` such that
+
+              .. math::
+
+                  \\frac{\\mathrm{d} y}{\\mathrm{d} t} = f,
+
+          where :math:`f` is an arbitrary function of kernel data.
+          Both keys and values must be :mod:`pymbolic` expressions.
+
+        * a :class:`~pystella.Sector`. In this case, the right-hand side
+          dictionary will be obtained from :attr:`~pystella.Sector.rhs_dict`.
+
+        * a :class:`list` of :class:`~pystella.Sector`\\ s. In this case,
+          the input obtained from each :class:`~pystella.Sector`
+          (as described above) will be combined.
+
+    The following keyword arguments are recognized:
+
+    :arg MapKernel: The kernel class which each substep/stage will be an
+        instance of---i.e., one of :class:`~pystella.ElementWiseMap` or its
+        subclasses. Defaults to :class:`~pystella.ElementWiseMap`.
+
+    :arg dt: A :class:`float` fixing the value of the timestep interval.
+        Defaults to *None*, in which case it is not fixed at kernel creation.
+
+    The remaining arguments are passed to :meth:`MapKernel` for
+    each substep of the timestepper (i.e., see the documentation of
+    :class:`~pystella.ElementWiseMap`).
+
     .. automethod:: __call__
 
     .. attribute:: num_stages
@@ -94,41 +126,6 @@ class Stepper:
         raise NotImplementedError
 
     def __init__(self, input, MapKernel=ElementWiseMap, **kwargs):
-        """
-        :arg input: May be one of the following:
-
-            * a :class:`dict` whose values represent the right-hand side
-              of the ODEs to solve, i.e., `(key, value)` pairs corresponding to
-              :math:`(y, f)` such that
-
-                .. math::
-
-                    \\frac{\\mathrm{d} y}{\\mathrm{d} t} = f,
-
-              where :math:`f` is an arbitrary function of kernel data.
-              Both keys and values must be :mod:`pymbolic` expressions.
-
-            * a :class:`~pystella.Sector`. In this case, the right-hand side
-              dictionary will be obtained from :attr:`~pystella.Sector.rhs_dict`.
-
-            * a :class:`list` of :class:`~pystella.Sector`\\ s. In this case,
-              the input obtained from each :class:`~pystella.Sector`
-              (as described above) will be combined.
-
-        The following keyword arguments are recognized:
-
-        :arg MapKernel: The kernel class which each substep/stage will be an
-            instance of---i.e., one of :class:`~pystella.ElementWiseMap` or its
-            subclasses. Defaults to :class:`~pystella.ElementWiseMap`.
-
-        :arg dt: A :class:`float` fixing the value of the timestep interval.
-            Defaults to *None*, in which case it is not fixed at kernel creation.
-
-        The remaining arguments are passed to :meth:`MapKernel.__init__` for
-        each substep of the timestepper (i.e., see the documentation of
-        :class:`~pystella.ElementWiseMap`).
-        """
-
         single_stage = kwargs.pop('single_stage', True)
         from pystella import Sector
         if isinstance(input, Sector):
@@ -475,7 +472,7 @@ class LowStorageRKStepper(Stepper):
 
     def make_steps(self, MapKernel=ElementWiseMap, **kwargs):
         tmp_arrays = [copy_and_rename(key) for key in self.rhs_dict.keys()]
-        self.dof_names = set([get_name(key) for key in self.rhs_dict.keys()])
+        self.dof_names = {get_name(key) for key in self.rhs_dict.keys()}
         rhs_statements = {var(gen_tmp_name(key, suffix=f'_rhs_{i}')): val
                           for i, (key, val) in enumerate(self.rhs_dict.items())}
 
@@ -513,8 +510,8 @@ class LowStorageRKStepper(Stepper):
             elif isinstance(f, np.ndarray):
                 tmp_arrays[tmp_name] = np.zeros_like(f)
             else:
-                raise ValueError("Could not generate tmp array for %s of type %s"
-                                 % (f, type(f)))
+                raise ValueError(f"Could not generate tmp array for {f}"
+                                 f"of type {type(f)}")
 
         return tmp_arrays
 

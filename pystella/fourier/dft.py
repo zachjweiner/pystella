@@ -323,7 +323,20 @@ class pDFT(BaseDFT):
 
     See :class:`pystella.fourier.dft.BaseDFT`.
 
-    .. automethod:: __init__
+    :arg decomp: A :class:`pystella.DomainDecomposition`.
+        The shape of the MPI processor grid is determined by
+        the ``proc_shape`` attribute of this object.
+
+    :arg queue: A :class:`pyopencl.CommandQueue`.
+
+    :arg grid_shape: A 3-:class:`tuple` specifying the shape of position-space
+        arrays to be transformed.
+
+    :arg dtype: The datatype of position-space arrays to be transformed.
+        The complex datatype for momentum-space arrays is chosen to have
+        the same precision.
+
+    Any keyword arguments are passed to :class:`mpi4py_fft.mpifft.PFFT`.
 
     .. versionchanged:: 2020.1
 
@@ -331,23 +344,6 @@ class pDFT(BaseDFT):
     """
 
     def __init__(self, decomp, queue, grid_shape, dtype, **kwargs):
-        """
-        :arg decomp: A :class:`pystella.DomainDecomposition`.
-            The shape of the MPI processor grid is determined by
-            the ``proc_shape`` attribute of this object.
-
-        :arg queue: A :class:`pyopencl.CommandQueue`.
-
-        :arg grid_shape: A 3-:class:`tuple` specifying the shape of position-space
-            arrays to be transformed.
-
-        :arg dtype: The datatype of position-space arrays to be transformed.
-            The complex datatype for momentum-space arrays is chosen to have
-            the same precision.
-
-        Any keyword arguments are passed to :class:`mpi4py_fft.mpifft.PFFT`.
-        """
-
         self.decomp = decomp
         self.grid_shape = grid_shape
         self.proc_shape = decomp.proc_shape
@@ -407,7 +403,18 @@ class gDFT(BaseDFT):
 
     See :class:`pystella.fourier.dft.BaseDFT`.
 
-    .. automethod:: __init__
+    :arg decomp: A :class:`pystella.DomainDecomposition`.
+
+    :arg context: A :class:`pyopencl.Context`.
+
+    :arg queue: A :class:`pyopencl.CommandQueue`.
+
+    :arg grid_shape: A 3-:class:`tuple` specifying the shape of position-space
+        arrays to be transformed.
+
+    :arg dtype: The datatype of position-space arrays to be transformed.
+        The complex datatype for momentum-space arrays is chosen to have
+        the same precision.
 
     .. versionchanged:: 2020.1
 
@@ -415,21 +422,6 @@ class gDFT(BaseDFT):
     """
 
     def __init__(self, decomp, context, queue, grid_shape, dtype):
-        """
-        :arg decomp: A :class:`pystella.DomainDecomposition`.
-
-        :arg context: A :class:`pyopencl.Context`.
-
-        :arg queue: A :class:`pyopencl.CommandQueue`.
-
-        :arg grid_shape: A 3-:class:`tuple` specifying the shape of position-space
-            arrays to be transformed.
-
-        :arg dtype: The datatype of position-space arrays to be transformed.
-            The complex datatype for momentum-space arrays is chosen to have
-            the same precision.
-        """
-
         self.decomp = decomp
         self.grid_shape = grid_shape
         self.dtype = np.dtype(dtype)

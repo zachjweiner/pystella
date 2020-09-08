@@ -59,8 +59,7 @@ def test_generate_WKB(ctx_factory, grid_shape, proc_shape, dtype, random,
         ntime = 10
         from common import timer
         t = timer(lambda: modes.generate_WKB(queue, random=random), ntime=ntime)
-        print("%srandom, set_modes took %.3f ms for grid_shape=%s"
-              % ('' if random else 'non-', t, grid_shape))
+        print(f"{random=} set_modes took {t:.3f} ms for {grid_shape=}")
 
 
 @pytest.mark.filterwarnings(
@@ -104,8 +103,7 @@ def test_generate(ctx_factory, grid_shape, proc_shape, dtype, random, timing=Fal
         tol = .1 if num_bins < 64 else .3
         assert (np.max(err[num_bins//3:-num_bins//3]) < tol
                 and np.average(err[1:]) < tol), \
-            "init power spectrum incorrect for %srandom k**%d" \
-            % ('' if random else 'non-', exp)
+            f"init power spectrum incorrect for {random=}, k**{exp}"
 
         if random:
             fx = fft.idft(cla.to_device(queue, fk)).real
@@ -119,14 +117,13 @@ def test_generate(ctx_factory, grid_shape, proc_shape, dtype, random, timing=Fal
             skew = mpi.allreduce(np.sum(fx**3)) / grid_size - 3 * avg * var - avg**3
             skew /= var**1.5
             assert skew < tol, \
-                "init power spectrum has large skewness for k**%d" % (exp)
+                f"init power spectrum has large skewness for k**{exp}"
 
     if timing:
         ntime = 10
         from common import timer
         t = timer(lambda: modes.generate(queue, random=random), ntime=ntime)
-        print("%srandom, set_modes took %.3f ms for grid_shape=%s"
-              % ('' if random else 'non-', t, grid_shape))
+        print(f"{random=} set_modes took {t:.3f} ms for {grid_shape=}")
 
 
 def is_hermitian(fk):

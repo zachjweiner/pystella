@@ -97,18 +97,18 @@ def test_step(ctx_factory, proc_shape, dtype, Stepper):
             max_errs[dt] = np.max(errs)
 
         order = stepper.expected_order
-        print('order = %d' % order, 'n = %d' % n)
+        print(f"{order=}, {n=}")
         print(max_errs)
         print([max_errs[a] / max_errs[b] for a, b in zip(dtlist[:-1], dtlist[1:])])
 
         order = stepper.expected_order
         rtol = dtlist[-1]**order if dtype == np.float64 else 1.e-1
         assert list(max_errs.values())[-1] < rtol, \
-            "Stepper solution inaccurate for n=%f" % (n)
+            f"Stepper solution inaccurate for {n=}"
 
         for a, b in zip(dtlist[:-1], dtlist[1:]):
             assert max_errs[a] / max_errs[b] > .9 * (a/b)**order, \
-                "Stepper convergence failing for n=%f" % (n)
+                f"Stepper convergence failing for {n=}"
 
 
 def test_low_storage_edge_codegen_and_tmp_alloc(ctx_factory, proc_shape, dtype=None):

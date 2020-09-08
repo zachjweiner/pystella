@@ -171,7 +171,23 @@ class FullApproximationScheme:
     A class for solving generic systems of boundary-value problems using the
     Full Approximation Scheme.
 
-    .. automethod:: __init__
+    :arg solver: A instance of a subclass of :class:`relax.RelaxationBase`
+        (e.g., :class:`JacobiIterator` or :class:`NewtonIterator`).
+
+    :arg halo_shape: The number of halo layers on (both sides of) each axis of
+        the computational grid.
+        Currently must be an :class:`int`.
+
+    The following keyword-only arguments are recognized:
+
+    :arg Restrictor: A mapper which restricts arrays from a fine
+        to a coarser level.
+        Defaults to :class:`FullWeighting`.
+
+    :arg Interpolator: A mapper which interpolates arrays from a coarse
+        to a finer level.
+        Defaults to :class:`LinearInterpolation`.
+
     .. automethod:: __call__
 
     The below methods are documented for development's sake, but are not
@@ -186,25 +202,6 @@ class FullApproximationScheme:
     """
 
     def __init__(self, solver, halo_shape, **kwargs):
-        """
-        :arg solver: A instance of a subclass of :class:`relax.RelaxationBase`
-            (e.g., :class:`JacobiIterator` or :class:`NewtonIterator`).
-
-    :arg halo_shape: The number of halo layers on (both sides of) each axis of
-        the computational grid.
-        Currently must be an :class:`int`.
-
-        The following keyword-only arguments are recognized:
-
-        :arg Restrictor: A mapper which restricts arrays from a fine
-            to a coarser level.
-            Defaults to :class:`FullWeighting`.
-
-        :arg Interpolator: A mapper which interpolates arrays from a coarse
-            to a finer level.
-            Defaults to :class:`LinearInterpolation`.
-        """
-
         self.solver = solver
         self.halo_shape = halo_shape
 

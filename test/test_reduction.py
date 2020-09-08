@@ -76,17 +76,15 @@ def test_reduction(ctx_factory, grid_shape, proc_shape, dtype, op,
 
     rtol = 5.e-14 if dtype == np.float64 else 1.e-5
     assert np.allclose(avg, avg_test, rtol=rtol, atol=0), \
-        "%s reduction innaccurate for grid_shape=%s, proc_shape=%s" \
-        % (op, grid_shape, proc_shape)
+        f"{op} reduction innaccurate for {grid_shape=}, {proc_shape=}"
 
     if timing:
         from common import timer
         t = timer(lambda: reducer(queue, f=f, allocator=pool), ntime=1000)
         if mpi.rank == 0:
-            print("reduction took %.3f ms for grid_shape=%s, proc_shape=%s"
-                  % (t, grid_shape, proc_shape))
-            print("Bandwidth = %.1f GB/s"
-                  % ((f.nbytes)/1024**3 / t * 1000))
+            print(f"reduction took {t:.3f} ms for {grid_shape=}, {proc_shape=}")
+            bandwidth = f.nbytes / 1024**3 / t * 1000
+            print(f"Bandwidth = {bandwidth:.1f} GB/s")
 
 
 @pytest.mark.parametrize("dtype", [np.float64])
@@ -121,8 +119,7 @@ def test_reduction_with_new_shape(ctx_factory, grid_shape, proc_shape, dtype, op
 
     rtol = 5.e-14 if dtype == np.float64 else 1.e-5
     assert np.allclose(avg, avg_test, rtol=rtol, atol=0), \
-        "%s reduction innaccurate for grid_shape=%s, proc_shape=%s" \
-        % (op, grid_shape, proc_shape)
+        f"{op} reduction innaccurate for {grid_shape=}, {proc_shape=}"
 
     # test call to reducer with new shape
     grid_shape = tuple(Ni // 2 for Ni in grid_shape)
@@ -137,8 +134,7 @@ def test_reduction_with_new_shape(ctx_factory, grid_shape, proc_shape, dtype, op
 
     rtol = 5.e-14 if dtype == np.float64 else 1.e-5
     assert np.allclose(avg, avg_test, rtol=rtol, atol=0), \
-        "%s reduction w/new shape innaccurate for grid_shape=%s, proc_shape=%s" \
-        % (op, grid_shape, proc_shape)
+        f"{op} reduction w/new shape innaccurate for {grid_shape=}, {proc_shape=}"
 
 
 @pytest.mark.parametrize("dtype", [np.float64])
@@ -184,20 +180,17 @@ def test_field_statistics(ctx_factory, grid_shape, proc_shape, dtype, _grid_shap
     rtol = 5.e-14 if dtype == np.float64 else 1.e-5
 
     assert np.allclose(avg, avg_test, rtol=rtol, atol=0), \
-        "average innaccurate for grid_shape=%s, proc_shape=%s" \
-        % (grid_shape, proc_shape)
+        f"average innaccurate for {grid_shape=}, {proc_shape=}"
 
     assert np.allclose(var, var_test, rtol=rtol, atol=0), \
-        "variance innaccurate for grid_shape=%s, proc_shape=%s" \
-        % (grid_shape, proc_shape)
+        f"variance innaccurate for {grid_shape=}, {proc_shape=}"
 
     if timing:
         from common import timer
         t = timer(lambda: statistics(f, allocator=pool))
         if mpi.rank == 0:
-            print("field stats took "
-                  "%.3f ms for outer shape %s, grid_shape=%s, proc_shape=%s"
-                  % (t, f.shape[:-3], grid_shape, proc_shape))
+            print(f"field stats took {t:.3f} ms "
+                  f"for outer shape {f.shape[:-3]}, {grid_shape=}, {proc_shape=}")
 
 
 if __name__ == "__main__":

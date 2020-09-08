@@ -30,22 +30,19 @@ class SpectralCollocator:
     Interface (analagous to :class:`~pystella.FiniteDifferencer`)
     for computing spatial derivatives via spectral collocation.
 
-    .. automethod:: __init__
+    The following arguments are required:
+
+    :arg fft: An FFT object as returned by :func:`~pystella.DFT`.
+        ``grid_shape`` and ``dtype`` are determined by ``fft``'s attributes.
+
+    :arg dk: A 3-:class:`tuple` of the momentum-space grid spacing of each
+        axis (i.e., the infrared cutoff of the grid in each direction).
+
     .. automethod:: __call__
     .. automethod:: divergence
     """
 
     def __init__(self, fft, dk):
-        """
-        The following arguments are required:
-
-        :arg fft: An FFT object as returned by :func:`~pystella.DFT`.
-            ``grid_shape`` and ``dtype`` are determined by ``fft``'s attributes.
-
-        :arg dk: A 3-:class:`tuple` of the momentum-space grid spacing of each
-            axis (i.e., the infrared cutoff of the grid in each direction).
-        """
-
         self.fft = fft
         grid_size = fft.grid_shape[0] * fft.grid_shape[1] * fft.grid_shape[2]
 

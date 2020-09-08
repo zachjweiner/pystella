@@ -35,7 +35,31 @@ class Histogrammer(ElementWiseMap):
     A subclass of :class:`ElementWiseMap` which computes (an arbitrary
     number of) histograms.
 
-    .. automethod:: __init__
+    :arg decomp: An instance of :class:`DomainDecomposition`.
+
+    :arg histograms: A :class:`dict` with values of the form
+        ``(bin_expr, weight_expr)``, which are :mod:`pymbolic` expressions
+        whose result determines the bin number and the associated weight
+        contributed to that bin's count, respectively.
+        The output of :meth:`__call__` will be a dictionary
+        with the same keys whose values are the specified histograms.
+
+        .. note::
+
+            The values computed by ``bin_expr`` will by default be cast to
+            integers by truncation. To instead round to the nearest integer,
+            wrap the expression in a call to ``round``.
+
+    :arg num_bins: The number of bins of the computed histograms.
+
+    :arg rank_shape: A 3-:class:`tuple` specifying the shape of the computational
+        sub-grid on the calling process.
+
+    :arg dtype: The datatype of the resulting histogram.
+
+    In addition, any keyword-only arguments accepted by :class:`ElementWiseMap`
+    are also recognized.
+
     .. automethod:: __call__
 
     .. versionadded:: 2020.1
@@ -51,33 +75,6 @@ class Histogrammer(ElementWiseMap):
 
     def __init__(self, decomp, histograms, num_bins, rank_shape, dtype,
                  **kwargs):
-        """
-        :arg decomp: An instance of :class:`DomainDecomposition`.
-
-        :arg histograms: A :class:`dict` with values of the form
-            ``(bin_expr, weight_expr)``, which are :mod:`pymbolic` expressions
-            whose result determines the bin number and the associated weight
-            contributed to that bin's count, respectively.
-            The output of :meth:`__call__` will be a dictionary
-            with the same keys whose values are the specified histograms.
-
-            .. note::
-
-                The values computed by ``bin_expr`` will by default be cast to
-                integers by truncation. To instead round to the nearest integer,
-                wrap the expression in a call to ``round``.
-
-        :arg num_bins: The number of bins of the computed histograms.
-
-        :arg rank_shape: A 3-:class:`tuple` specifying the shape of the computational
-            sub-grid on the calling process.
-
-        :arg dtype: The datatype of the resulting histogram.
-
-        In addition, any keyword-only arguments accepted by :class:`ElementWiseMap`
-        are also recognized.
-        """
-
         self.decomp = decomp
         self.histograms = histograms
         self.rank_shape = rank_shape
@@ -117,7 +114,7 @@ class Histogrammer(ElementWiseMap):
 
         insns = [
             lp.Assignment(hist[j, b], 0, atomicity=(lp.AtomicUpdate(str(hist)),),
-                          within_inames=frozenset(('b')),)
+                          within_inames=frozenset('b'),)
             for j in range(num_hists)
         ]
         insns.append(
@@ -198,34 +195,31 @@ class FieldHistogrammer(Histogrammer):
     A subclass of :class:`Histogrammer` which computes field histograms with
     both linear and logarithmic binning.
 
-    .. automethod:: __init__
+    :arg decomp: An instance of :class:`DomainDecomposition`.
+
+    :arg num_bins: The number of bins of the computed histograms.
+
+    :arg rank_shape: A 3-:class:`tuple` specifying the shape of the computational
+        sub-grid on the calling process.
+
+    :arg dtype: The datatype of the resulting histogram.
+
+    The following keyword-only arguments are recognized (in addition to those
+    accepted by :class:`ElementWiseMap`):
+
+    :arg halo_shape: The number of halo layers on (both sides of) each axis of
+        the computational grid.
+        May either be an :class:`int`, interpreted as a value to fix the
+        parameter ``h`` to, or a :class:`tuple`, interpreted as values for
+        ``hx``, ``hy``, and ``hz``.
+        Defaults to ``0``, i.e., no padding.
+
     .. automethod:: __call__
 
     .. versionadded:: 2020.1
     """
 
     def __init__(self, decomp, num_bins, rank_shape, dtype, **kwargs):
-        """
-        :arg decomp: An instance of :class:`DomainDecomposition`.
-
-        :arg num_bins: The number of bins of the computed histograms.
-
-        :arg rank_shape: A 3-:class:`tuple` specifying the shape of the computational
-            sub-grid on the calling process.
-
-        :arg dtype: The datatype of the resulting histogram.
-
-        The following keyword-only arguments are recognized (in addition to those
-        accepted by :class:`ElementWiseMap`):
-
-        :arg halo_shape: The number of halo layers on (both sides of) each axis of
-            the computational grid.
-            May either be an :class:`int`, interpreted as a value to fix the
-            parameter ``h`` to, or a :class:`tuple`, interpreted as values for
-            ``hx``, ``hy``, and ``hz``.
-            Defaults to ``0``, i.e., no padding.
-        """
-
         from pymbolic import parse
         import pymbolic.functions as pf
 

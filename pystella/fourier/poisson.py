@@ -40,30 +40,27 @@ class SpectralPoissonSolver:
 
     allowing a term linear in :math:`f` with coefficient :math:`m^2`.
 
-    .. automethod:: __init__
+    The following arguments are required:
+
+    :arg fft: An FFT object as returned by :func:`~pystella.DFT`.
+        ``grid_shape`` and ``dtype`` are determined by ``fft``'s attributes.
+
+    :arg dk: A 3-:class:`tuple` of the momentum-space grid spacing of each
+        axis (i.e., the infrared cutoff of the grid in each direction).
+
+    :arg dx: A 3-:class:`tuple` specifying the grid spacing of each axis.
+
+    :arg effective_k: A :class:`~collections.abc.Callable` with signature
+        ``(k, dx)`` returning
+        the eigenvalue of the second-difference stencil corresponding to
+        :math:`\\nabla^2`.
+        That is, the solver is implemented relative to the stencil
+        whose eigenvalues are returned by this function.
+
     .. automethod:: __call__
     """
 
     def __init__(self, fft, dk, dx, effective_k):
-        """
-        The following arguments are required:
-
-        :arg fft: An FFT object as returned by :func:`~pystella.DFT`.
-            ``grid_shape`` and ``dtype`` are determined by ``fft``'s attributes.
-
-        :arg dk: A 3-:class:`tuple` of the momentum-space grid spacing of each
-            axis (i.e., the infrared cutoff of the grid in each direction).
-
-        :arg dx: A 3-:class:`tuple` specifying the grid spacing of each axis.
-
-        :arg effective_k: A :class:`~collections.abc.Callable` with signature
-            ``(k, dx)`` returning
-            the eigenvalue of the second-difference stencil corresponding to
-            :math:`\\nabla^2`.
-            That is, the solver is implemented relative to the stencil
-            whose eigenvalues are returned by this function.
-        """
-
         self.fft = fft
         grid_size = fft.grid_shape[0] * fft.grid_shape[1] * fft.grid_shape[2]
 

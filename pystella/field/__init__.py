@@ -242,14 +242,14 @@ class DynamicField(Field):
         super().__init__(child, offset=offset, indices=indices,
                          base_offset=base_offset, shape=shape, dtype=dtype)
 
-        self.dot = dot or Field('d%sdt' % str(child), shape=shape,
+        self.dot = dot or Field(f"d{child}dt", shape=shape,
                                 offset=offset, indices=indices, dtype=dtype)
 
-        self.lap = lap or Field('lap_%s' % str(child), shape=shape,
+        self.lap = lap or Field(f"lap_{child}", shape=shape,
                                 offset=0, indices=indices, ignore_prepends=True,
                                 dtype=dtype)
 
-        self.pd = pd or Field('d%sdx' % str(child), shape=shape+(3,),
+        self.pd = pd or Field(f"d{child}dx", shape=shape+(3,),
                               offset=0, indices=indices, ignore_prepends=True,
                               dtype=dtype)
 
@@ -486,7 +486,7 @@ def substitute(expression, variable_assignments={}, **kwargs):
 
 class FieldCollector(CombineMapper, Collector):
     def map_field(self, expr, *args, **kwargs):
-        return set([expr])
+        return {expr}
 
     map_dynamic_field = map_field
 
@@ -554,8 +554,9 @@ def get_field_args(expressions, unpadded_shape=None, prepend_with=None):
             other_arg = field_args[f.name]
             if arg.shape != other_arg.shape:
                 raise ValueError(
-                    "Encountered instances of field '%s' with conflicting shapes"
-                    % f.name)
+                    "Encountered instances of field '{f.name}' "
+                    "with conflicting shapes"
+                )
         else:
             field_args[f.name] = arg
 
@@ -581,8 +582,8 @@ def collect_field_indices(expressions):
 
 
 def indices_to_domain(indices):
-    constraints = " and ".join("0 <= %s < N%s" % (idx, idx) for idx in indices)
-    domain = "{[%s]: %s}" % (",".join(indices), constraints)
+    constraints = " and ".join(f"0 <= {idx} < N{idx}" for idx in indices)
+    domain = "{{[{}]: {}}}".format(",".join(indices), constraints)
     return domain
 
 

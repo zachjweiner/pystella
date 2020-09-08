@@ -108,13 +108,12 @@ def test_spectra(ctx_factory, grid_shape, proc_shape, dtype, L, timing=False):
     # skip the Nyquist mode and the zero mode
     err = np.abs((spectrum[1:-2] - hist[1:-2]) / hist[1:-2])
     assert np.max(err) < max_rtol and np.average(err) < avg_rtol, \
-        "power spectrum inaccurate for grid_shape=%s" % (grid_shape,)
+        f"power spectrum inaccurate for {grid_shape=}"
 
     if timing:
         from common import timer
         t = timer(lambda: spec.bin_power(fk_d, k_power=k_power))
-        print("power spectrum took %.3f ms for grid_shape=%s, dtype=%s"
-              % (t, grid_shape, str(dtype)))
+        print(f"power spectrum took {t:.3f} ms for {grid_shape=}, {dtype=}")
 
 
 @pytest.mark.filterwarnings(
@@ -171,18 +170,17 @@ def test_pol_spectra(ctx_factory, grid_shape, proc_shape, dtype, timing=False):
     # skip the Nyquist mode and the zero mode
     err = np.abs((plus_ps_1[1:-2] - plus_ps_2[1:-2]) / plus_ps_1[1:-2])
     assert np.max(err) < max_rtol and np.average(err) < avg_rtol, \
-        "plus power spectrum inaccurate for grid_shape=%s" % (grid_shape,)
+        f"plus power spectrum inaccurate for {grid_shape=}"
 
     err = np.abs((minus_ps_1[1:-2] - minus_ps_2[1:-2]) / minus_ps_1[1:-2])
     assert np.max(err) < max_rtol and np.average(err) < avg_rtol, \
-        "minus power spectrum inaccurate for grid_shape=%s" % (grid_shape,)
+        f"minus power spectrum inaccurate for {grid_shape=}"
 
     vec_sum = sum(spec.bin_power(vector[mu], k_power=k_power) for mu in range(3))
     pol_sum = plus_ps_1 + minus_ps_1
     err = np.abs((vec_sum[1:-2] - pol_sum[1:-2]) / vec_sum[1:-2])
     assert np.max(err) < max_rtol and np.average(err) < avg_rtol, \
-        "polarization power spectrum don't match vector sum for grid_shape=%s" \
-        % (grid_shape,)
+        f"polarization power spectrum don't match vector sum for {grid_shape=}"
 
     # reset
     for mu in range(3):
@@ -201,8 +199,7 @@ def test_pol_spectra(ctx_factory, grid_shape, proc_shape, dtype, timing=False):
     err = np.abs((vec_sum[1:-2] - dec_sum[1:-2]) / vec_sum[1:-2])
     print(np.max(err), np.mean(err))
     assert np.max(err) < max_rtol and np.average(err) < avg_rtol, \
-        "decomp power spectrum don't match vector sum for grid_shape=%s" \
-        % (grid_shape,)
+        f"decomp power spectrum don't match vector sum for {grid_shape=}"
 
     hij = cl.clrandom.rand(queue, (6,)+rank_shape, dtype)
     gw_spec = spec.gw(hij, project, 1.3)
@@ -214,7 +211,7 @@ def test_pol_spectra(ctx_factory, grid_shape, proc_shape, dtype, timing=False):
     diff = gw_spec - gw_pol_spec[0] - gw_pol_spec[1]
     err = diff[1:-1] / gw_spec[1:-1]
     assert np.max(err) < max_rtol and np.average(err) < avg_rtol, \
-        "gw pol don't add up to gw for grid_shape=%s" % (grid_shape,)
+        f"gw pol don't add up to gw for {grid_shape=}"
 
 
 if __name__ == "__main__":

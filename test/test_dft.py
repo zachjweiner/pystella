@@ -72,13 +72,13 @@ def test_dft(ctx_factory, grid_shape, proc_shape, dtype, timing=False):
 
         rtol = 1.e-11 if dtype in ('float64', 'complex128') else 2.e-3
         assert np.allclose(fx1, fx2 / grid_size, rtol=rtol, atol=0), \
-            "IDFT(DFT(f)) != f for grid_shape=%s" % (grid_shape,)
+            f"IDFT(DFT(f)) != f for grid_shape={grid_shape}"
 
         assert np.allclose(fk_np, fk1, rtol=rtol, atol=0), \
-            "DFT disagrees with numpy for grid_shape=%s" % (grid_shape,)
+            f"DFT disagrees with numpy for grid_shape={grid_shape}"
 
         assert np.allclose(fx_np, fx2 / grid_size, rtol=rtol, atol=0), \
-            "IDFT disagrees with numpy for grid_shape=%s" % (grid_shape,)
+            f"IDFT disagrees with numpy for grid_shape={grid_shape}"
     else:
         mpi0 = ps.DomainDecomposition(proc_shape, 0, rank_shape)
         if mpi0.rank == 0:
@@ -101,13 +101,13 @@ def test_dft(ctx_factory, grid_shape, proc_shape, dtype, timing=False):
         if mpi.rank == 0:
             rtol = 1.e-11 if dtype in ('float64', 'complex128') else 2.e-3
             assert np.allclose(fx1, fx2 / grid_size, rtol=rtol, atol=0), \
-                "IDFT(DFT(f)) != f for grid_shape=%s" % (grid_shape,)
+                f"IDFT(DFT(f)) != f for grid_shape={grid_shape}"
 
             # assert np.allclose(fk_np, fk1, rtol=rtol, atol=0), \
-            #         "DFT disagrees with numpy for grid_shape=%s" % (grid_shape,)
+            #     f"DFT disagrees with numpy for {grid_shape=}"
 
             # assert np.allclose(fx_np, fx2 / grid_size, rtol=rtol, atol=0), \
-            #         "IDFT disagrees with numpy for grid_shape=%s" % (grid_shape,)
+            #     f"IDFT disagrees with numpy for {grid_shape=}"
 
     fx_cl = cla.empty(queue, rank_shape, dtype)
     pencil_shape = tuple(ni + 2*h for ni in rank_shape)
@@ -133,19 +133,19 @@ def test_dft(ctx_factory, grid_shape, proc_shape, dtype, timing=False):
     from common import timer
 
     if mpi.rank == 0:
-        print("N = %s, " % (grid_shape,),
+        print(f"N = {grid_shape}, ",
               'complex' if np.dtype(dtype).kind == 'c' else 'real')
 
     from itertools import product
     for (a, input_), (b, output) in product(fx_types.items(), fk_types.items()):
         t = timer(lambda: fft.dft(input_, output), ntime=ntime)
         if mpi.rank == 0:
-            print("dft(%s, %s) took %.3f ms" % (a, b, t))
+            print(f"dft({a}, {b}) took {t:.3f} ms")
 
     for (a, input_), (b, output) in product(fk_types.items(), fx_types.items()):
         t = timer(lambda: fft.idft(input_, output), ntime=ntime)
         if mpi.rank == 0:
-            print("idft(%s, %s) took %.3f ms" % (a, b, t))
+            print(f"idft({a}, {b}) took {t:.3f} ms")
 
 
 if __name__ == "__main__":

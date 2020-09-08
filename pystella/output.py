@@ -54,7 +54,34 @@ class OutputFile:
     A wrapper to :class:`h5py:File` which collects and saves useful run
     information and provides functionality to append to datasets.
 
-    .. automethod:: __init__
+    No arguments are required, but the following keyword arguments are
+    recognized:
+
+    :arg context: A :class:`pyopencl.Context`. If not *None*, information
+        about the device, driver, and platform is saved to the
+        :attr:`attrs` dictionary.
+        Defaults to *None*.
+
+    :arg name: The name of the ``.h5`` (sans the extension) file to create.
+        If *None*, a unique filename is chosen based on the current date and
+        time.
+        Defaults to *None*.
+
+    :arg runfile: A file whose content will be saved as a string to
+        ``attrs['runfile']``, if not *None*. Useful for attaching the run file
+        of a simulation to its output.
+        Defaults to *None*.
+
+    Any remaining keyword arguments are saved to the :attr:`attrs` dictionary.
+    If any value ``val`` is not of valid type to be saved, the ``val.__name__``
+    attribute is saved if the value is a :class:`type` instance, or else
+    ``str(val)`` is saved.
+
+    Versions and git revisions (when available) of :mod:`pystella` and its
+    dependencies are saved as ``'versions'`` and ``'git_revs'``
+    :class:`h5py:Dataset`\\ s. The hostname is recorded in the ``'hostname'``
+    key of the :attr:`attrs` dictionary.
+
     .. automethod:: output
     """
 
@@ -69,36 +96,6 @@ class OutputFile:
                                     maxshape=maxshape, chunks=True)
 
     def __init__(self, context=None, name=None, runfile=None, **kwargs):
-        """
-        No arguments are required, but the following keyword arguments are
-        recognized:
-
-        :arg context: A :class:`pyopencl.Context`. If not *None*, information
-            about the device, driver, and platform is saved to the
-            :attr:`attrs` dictionary.
-            Defaults to *None*.
-
-        :arg name: The name of the ``.h5`` (sans the extension) file to create.
-            If *None*, a unique filename is chosen based on the current date and
-            time.
-            Defaults to *None*.
-
-        :arg runfile: A file whose content will be saved as a string to
-            ``attrs['runfile']``, if not *None*. Useful for attaching the run file
-            of a simulation to its output.
-            Defaults to *None*.
-
-        Any remaining keyword arguments are saved to the :attr:`attrs` dictionary.
-        If any value ``val`` is not of valid type to be saved, the ``val.__name__``
-        attribute is saved if the value is a :class:`type` instance, or else
-        ``str(val)`` is saved.
-
-        Versions and git revisions (when available) of :mod:`pystella` and its
-        dependencies are saved as ``'versions'`` and ``'git_revs'``
-        :class:`h5py:Dataset`\\ s. The hostname is recorded in the ``'hostname'``
-        key of the :attr:`attrs` dictionary.
-        """
-
         if name is None:
             import datetime
             name = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -134,7 +131,7 @@ class OutputFile:
                         f.attrs[key] = str(val)
 
             if runfile is not None:
-                fp = open(runfile, "r")
+                fp = open(runfile)
                 content = fp.read()
                 fp.close()
                 f.attrs['runfile'] = content

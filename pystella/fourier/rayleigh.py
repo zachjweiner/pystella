@@ -60,7 +60,22 @@ class RayleighGenerator:
     spectrum in Fourier space by drawing modes according to the corresponding
     Rayleigh distribution.
 
-    .. automethod:: __init__
+    :arg context: A :class:`pyopencl.Context`.
+
+    :arg fft: An FFT object as returned by :func:`DFT`.
+        The datatype of position-space arrays will match that
+        of the passed FFT object.
+
+    :arg dk: A 3-:class:`tuple` of the momentum-space grid spacing of each
+        axis (i.e., the infrared cutoff of the grid in each direction).
+
+    :arg volume: The physical volume of the grid.
+
+    The following keyword-only arguments are recognized:
+
+    :arg seed: The seed to the random number generator.
+        Defaults to ``13298``.
+
     .. automethod:: generate
     .. automethod:: init_field
     .. automethod:: init_transverse_vector
@@ -119,24 +134,6 @@ class RayleighGenerator:
         return knl
 
     def __init__(self, context, fft, dk, volume, **kwargs):
-        """
-        :arg context: A :class:`pyopencl.Context`.
-
-        :arg fft: An FFT object as returned by :func:`DFT`.
-            The datatype of position-space arrays will match that
-            of the passed FFT object.
-
-        :arg dk: A 3-:class:`tuple` of the momentum-space grid spacing of each
-            axis (i.e., the infrared cutoff of the grid in each direction).
-
-        :arg volume: The physical volume of the grid.
-
-        The following keyword-only arguments are recognized:
-
-        :arg seed: The seed to the random number generator.
-            Defaults to ``13298``.
-        """
-
         self.fft = fft
         self.dtype = fft.dtype
         self.rdtype = fft.rdtype

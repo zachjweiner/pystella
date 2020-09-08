@@ -47,7 +47,38 @@ class RelaxationBase:
     of :math:`f` (assuming a subclass's implemented solver is appropriate
     for such an equation).
 
-    .. automethod:: __init__
+    :arg decomp: A :class:`~pystella.DomainDecomposition`.
+
+    :arg queue: A :class:`pyopencl.CommandQueue`.
+
+    :arg lhs_dict: A :class:`dict` representing the set of equations to be
+        solved, whose keys must be :class:`~pystella.Field`\\ s representing the
+        unknown degrees of freedom and values are :class:`tuple`\\ s
+        ``(lhs, rho)`` representing the left-hand side :math:`L(f)`
+        and right-hand side :math:`\\rho` of that unknown's equation.
+
+    The following keyword arguments are recognized:
+
+    :arg MapKernel: The kernel class which the required mapping kernels will
+        be instances of---i.e., one of :class:`~pystella.ElementWiseMap` or its
+        subclasses. Defaults to :class:`~pystella.Stencil`.
+
+    :arg unknown_args: A list of :class:`loopy.ArrayArg`\\ s representing
+        the unknown degrees of freedom.
+        Defaults to *None*, in which case the correct arguments
+        (in particular, their shapes) are (attempted to be) inferred
+        from the keys of ``lhs_dict``.
+
+    :arg rho_args: A list of :class:`loopy.ArrayArg`\\ s representing
+        the static right-hand side arrays (i.e., those independent
+        of the degrees of freedom).
+        Defaults to *None*, in which case the correct arguments
+        (in particular, their shapes) are (attempted to be) inferred
+        from the values of ``lhs_dict``.
+
+    Any remaining keyword arguments are passed to each of the kernel
+    creation routines.
+
     .. automethod:: __call__
     .. automethod:: get_error
 
@@ -73,40 +104,6 @@ class RelaxationBase:
     """
 
     def __init__(self, decomp, queue, lhs_dict, MapKernel=Stencil, **kwargs):
-        """
-        :arg decomp: A :class:`~pystella.DomainDecomposition`.
-
-        :arg queue: A :class:`pyopencl.CommandQueue`.
-
-        :arg lhs_dict: A :class:`dict` representing the set of equations to be
-            solved, whose keys must be :class:`~pystella.Field`\\ s representing the
-            unknown degrees of freedom and values are :class:`tuple`\\ s
-            ``(lhs, rho)`` representing the left-hand side :math:`L(f)`
-            and right-hand side :math:`\\rho` of that unknown's equation.
-
-        The following keyword arguments are recognized:
-
-        :arg MapKernel: The kernel class which the required mapping kernels will
-            be instances of---i.e., one of :class:`~pystella.ElementWiseMap` or its
-            subclasses. Defaults to :class:`~pystella.Stencil`.
-
-        :arg unknown_args: A list of :class:`loopy.ArrayArg`\\ s representing
-            the unknown degrees of freedom.
-            Defaults to *None*, in which case the correct arguments
-            (in particular, their shapes) are (attempted to be) inferred
-            from the keys of ``lhs_dict``.
-
-        :arg rho_args: A list of :class:`loopy.ArrayArg`\\ s representing
-            the static right-hand side arrays (i.e., those independent
-            of the degrees of freedom).
-            Defaults to *None*, in which case the correct arguments
-            (in particular, their shapes) are (attempted to be) inferred
-            from the values of ``lhs_dict``.
-
-        Any remaining keyword arguments are passed to each of the kernel
-        creation routines.
-        """
-
         self.decomp = decomp
         self.lhs_dict = lhs_dict
         self.halo_shape = kwargs.get('halo_shape')
@@ -173,7 +170,7 @@ class RelaxationBase:
             .. note::
 
                 ``decomp`` is intended to (and should) be different from the
-                :attr:`decomp` passed to :meth:`__init__`, as each multigrid level
+                :attr:`decomp` passed at initialization, as each multigrid level
                 requires a different :class:`~pystella.DomainDecomposition`.
 
         :arg queue: A :class:`pyopencl.CommandQueue`.

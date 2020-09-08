@@ -58,12 +58,6 @@ class Sector:
 
         raise NotImplementedError
 
-    def get_args(self, single_stage=True):
-        from warnings import warn
-        warn("Sector.get_args is deprecated. Use pystella.get_field_args instead.",
-             DeprecationWarning, stacklevel=2)
-        return []
-
     @property
     def rhs_dict(self):
         """
@@ -99,27 +93,23 @@ class ScalarSector(Sector):
     """
     A :class:`Sector` of scalar fields.
 
-    .. automethod:: __init__
+    :arg nscalars: The total number of scalar fields.
+
+    The following keyword-only arguments are recognized:
+
+    :arg f: The :class:`DynamicField` of scalar fields.
+        Defaults to ``DynamicField('f', offset='h', shape=(nscalars,))``.
+
+    :arg potential: A :class:`~collections.abc.Callable` which takes as input a
+        :mod:`pymbolic` expression or a :class:`list` thereof, returning
+        the potential of the scalar fields.
+        Defaults to ``lambda x: 0``.
+
+    :raises ValueError: if a particular field is coupled to its own kinetic
+        term.
     """
 
     def __init__(self, nscalars, **kwargs):
-        """
-        :arg nscalars: The total number of scalar fields.
-
-        The following keyword-only arguments are recognized:
-
-        :arg f: The :class:`DynamicField` of scalar fields.
-            Defaults to ``DynamicField('f', offset='h', shape=(nscalars,))``.
-
-        :arg potential: A :class:`~collections.abc.Callable` which takes as input a
-            :mod:`pymbolic` expression or a :class:`list` thereof, returning
-            the potential of the scalar fields.
-            Defaults to ``lambda x: 0``.
-
-        :raises ValueError: if a particular field is coupled to its own kinetic
-            term.
-        """
-
         self.nscalars = nscalars
         self.f = kwargs.pop('f', DynamicField('f', offset='h', shape=(nscalars,)))
         self.potential = kwargs.pop('potential', lambda x: 0)
@@ -181,20 +171,16 @@ class TensorPerturbationSector:
     """
     A :class:`Sector` of tensor perturbations.
 
-    .. automethod:: __init__
+    :arg sectors: The :class:`Sector`\\ s whose :meth:`~Sector.stress_tensor`\\ s
+        source the tensor perturbations.
+
+    The following keyword-only arguments are recognized:
+
+    :arg hij: The :class:`DynamicField` of tensor fields.
+        Defaults to ``DynamicField('hij', offset='h', shape=(6,))``.
     """
 
     def __init__(self, sectors, **kwargs):
-        """
-        :arg sectors: The :class:`Sector`\\ s whose :meth:`~Sector.stress_tensor`\\ s
-            source the tensor perturbations.
-
-        The following keyword-only arguments are recognized:
-
-        :arg hij: The :class:`DynamicField` of tensor fields.
-            Defaults to ``DynamicField('hij', offset='h', shape=(6,))``.
-        """
-
         self.hij = kwargs.pop('hij', DynamicField('hij', offset='h', shape=(6,)))
         self.sectors = sectors
 

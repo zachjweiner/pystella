@@ -59,7 +59,7 @@ Steps for a complete installation
 
     conda activate pystella
 
-You can also clone the repository from GitHub to obtain::
+You can also clone the repository from GitHub::
 
     git clone https://github.com/zachjweiner/pystella.git
     cd pystella; pip install -e .
@@ -67,7 +67,6 @@ You can also clone the repository from GitHub to obtain::
 To test that installation was successful, try running an example
 (e.g., :code:`python examples/scalar-preheating.py`) or run the tests with :mod:`pytest`
 (if you cloned the source).
-
 
 Running on other devices (GPUs, etc.)
 -------------------------------------

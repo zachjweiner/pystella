@@ -70,10 +70,10 @@ def test_expansion(ctx_factory, proc_shape, dtype, Stepper, timing=False):
               expand.constraint(energy(expand.a[slc])))
 
         assert np.allclose(expand.a[slc], sol(w, t), rtol=rtol, atol=0), \
-            "FLRW solution inaccurate for w=%f" % (w)
+            f"FLRW solution inaccurate for {w=}"
 
         assert expand.constraint(energy(expand.a[slc])) < rtol, \
-            "FLRW solution disobeying constraint for w=%f" % (w)
+            f"FLRW solution disobeying constraint for {w=}"
 
 
 if __name__ == "__main__":

@@ -46,7 +46,21 @@ class Stencil(ElementWiseMap):
     "non-local"---namely, computations which combine multiple neighboring values
     from a global array into a single output (per workitem/thread).
 
-    .. automethod:: __init__
+    In addition to the parameters to :meth:`ElementWiseMap`,
+    the following arguments are required:
+
+    :arg halo_shape: The number of halo layers on (both sides of) each axis of
+        the computational grid.
+        May either be an :class:`int`, interpreted as a value to fix the
+        parameter ``h`` to, or a :class:`tuple`, interpreted as values for
+        ``hx``, ``hy``, and ``hz``.
+        Defaults to *None*, in which case no such values are fixed at kernel
+        creation.
+
+    The following keyword-only arguments are recognized:
+
+    :arg prefetch_args: A list of arrays (namely, their name as a string)
+        which should be prefetched into local memory. Defaults to an empty list.
     """
 
     def _assignment(self, assignee, expression, **kwargs):
@@ -69,24 +83,6 @@ class Stencil(ElementWiseMap):
         return knl
 
     def __init__(self, map_instructions, halo_shape, **kwargs):
-        """
-        In addition to the parameters to :meth:`ElementWiseMap.__init__`,
-        the following arguments are required:
-
-        :arg halo_shape: The number of halo layers on (both sides of) each axis of
-            the computational grid.
-            May either be an :class:`int`, interpreted as a value to fix the
-            parameter ``h`` to, or a :class:`tuple`, interpreted as values for
-            ``hx``, ``hy``, and ``hz``.
-            Defaults to *None*, in which case no such values are fixed at kernel
-            creation.
-
-        The following keyword-only arguments are recognized:
-
-        :arg prefetch_args: A list of arrays (namely, their name as a string)
-            which should be prefetched into local memory. Defaults to an empty list.
-        """
-
         self.prefetch_args = kwargs.pop('prefetch_args', [])
 
         _halo_shape = (halo_shape,)*3 if isinstance(halo_shape, int) else halo_shape

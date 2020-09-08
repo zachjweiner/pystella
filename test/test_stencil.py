@@ -89,16 +89,14 @@ def test_stencil(ctx_factory, grid_shape, proc_shape, dtype, stream, h=1,
     rtol = 5.e-14 if dtype == np.float64 else 1.e-5
 
     assert np.allclose(y.get(), y_true, rtol=rtol, atol=0), \
-        "average innaccurate for grid_shape=%s, halo_shape=%s, proc_shape=%s" \
-        % (grid_shape, h, proc_shape)
+        f"average innaccurate for {grid_shape=}, {h=}, {proc_shape=}"
 
     if timing:
         from common import timer
         t = timer(lambda: stencil_map(queue, x=x, y=y)[0])
-        print("stencil took %.3f ms for grid_shape=%s, halo_shape=%s, proc_shape=%s"
-              % (t, grid_shape, h, proc_shape))
-        print("Bandwidth = %.1f GB/s"
-              % ((x.nbytes + y.nbytes)/1024**3 / t * 1000))
+        print(f"stencil took {t:.3f} ms for {grid_shape=}, {h=}, {proc_shape=}")
+        bandwidth = (x.nbytes + y.nbytes) / 1024**3 / t * 1000
+        print(f"Bandwidth = {bandwidth} GB/s")
 
 
 if __name__ == "__main__":

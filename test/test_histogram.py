@@ -75,7 +75,7 @@ def test_histogram(ctx_factory, grid_shape, proc_shape, dtype, timing=False):
     err = np.abs((res - np_res) / np.maximum(np.abs(res), np.abs(np_res)))
 
     assert np.max(err) < max_rtol and np.average(err) < avg_rtol, \
-        "Histogrammer inaccurate for grid_shape=%s" % (grid_shape,)
+        f"Histogrammer inaccurate for grid_shape={grid_shape}"
 
     res = result['squared']
     np_res = np.histogram(fx_h, bins=np.linspace(0, 1, num_bins+1),
@@ -84,13 +84,12 @@ def test_histogram(ctx_factory, grid_shape, proc_shape, dtype, timing=False):
     err = np.abs((res - np_res) / np.maximum(np.abs(res), np.abs(np_res)))
 
     assert np.max(err) < max_rtol and np.average(err) < avg_rtol, \
-        "Histogrammer with weights inaccurate for grid_shape=%s" % (grid_shape,)
+        f"Histogrammer with weights inaccurate for grid_shape={grid_shape}"
 
     if timing:
         from common import timer
         t = timer(lambda: hist(queue, fx=fx))
-        print("histogram took %.3f ms for grid_shape=%s, dtype=%s"
-              % (t, grid_shape, str(dtype)))
+        print(f"histogram took {t:.3f} ms for {grid_shape=}, {dtype=}")
 
 
 @pytest.mark.filterwarnings(
@@ -136,7 +135,7 @@ def test_field_histogram(ctx_factory, grid_shape, proc_shape, dtype, timing=Fals
         err = np.abs((res - np_res) / np.maximum(np.abs(res), np.abs(np_res)))
 
         assert np.max(err) < max_rtol and np.average(err) < avg_rtol, \
-            "Histogrammer inaccurate for grid_shape=%s" % (grid_shape,)
+            f"Histogrammer inaccurate for grid_shape={grid_shape}"
 
         res = result['log'][slc]
         bins = result['log_bins'][slc]
@@ -154,13 +153,12 @@ def test_field_histogram(ctx_factory, grid_shape, proc_shape, dtype, timing=Fals
         err = np.abs((res - np_res) / norm)
 
         assert np.max(err) < max_rtol and np.average(err) < avg_rtol, \
-            "log Histogrammer inaccurate for grid_shape=%s" % (grid_shape,)
+            f"log Histogrammer inaccurate for grid_shape={grid_shape}"
 
     if timing:
         from common import timer
         t = timer(lambda: hist(fx[0, 0]))
-        print("field histogram took %.3f ms for grid_shape=%s, dtype=%s"
-              % (t, grid_shape, str(dtype)))
+        print(f"field histogram took {t:.3f} ms for {grid_shape=}, {dtype=}")
 
 
 if __name__ == "__main__":

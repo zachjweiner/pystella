@@ -32,7 +32,7 @@ __doc__ = """
 
 def append_new_args(old_args, new_args):
     all_args = old_args.copy()
-    supplied_arg_names = set([arg.name for arg in old_args if hasattr(arg, 'name')])
+    supplied_arg_names = {arg.name for arg in old_args if hasattr(arg, 'name')}
     for arg in new_args:
         if arg.name not in supplied_arg_names:
             all_args.append(arg)
@@ -46,7 +46,64 @@ class ElementWiseMap:
     element-wise maps where each workitem (thread) only accesses one element
     of global arrays.
 
-    .. automethod:: __init__
+    :arg map_instructions: A :class:`list` of instructions which write to global
+        arrays.
+        Entries may be :class:`loopy.Assignment`\\ s or :class:`tuple`\\ s
+        ``(assignee, expression)`` of :mod:`pymbolic` expressions, the latter
+        of which can include :class:`Field`\\ s.
+        All entries will be processed with :func:`index_fields`.
+
+    The following keyword-only arguments are recognized:
+
+    :arg tmp_instructions: A :class:`list` of instructions
+        which write to temporary variables (i.e., local or private memory).
+        Entries may be :class:`loopy.Assignment`\\ s or :class:`tuple`\\ s
+        ``(assignee, expression)`` of :mod:`pymbolic` expressions, the latter
+        of which can include :class:`Field`\\ s.
+        The expressions will be processed with :func:`index_fields`.
+        The statements produced from ``tmp_instructions`` will precede those of
+        ``map_instructions``, and :class:`loopy.TemporaryVariable` arguments
+        will be inferred as needed.
+
+    :arg args: A list of :class:`loopy.KernelArgument`\\ s
+        to be specified to :func:`loopy.make_kernel`.
+        By default, all arguments (and their shapes) are inferred using
+        :func:`get_field_args`, while any remaining (i.e., non-:class:`Field`)
+        arguments are inferred by :func:`loopy.make_kernel`.
+        Any arguments passed via ``args`` override those inferred by either
+        of the above options.
+
+    :arg dtype: The default datatype of arrays to assume.
+        Will only be applied to all :class:`loopy.KernelArgument`\\ s
+        whose datatypes were not already specified by any input ``args``.
+        Defaults to *None*.
+
+    :arg lsize: The size of local parallel workgroups. Defaults to
+        ``(16, 4, 1)``, which should come close to saturating memory bandwidth
+        in many cases.
+
+    :arg rank_shape: A 3-:class:`tuple` specifying the shape of looped-over
+        arrays.
+        Defaults to *None*, in which case these values are not fixed (and
+        will be inferred when the kernel is called at a slight performance
+        penalty).
+
+    :arg halo_shape: The number of halo layers on (both sides of) each axis of
+        the computational grid.
+        May either be an :class:`int`, interpreted as a value to fix the
+        parameter ``h`` to, or a :class:`tuple`, interpreted as values for
+        ``hx``, ``hy``, and ``hz``.
+        Defaults to *None*, in which case no such values are fixed at kernel
+        creation.
+
+    Any remaining keyword arguments are passed to :func:`loopy.make_kernel`.
+
+    .. versionchanged:: 2020.1
+
+        Arguments ``map_instructions`` and ``tmp_instructions`` replaced
+        ``map_dict`` and ``tmp_dict`` and are allowed to be :class:`list`\\ s
+        with entries of :class:`loopy.Assignment`\\ s and/or :class:`tuple`\\ s.
+
     .. automethod:: __call__
     .. attribute:: knl
 
@@ -136,66 +193,6 @@ class ElementWiseMap:
         return knl
 
     def __init__(self, map_instructions, **kwargs):
-        """
-        :arg map_instructions: A :class:`list` of instructions which write to global
-            arrays.
-            Entries may be :class:`loopy.Assignment`\\ s or :class:`tuple`\\ s
-            ``(assignee, expression)`` of :mod:`pymbolic` expressions, the latter
-            of which can include :class:`Field`\\ s.
-            All entries will be processed with :func:`index_fields`.
-
-        The following keyword-only arguments are recognized:
-
-        :arg tmp_instructions: A :class:`list` of instructions
-            which write to temporary variables (i.e., local or private memory).
-            Entries may be :class:`loopy.Assignment`\\ s or :class:`tuple`\\ s
-            ``(assignee, expression)`` of :mod:`pymbolic` expressions, the latter
-            of which can include :class:`Field`\\ s.
-            The expressions will be processed with :func:`index_fields`.
-            The statements produced from ``tmp_instructions`` will precede those of
-            ``map_instructions``, and :class:`loopy.TemporaryVariable` arguments
-            will be inferred as needed.
-
-        :arg args: A list of :class:`loopy.KernelArgument`\\ s
-            to be specified to :func:`loopy.make_kernel`.
-            By default, all arguments (and their shapes) are inferred using
-            :func:`get_field_args`, while any remaining (i.e., non-:class:`Field`)
-            arguments are inferred by :func:`loopy.make_kernel`.
-            Any arguments passed via ``args`` override those inferred by either
-            of the above options.
-
-        :arg dtype: The default datatype of arrays to assume.
-            Will only be applied to all :class:`loopy.KernelArgument`\\ s
-            whose datatypes were not already specified by any input ``args``.
-            Defaults to *None*.
-
-        :arg lsize: The size of local parallel workgroups. Defaults to
-            ``(16, 4, 1)``, which should come close to saturating memory bandwidth
-            in many cases.
-
-        :arg rank_shape: A 3-:class:`tuple` specifying the shape of looped-over
-            arrays.
-            Defaults to *None*, in which case these values are not fixed (and
-            will be inferred when the kernel is called at a slight performance
-            penalty).
-
-        :arg halo_shape: The number of halo layers on (both sides of) each axis of
-            the computational grid.
-            May either be an :class:`int`, interpreted as a value to fix the
-            parameter ``h`` to, or a :class:`tuple`, interpreted as values for
-            ``hx``, ``hy``, and ``hz``.
-            Defaults to *None*, in which case no such values are fixed at kernel
-            creation.
-
-        Any remaining keyword arguments are passed to :func:`loopy.make_kernel`.
-
-        .. versionchanged:: 2020.1
-
-            Arguments ``map_instructions`` and ``tmp_instructions`` replaced
-            ``map_dict`` and ``tmp_dict`` and are allowed to be :class:`list`\\ s
-            with entries of :class:`loopy.Assignment`\\ s and/or :class:`tuple`\\ s.
-        """
-
         if 'map_dict' in kwargs:
             from warnings import warn
             warn("Passing map_dict is deprecated. Pass map_instructions instead.",

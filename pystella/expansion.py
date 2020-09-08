@@ -47,7 +47,22 @@ class Expansion:
         \\bar{P}
         &\\equiv \\frac{1}{3} \\left\\langle T_{\\hphantom{i}i}^i \\right\\rangle.
 
-    .. automethod:: __init__
+    :arg energy: The initial energy density, used to initialize
+        :math:`\\partial a / \\partial \\tau`.
+
+    :arg Stepper: A :class:`~pystella.step.Stepper` to use for time stepping.
+
+    :arg mpl: The unreduced Planck mass,
+        :math:`m_\\mathrm{pl}^2 \\equiv 1 / G_N`.
+        Setting this value chooses the units of the system.
+        For example, to work in units of the *reduced* Planck mass,
+        :math:`M_\\mathrm{pl}^2 \\equiv (8 \\pi G_N)^{-1}`, pass
+        ``mpl=np.sqrt(8*np.pi)``.
+        Defaults to ``1``.
+
+    :arg dtype: The datatype of the input and output arrays.
+        Defaults to `float64`.
+
     .. automethod:: adot_friedmann_1
     .. automethod:: addot_friedmann_2
     .. automethod:: step
@@ -55,24 +70,6 @@ class Expansion:
     """
 
     def __init__(self, energy, Stepper, mpl=1., dtype=np.float64):
-        """
-        :arg energy: The initial energy density, used to initialize
-            :math:`\\partial a / \\partial \\tau`.
-
-        :arg Stepper: A :class:`~pystella.step.Stepper` to use for time stepping.
-
-        :arg mpl: The unreduced Planck mass,
-            :math:`m_\\mathrm{pl}^2 \\equiv 1 / G_N`.
-            Setting this value chooses the units of the system.
-            For example, to work in units of the *reduced* Planck mass,
-            :math:`M_\\mathrm{pl}^2 \\equiv (8 \\pi G_N)^{-1}`, pass
-            ``mpl=np.sqrt(8*np.pi)``.
-            Defaults to ``1``.
-
-        :arg dtype: The datatype of the input and output arrays.
-            Defaults to `float64`.
-        """
-
         self.mpl = mpl
         from pystella.step import LowStorageRKStepper
 

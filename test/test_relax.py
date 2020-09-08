@@ -123,15 +123,13 @@ def test_relax(ctx_factory, grid_shape, proc_shape, h, dtype, Solver, timing=Fal
         iters = np.arange(1, errs.shape[0]+1)
         assert (errs[10:, 0] * iters[10:] / errs[0, 0] < 1.).all(), \
             "relaxation not converging at least linearly for " \
-            "grid_shape=%s, h=%d, proc_shape=%s" \
-            % (grid_shape, h, proc_shape)
+            f"{grid_shape=}, {h=}, {proc_shape=}"
 
     first_mode_zeroed = mpi.bcast(first_mode_zeroed, root=0)
     for k, x in first_mode_zeroed.items():
         x = np.array(list(x))[2:]
         assert (x[1:] <= x[:-1]).all() and np.min(x) < np.max(x) / 5, \
-            "relaxation not smoothing error grid_shape=%s, h=%d, proc_shape=%s" \
-            % (grid_shape, h, proc_shape)
+            f"relaxation not smoothing error {grid_shape=}, {h=}, {proc_shape=}"
 
 
 if __name__ == "__main__":

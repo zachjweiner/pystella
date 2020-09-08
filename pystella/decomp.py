@@ -128,8 +128,8 @@ class DomainDecomposition:
 
         if proc_shape[0] * proc_shape[1] * proc_shape[2] != self.nranks:
             raise ValueError(
-                "%s is an invalid decomposition for %d ranks"
-                % (proc_shape, self.nranks))
+                f"{proc_shape} is an invalid decomposition for {self.nranks} ranks"
+            )
 
         self.rz = self.rank % proc_shape[2]
         self.ry = (self.rank - self.rz) // proc_shape[2] % proc_shape[1]

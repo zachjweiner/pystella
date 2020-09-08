@@ -88,17 +88,15 @@ def test_scalar_energy(ctx_factory, grid_shape, proc_shape, h, dtype, timing=Fal
 
     for key, value in energy.items():
         assert np.allclose(value, energy_test[key], rtol=rtol, atol=0), \
-            "%s energy inaccurate for nscalars=%d, grid_shape=%s, proc_shape=%s" \
-            % (key, nscalars, grid_shape, proc_shape)
+            f"{key} energy inaccurate for {nscalars=}, {grid_shape=}, {proc_shape=}"
 
     if timing:
         from common import timer
         t = timer(lambda: scalar_energy(queue, a=np.array(1.),
                                         f=f, dfdt=dfdt, lap_f=lap))
         if mpi.rank == 0:
-            print("scalar energy took "
-                  "%.3f ms for nscalars=%d, grid_shape=%s, proc_shape=%s"
-                  % (t, nscalars, grid_shape, proc_shape))
+            print(f"scalar energy took {t:.3f} "
+                  f"ms for {nscalars=}, {grid_shape=}, {proc_shape=}")
 
 
 if __name__ == "__main__":

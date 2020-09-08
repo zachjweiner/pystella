@@ -108,9 +108,8 @@ def test_multigrid(ctx_factory, grid_shape, proc_shape, h, dtype, Solver, MG,
                                 [poisson_errs, helmholtz_errs]):
         tol = 1.e-6 if MG == MultiGridSolver else 1.e-15
         assert cycle_errs[-1][1] < tol and cycle_errs[-2][1] < 10*tol, \
-            "multigrid solution to %s eqn is inaccurate for " \
-            "grid_shape=%s, halo_shape=%s, proc_shape=%s" \
-            % (name, grid_shape, h, proc_shape)
+            "multigrid solution to {name} eqn is inaccurate for " \
+            f"{grid_shape=}, {h=}, {proc_shape=}"
 
 
 if __name__ == "__main__":

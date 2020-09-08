@@ -87,8 +87,7 @@ def test_transfer(ctx_factory, grid_shape, proc_shape, h, dtype, timing=False):
             expected_error_bound = .05 / (grid_shape[0]/32)**2
 
         assert restrict_error < expected_error_bound, \
-            "%s innaccurate for grid_shape=%s, h=%d, proc_shape=%s" \
-            % ('restrict', grid_shape, h, proc_shape)
+            f"restrict innaccurate for {grid_shape=}, {h=}, {proc_shape=}"
 
     linear_interp = LinearInterpolation(halo_shape=h, dtype=dtype)
     # cubic_interp = CubicInterpolation(halo_shape=h, dtype=dtype)
@@ -117,8 +116,7 @@ def test_transfer(ctx_factory, grid_shape, proc_shape, h, dtype, timing=False):
         expected_error_bound = .1 / (grid_shape[0]/32)**2
 
         assert interp_error < expected_error_bound, \
-            "%s innaccurate for grid_shape=%s, h=%d, proc_shape=%s" \
-            % ('interp', grid_shape, h, proc_shape)
+            f"interp innaccurate for {grid_shape=}, {h=}, {proc_shape=}"
 
 
 if __name__ == "__main__":

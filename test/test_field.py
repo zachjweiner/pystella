@@ -187,15 +187,15 @@ def test_collect_field_indices(proc_shape):
 
     expressions = {x: y, y: x * z + z.pd[0]}
     indices = collect_field_indices(expressions)
-    assert indices == set(['i', 'j', 'k', 'x'])
+    assert indices == {'i', 'j', 'k', 'x'}
 
     expressions = [x, z]
     indices = collect_field_indices(expressions)
-    assert indices == set(['i', 'j', 'k'])
+    assert indices == {'i', 'j', 'k'}
 
     expressions = [shift_fields(x, (1, 2, 3)), y + z.pd[0], y * z**2]
     indices = collect_field_indices(expressions)
-    assert indices == set(['i', 'j', 'k', 'x'])
+    assert indices == {'i', 'j', 'k', 'x'}
 
 
 def test_sympy_interop(proc_shape):

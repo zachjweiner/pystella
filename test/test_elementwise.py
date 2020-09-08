@@ -74,27 +74,24 @@ def test_elementwise(ctx_factory, grid_shape, proc_shape, dtype, timing=False):
     rtol = 5.e-14 if dtype == np.float64 else 1.e-5
 
     assert np.allclose(x.get(), x_true.get(), rtol=rtol, atol=0), \
-        "x innaccurate for grid_shape=%s, proc_shape=%s" \
-        % (grid_shape, proc_shape)
+        f"x innaccurate for {grid_shape=}, {proc_shape=}"
 
     assert np.allclose(z.get(), z_true.get(), rtol=rtol, atol=0), \
-        "z innaccurate for grid_shape=%s, proc_shape=%s" \
-        % (grid_shape, proc_shape)
+        f"z innaccurate for {grid_shape=}, {proc_shape=}"
 
     # test success of single instruction
     ew_map_single = ps.ElementWiseMap(single_insn)
     ew_map_single(queue, x=x, y=y, z=z)
 
     assert np.allclose(x.get(), y.get() + z.get(), rtol=rtol, atol=0), \
-        "x innaccurate for grid_shape=%s, proc_shape=%s" \
-        % (grid_shape, proc_shape)
+        f"x innaccurate for {grid_shape=}, {proc_shape=}"
 
     if timing:
         from common import timer
         t = timer(lambda: ew_map(queue, x=x, y=y, z=z)[0])
-        print("elementwise map took %.3f ms for grid_shape=%s, proc_shape=%s"
-              % (t, grid_shape, proc_shape))
-        print("Bandwidth = %.1f GB/s" % (5 * x.nbytes/1024**3 / t * 1000))
+        print(f"elementwise map took {t:.3f} ms for {grid_shape=}, {proc_shape=}")
+        bandwidth = 5 * x.nbytes/1024**3 / t * 1000
+        print(f"Bandwidth = {bandwidth:.1f} GB/s")
 
 
 if __name__ == "__main__":

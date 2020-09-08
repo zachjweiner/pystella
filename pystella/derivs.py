@@ -195,48 +195,45 @@ class FiniteDifferencer:
     See :class:`SpectralCollocator` for a version of this
     class implementing spectral collocation.
 
-    .. automethod:: __init__
+    The following arguments are required:
+
+    :arg decomp: An instance of :class:`DomainDecomposition`.
+
+    :arg halo_shape: The number of halo layers on (both sides of) each axis of
+        the computational grid.
+        Currently must be an :class:`int`.
+
+    :arg dx: A 3-:class:`tuple` specifying the grid spacing of each axis.
+
+    The following keyword-only arguments are recognized:
+
+    :arg first_stencil: A :class:`~collections.abc.Callable` with signature
+        ``(f, direction)`` where f is a :class:`Field` and ``direction``
+        indicates the spatial axis (1, 2, or 3) along which the stencil is taken,
+        returning the (symbolic) first-order stencil.
+        Defaults to the centered difference of the highest order allowed
+        by the amount of array padding (set by :attr:`halo_shape`).
+        See :func:`~pystella.derivs.expand_stencil`.
+
+    :arg second_stencil: Like ``first_stencil``, but for second-order
+        differences.
+
+    :arg rank_shape: A 3-:class:`tuple` specifying the shape of looped-over
+        arrays.
+        Defaults to *None*, in which case these values are not fixed (and
+        will be inferred when the kernel is called at a slight performance
+        penalty).
+
+    .. ifconfig:: not on_rtd
+
+        :arg stream: Whether to use :class:`StreamingStencil`.
+            Defaults to *False*.
+
     .. automethod:: __call__
     .. automethod:: divergence
     """
 
     def __init__(self, decomp, halo_shape, dx, **kwargs):
-        """
-        The following arguments are required:
-
-        :arg decomp: An instance of :class:`DomainDecomposition`.
-
-        :arg halo_shape: The number of halo layers on (both sides of) each axis of
-            the computational grid.
-            Currently must be an :class:`int`.
-
-        :arg dx: A 3-:class:`tuple` specifying the grid spacing of each axis.
-
-        The following keyword-only arguments are recognized:
-
-        :arg first_stencil: A :class:`~collections.abc.Callable` with signature
-            ``(f, direction)`` where f is a :class:`Field` and ``direction``
-            indicates the spatial axis (1, 2, or 3) along which the stencil is taken,
-            returning the (symbolic) first-order stencil.
-            Defaults to the centered difference of the highest order allowed
-            by the amount of array padding (set by :attr:`halo_shape`).
-            See :func:`~pystella.derivs.expand_stencil`.
-
-        :arg second_stencil: Like ``first_stencil``, but for second-order
-            differences.
-
-        :arg rank_shape: A 3-:class:`tuple` specifying the shape of looped-over
-            arrays.
-            Defaults to *None*, in which case these values are not fixed (and
-            will be inferred when the kernel is called at a slight performance
-            penalty).
-
-        .. ifconfig:: not on_rtd
-
-            :arg stream: Whether to use :class:`StreamingStencil`.
-                Defaults to *False*.
-        """
-
         self.decomp = decomp
         stream = kwargs.pop('stream', False)
         first_stencil = kwargs.pop('first_stencil',

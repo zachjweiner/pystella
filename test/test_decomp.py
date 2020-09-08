@@ -89,7 +89,7 @@ def test_share_halos(ctx_factory, grid_shape, proc_shape, h, dtype,
     pencil_slice = tuple(slice(si, si + ri + 2*hi)
                          for ri, si, hi in zip(rank_shape, substart, h))
     assert (subdata2 == data[pencil_slice]).all(), \
-        "rank %d %s has incorrect halo data \n" % (mpi.rank, mpi.rank_tuple)
+        f"rank {mpi.rank} {mpi.rank_tuple} has incorrect halo data"
 
     # test that can call with different-shaped input
     if not pass_grid_shape:
@@ -102,9 +102,8 @@ def test_share_halos(ctx_factory, grid_shape, proc_shape, h, dtype,
         from common import timer
         t = timer(lambda: mpi.share_halos(queue, fx=subdata_device))
         if mpi.rank == 0:
-            print("share_halos took %.3f ms for "
-                  "grid_shape=%s, halo_shape=%s, proc_shape=%s"
-                  % (t, grid_shape, h, proc_shape))
+            print(f"share_halos took {t:.3f} ms for "
+                  f"{grid_shape=}, {h=}, {proc_shape=}")
 
 
 @pytest.mark.parametrize("h, _grid_shape, pass_grid_shape", params)
@@ -203,10 +202,9 @@ def test_gather_scatter(ctx_factory, grid_shape, proc_shape, h, dtype,
             timer(lambda: mpi.gather_array(queue, sub_h, data_h, 0), ntime=ntime)
 
         if mpi.rank == 0:
-            print("grid_shape=%s, halo_shape=%s, proc_shape=%s"
-                  % (grid_shape, h, proc_shape))
+            print(f"{grid_shape=}, {h=}, {proc_shape=}")
             for key, val in times.items():
-                print(key, 'took', '%.3f' % val, 'ms')
+                print(f"{key} took {val:.3f} ms")
 
 
 if __name__ == "__main__":

@@ -61,13 +61,13 @@ html_static_path = ['_static']
 
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
-    'numpy': ('https://docs.scipy.org/doc/numpy/', None),
+    'numpy': ('https://numpy.org/doc/stable/', None),
     'scipy': ('https://docs.scipy.org/doc/scipy/reference/', None),
     'loopy': ('https://documen.tician.de/loopy', None),
     'pymbolic': ('https://documen.tician.de/pymbolic', None),
     'pyopencl': ('https://documen.tician.de/pyopencl', None),
     'mpi4py': ('https://mpi4py.readthedocs.io/en/stable/', None),
-    'h5py': ('http://docs.h5py.org/en/stable/', None),
+    'h5py': ('https://docs.h5py.org/en/stable/', None),
     'mpi4py_fft': ('https://mpi4py-fft.readthedocs.io/en/latest/', None),
 }
 
