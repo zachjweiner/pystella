@@ -1,0 +1,3 @@
+numpy
+pyopencl>=2020.2
+git+https://github.com/inducer/loopy#egg=loo.py
