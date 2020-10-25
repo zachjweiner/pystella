@@ -141,10 +141,11 @@ class Field(pp.AlgebraicLeaf):
     """
 
     init_arg_names = ('child', 'offset', 'shape', 'indices',
-                      'ignore_prepends', 'base_offset', 'dtype')
+                      'ignore_prepends', 'base_offset', 'dtype', 'dim_tags')
 
     def __init__(self, child, offset=0, shape=tuple(), indices=('i', 'j', 'k'),
-                 ignore_prepends=False, base_offset=None, dtype=None):
+                 ignore_prepends=False, base_offset=None, dtype=None,
+                 dim_tags=None):
         self.child = parse_if_str(child)
         if isinstance(self.child, pp.Subscript):
             self.name = self.child.aggregate.name
@@ -164,10 +165,11 @@ class Field(pp.AlgebraicLeaf):
         self.shape = shape
         self.ignore_prepends = ignore_prepends
         self.dtype = dtype
+        self.dim_tags = dim_tags
 
     def __getinitargs__(self):
         return (self.child, self.offset, self.shape, self.indices,
-                self.ignore_prepends, self.base_offset)
+                self.ignore_prepends, self.base_offset, self.dtype, self.dim_tags)
 
     mapper_method = "map_field"
 
@@ -223,7 +225,7 @@ class DynamicField(Field):
         A :class:`Field` representing the spatial derivative(s) of the base
         :class:`Field`.
         Defaults to a :class:`Field` with name ``d{self.child}dx`` with shape
-        ``(3,)+shape``, the same :attr:`indices`, and zero :attr:`offset`,
+        ``shape+(3,)``, the same :attr:`indices`, and zero :attr:`offset`,
         but may be specified via the argument ``pd``.
 
     .. automethod:: d
@@ -548,7 +550,7 @@ def get_field_args(expressions, unpadded_shape=None, prepend_with=None):
             arg = lp.ValueArg(f.name)
         else:
             arg = lp.GlobalArg(f.name, shape=full_shape, offset=lp.auto,
-                               dtype=f.dtype)
+                               dtype=f.dtype, dim_tags=f.dim_tags)
 
         if f.name in field_args:
             other_arg = field_args[f.name]
