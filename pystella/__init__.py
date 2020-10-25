@@ -56,7 +56,7 @@ def choose_device_and_make_context(platform_choice=None, device_choice=None):
     :arg device_number: An integer specifying which device to run on.
         Defaults to *None*, in which case a device is chosen according to any
         available environment variable defining the local MPI rank (defaulting to 0).
-        Currently only looks for OpenMPI and MVAPICH environment variables.
+        Currently only looks for SLURM, OpenMPI, and MVAPICH environment variables.
 
     :returns: A :class:`pyopencl.Context`.
     """
@@ -83,14 +83,19 @@ def choose_device_and_make_context(platform_choice=None, device_choice=None):
     num_devices = len(devices)
 
     if device_choice is None:
-        import os
-        local_rank = int(os.getenv('OMPI_COMM_WORLD_LOCAL_RANK',
-                                   os.getenv('MV2_COMM_WORLD_LOCAL_RANK', 0)))
-        choice = (local_rank % num_devices)
-    else:
-        choice = device_choice
+        def try_to_get_local_rank():
+            import os
+            options = ('SLURM_LOCALID', 'OMPI_COMM_WORLD_LOCAL_RANK',
+                       'MV2_COMM_WORLD_LOCAL_RANK')
+            for opt in options:
+                if os.getenv(opt) is not None:
+                    return int(opt)
 
-    return cl.Context([devices[choice]])
+            return 0
+
+        device_choice = try_to_get_local_rank() % num_devices
+
+    return cl.Context([devices[device_choice]])
 
 
 class DisableLogging():  # silence logging warning
