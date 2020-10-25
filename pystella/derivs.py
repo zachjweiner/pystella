@@ -341,9 +341,12 @@ class FiniteDifferencer:
         slices = list(product(*[range(n) for n in fx.shape[:-3]]))
 
         if grd is not None:
-            pdx = grd[..., 0, :, :, :]
-            pdy = grd[..., 1, :, :, :]
-            pdz = grd[..., 2, :, :, :]
+            if isinstance(grd, (tuple, list)):
+                pdx, pdy, pdz = grd
+            else:
+                pdx = grd[..., 0, :, :, :]
+                pdy = grd[..., 1, :, :, :]
+                pdz = grd[..., 2, :, :, :]
 
         for s in slices:
             self.decomp.share_halos(queue, fx[s])
