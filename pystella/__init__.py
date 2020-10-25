@@ -88,8 +88,9 @@ def choose_device_and_make_context(platform_choice=None, device_choice=None):
             options = ('SLURM_LOCALID', 'OMPI_COMM_WORLD_LOCAL_RANK',
                        'MV2_COMM_WORLD_LOCAL_RANK')
             for opt in options:
-                if os.getenv(opt) is not None:
-                    return int(opt)
+                x = os.getenv(opt)
+                if x is not None:
+                    return int(x)
 
             return 0
 
