@@ -21,6 +21,5 @@ dependencies:
 - Cython
 
 - pip:
-    - git+https://github.com/inducer/pymbolic.git
-    - git+https://github.com/inducer/loopy.git
+    - loopy
     - git+https://gitlab.com/zachjweiner/gpyfft.git

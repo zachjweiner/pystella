@@ -8,10 +8,9 @@ Installation
 At the bare minimum, :mod:`pystella` requires :mod:`numpy`,
 :mod:`loopy` for code generation, and :mod:`pyopencl`
 (plus an OpenCL implementation) for kernel execution.
-This minimal installation can be achieved with ``pip``;
-to do so, you must first install :mod:`loopy` from GitHub::
+This minimal installation can be achieved with ``pip``::
 
-    python -m pip install git+https://github.com/inducer/loopy pystella
+    python -m pip install pystella
 
 Optional dependencies (and what they are needed for) are:
 
@@ -36,7 +35,7 @@ provides a complete installation.
 Steps for a complete installation
 ---------------------------------
 
-1. Install `miniconda <https://docs.conda.io/en/latest/miniconda.html>`_ (if you
+1. Install `miniforge <https://github.com/conda-forge/miniforge#miniforge3>`_ or `miniconda <https://docs.conda.io/en/latest/miniconda.html>`_ (if you
    haven't already installed :mod:`conda`).
 
 2. Create a :mod:`pystella` environment as specified by :file:`environment.yml`::

@@ -49,7 +49,7 @@ class PowerSpectra:
 
     The following keyword-only arguments are also recognized:
 
-    :arg bin_with: A :class:`float` specifying the bin width to use.
+    :arg bin_width: A :class:`float` specifying the bin width to use.
         Defaults to ``min(dk)``.
 
     .. automethod:: __call__

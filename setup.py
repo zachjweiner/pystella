@@ -57,7 +57,7 @@ setup(
     install_requires=[
         "numpy",
         "pyopencl>=2020.2",
-        "loo.py>=2018.2",
+        "loopy>=2020.2",
     ],
     author="Zachary J Weiner",
     url="https://github.com/zachjweiner/pystella",

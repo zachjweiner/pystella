@@ -19,6 +19,6 @@ dependencies:
 - clfft
 - Cython
 - pip:
-    - git+https://github.com/inducer/loopy.git#egg=loo.py
+    - git+https://github.com/inducer/loopy.git#egg=loopy
     - git+https://gitlab.com/zachjweiner/gpyfft.git#egg=gpyfft
     - pystella

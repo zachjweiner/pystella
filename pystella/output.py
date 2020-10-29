@@ -119,7 +119,7 @@ class OutputFile:
                 f.attrs['platform_version'] = device.platform.version
 
             import socket
-            f.attrs['hostname'] = socket.gethostname()
+            f.attrs['hostname'] = socket.getfqdn()
 
             for key, val in kwargs.items():
                 try:
@@ -138,7 +138,7 @@ class OutputFile:
 
             # output current dependency versions
             dependencies = {'pystella', 'numpy', 'scipy',
-                            'pyopencl', 'loo.py', 'pymbolic',
+                            'pyopencl', 'loopy', 'pymbolic',
                             'mpi4py', 'gpyfft', 'mpi4py_fft', 'h5py'}
             dependencies |= set(kwargs.pop('dependencies', {}))
             versions, git_revs = get_versions(dependencies)
