@@ -506,12 +506,13 @@ class LowStorageRKStepper(Stepper):
             tmp_name = gen_tmp_name(name)
             import pyopencl.array as cla
             if isinstance(f, cla.Array):
-                tmp_arrays[tmp_name] = cla.zeros_like(f)
+                tmp_arrays[tmp_name] = cla.empty_like(f)
             elif isinstance(f, np.ndarray):
-                tmp_arrays[tmp_name] = np.zeros_like(f)
+                tmp_arrays[tmp_name] = np.empty_like(f)
             else:
                 raise ValueError(f"Could not generate tmp array for {f}"
                                  f"of type {type(f)}")
+            tmp_arrays[tmp_name][...] = 0.
 
         return tmp_arrays
 
