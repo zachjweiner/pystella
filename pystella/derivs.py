@@ -187,6 +187,34 @@ class SecondCenteredDifference(FiniteDifferenceStencil):
             return - k**2
 
 
+knl_h_arch_lsizes = {
+    ('gradlap', 1, 'volta'): (32, 16, 1),
+    ('grad', 1, 'volta'): (32, 16, 1),
+    ('lap', 1, 'volta'): (32, 16, 2),
+    ('gradlap', 1, 'pascal'): (32, 16, 1),
+    ('grad', 1, 'pascal'): (32, 16, 1),
+    ('lap', 1, 'pascal'): (32, 16, 4),
+    ('gradlap', 2, 'volta'): (32, 16, 1),
+    ('grad', 2, 'volta'): (32, 16, 1),
+    ('lap', 2, 'volta'): (32, 16, 2),
+    ('gradlap', 2, 'pascal'): (32, 8, 2),
+    ('grad', 2, 'pascal'): (32, 8, 2),
+    ('lap', 2, 'pascal'): (16, 8, 4),
+    ('gradlap', 3, 'volta'): (32, 8, 1),
+    ('grad', 3, 'volta'): (32, 8, 2),
+    ('lap', 3, 'volta'): (32, 8, 4),
+    ('gradlap', 3, 'pascal'): (16, 8, 4),
+    ('grad', 3, 'pascal'): (16, 8, 4),
+    ('lap', 3, 'pascal'): (16, 8, 4),
+    ('gradlap', 4, 'volta'): (32, 4, 4),
+    ('grad', 4, 'volta'): (32, 4, 4),
+    ('lap', 4, 'volta'): (16, 8, 4),
+    ('gradlap', 4, 'pascal'): (16, 8, 2),
+    ('grad', 4, 'pascal'): (16, 8, 2),
+    ('lap', 4, 'pascal'): (16, 8, 4)
+}
+
+
 class FiniteDifferencer:
     """
     A convenience class for generating kernels which compute spatial gradients,
@@ -265,16 +293,35 @@ class FiniteDifferencer:
         self.pdy_incr_knl = Stencil(pdy_incr, lsize=(16, 16, 2), **common_args)
         self.pdz_incr_knl = Stencil(pdz_incr, lsize=(16, 8, 2), **common_args)
 
+        _h = max(max(first_stencil.coefs.keys()), max(second_stencil.coefs.keys()))
+
         if stream:
-            common_args['lsize'] = (16, 4, 8)
+            arch = 'volta'
+            if 'target' in kwargs:
+                dev = kwargs['target'].device
+                try:
+                    arch_map = {6: 'pascal', 7: 'volta'}
+                    arch = arch_map[dev.compute_capability_major_nv]
+                except:  # noqa: E722
+                    pass
+
+            gradlap_lsize = kwargs.get(
+                'gradlap_lsize', knl_h_arch_lsizes[('gradlap', _h, arch)])
+            grad_lsize = kwargs.get(
+                'grad_lsize', knl_h_arch_lsizes[('grad', _h, arch)])
+            lap_lsize = kwargs.get(
+                'lap_lsize', knl_h_arch_lsizes[('lap', _h, arch)])
         else:
-            lsize = {1: (8, 8, 8), 2: (8, 4, 4), 3: (4, 4, 4), 4: (2, 2, 2)}
-            common_args['lsize'] = lsize[halo_shape]
+            lsize = {1: (8, 8, 8), 2: (8, 4, 4), 3: (4, 4, 4), 4: (2, 2, 2)}[_h]
+            gradlap_lsize = kwargs.get('gradlap_lsize', lsize)
+            grad_lsize = kwargs.get('grad_lsize', lsize)
+            lap_lsize = kwargs.get('lap_lsize', lsize)
 
         SS = StreamingStencil if stream else Stencil
-        self.lap_knl = SS(lap, **common_args)
-        self.grad_knl = SS({**pdx, **pdy, **pdz}, **common_args)
-        self.grad_lap_knl = SS({**pdx, **pdy, **pdz, **lap}, **common_args)
+        self.grad_lap_knl = SS({**pdx, **pdy, **pdz, **lap}, lsize=gradlap_lsize,
+                               **common_args)
+        self.grad_knl = SS({**pdx, **pdy, **pdz}, lsize=grad_lsize, **common_args)
+        self.lap_knl = SS(lap, lsize=lap_lsize, **common_args)
 
     def __call__(self, queue, fx, *,
                  lap=None, pdx=None, pdy=None, pdz=None, grd=None, allocator=None):
