@@ -172,13 +172,16 @@ def test_gradient_laplacian(ctx_factory, grid_shape, proc_shape, h, dtype,
 
 
 if __name__ == "__main__":
-    args = {'grid_shape': (256,)*3, 'proc_shape': (1,)*3, 'dtype': np.float64,
-            'h': 2}
-    from common import get_exec_arg_dict
-    args.update(get_exec_arg_dict())
+    from common import parser
+    args = parser.parse_args()
 
     for stream in [True, False]:
-        test_gradient_laplacian(None, **args, stream=stream, timing=True)
+        test_gradient_laplacian(
+            None, grid_shape=args.grid_shape, proc_shape=args.proc_shape,
+            h=args.h, dtype=args.dtype, timing=args.timing, stream=stream
+        )
 
-    args['h'] = 0
-    test_gradient_laplacian(None, **args, stream=False, timing=True)
+    test_gradient_laplacian(
+        None, grid_shape=args.grid_shape, proc_shape=args.proc_shape,
+        h=0, dtype=args.dtype, timing=args.timing, stream=False
+    )

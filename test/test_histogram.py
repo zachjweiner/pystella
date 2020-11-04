@@ -162,8 +162,14 @@ def test_field_histogram(ctx_factory, grid_shape, proc_shape, dtype, timing=Fals
 
 
 if __name__ == "__main__":
-    args = {'grid_shape': (256,)*3, 'proc_shape': (1,)*3, 'dtype': 'float64'}
-    from common import get_exec_arg_dict
-    args.update(get_exec_arg_dict())
-    test_histogram(None, **args, timing=True)
-    test_field_histogram(None, **args, timing=True)
+    from common import parser
+    args = parser.parse_args()
+
+    test_histogram(
+        None, grid_shape=args.grid_shape, proc_shape=args.proc_shape,
+        dtype=args.dtype, timing=args.timing
+    )
+    test_field_histogram(
+        None, grid_shape=args.grid_shape, proc_shape=args.proc_shape,
+        dtype=args.dtype, timing=args.timing
+    )

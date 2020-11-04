@@ -120,8 +120,11 @@ def test_transfer(ctx_factory, grid_shape, proc_shape, h, dtype, timing=False):
 
 
 if __name__ == "__main__":
-    args = {'grid_shape': (128,)*3, 'proc_shape': (1,)*3,
-            'dtype': np.float64, 'h': 2}
-    from common import get_exec_arg_dict
-    args.update(get_exec_arg_dict())
-    test_transfer(None, **args, timing=True)
+    from common import parser
+    parser.set_defaults(grid_shape=(128,)*3)
+    args = parser.parse_args()
+
+    test_transfer(
+        None, grid_shape=args.grid_shape, proc_shape=args.proc_shape,
+        h=args.h, dtype=args.dtype, timing=args.timing
+    )

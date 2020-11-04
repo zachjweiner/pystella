@@ -95,7 +95,10 @@ def test_elementwise(ctx_factory, grid_shape, proc_shape, dtype, timing=False):
 
 
 if __name__ == "__main__":
-    args = {'grid_shape': (256,)*3, 'proc_shape': (1,)*3, 'dtype': np.float64}
-    from common import get_exec_arg_dict
-    args.update(get_exec_arg_dict())
-    test_elementwise(None, **args, timing=True)
+    from common import parser
+    args = parser.parse_args()
+
+    test_elementwise(
+        None, grid_shape=args.grid_shape, proc_shape=args.proc_shape,
+        dtype=args.dtype, timing=args.timing
+    )

@@ -61,6 +61,11 @@ def test_examples(ctx_factory, grid_shape, proc_shape, filename, expected):
 
 
 if __name__ == "__main__":
-    args = {'grid_shape': (256,)*3, 'proc_shape': (1,)*3}
+    from common import parser
+    args = parser.parse_args()
+
     for example, expected in examples.items():
-        test_examples(None, **args, filename=example, expected=expected)
+        test_examples(
+            None, grid_shape=args.grid_shape, proc_shape=args.proc_shape,
+            filename=example, expected=expected
+        )

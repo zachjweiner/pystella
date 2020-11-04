@@ -208,9 +208,17 @@ def test_gather_scatter(ctx_factory, grid_shape, proc_shape, h, dtype,
 
 
 if __name__ == "__main__":
-    args = {'grid_shape': (256,)*3, 'proc_shape': (1,)*3, 'h': 2,
-            'dtype': np.float64, '_grid_shape': None}
-    from common import get_exec_arg_dict
-    args.update(get_exec_arg_dict())
-    test_share_halos(None, **args, pass_grid_shape=True, timing=True)
-    test_gather_scatter(None, **args, pass_grid_shape=True, timing=True)
+    from common import parser
+    parser.add_argument('--pass_grid_shape', type=bool, default=True)
+    args = parser.parse_args()
+
+    test_share_halos(
+        None, grid_shape=args.grid_shape, proc_shape=args.proc_shape,
+        h=args.h, dtype=args.dtype, timing=args.timing,
+        pass_grid_shape=args.pass_grid_shape, _grid_shape=None
+    )
+    test_gather_scatter(
+        None, grid_shape=args.grid_shape, proc_shape=args.proc_shape,
+        h=args.h, dtype=args.dtype, timing=args.timing,
+        pass_grid_shape=args.pass_grid_shape, _grid_shape=None
+    )

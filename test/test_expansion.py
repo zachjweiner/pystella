@@ -77,6 +77,12 @@ def test_expansion(ctx_factory, proc_shape, dtype, Stepper, timing=False):
 
 
 if __name__ == "__main__":
+    from common import parser
+    args = parser.parse_args()
+
     from pystella.step import all_steppers
     for stepper in all_steppers[-5:]:
-        test_expansion(None, (1, 1, 1), np.float64, stepper, timing=True)
+        test_expansion(
+            None, proc_shape=args.proc_shape, dtype=args.dtype, timing=args.timing,
+            Stepper=stepper,
+        )

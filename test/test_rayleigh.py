@@ -174,11 +174,21 @@ def test_make_hermitian(ctx_factory, grid_shape, proc_shape, dtype):
 
 
 if __name__ == "__main__":
-    args = {'grid_shape': (32,)*3, 'proc_shape': (1, 1, 1), 'dtype': 'float64'}
-    from common import get_exec_arg_dict
-    args.update(get_exec_arg_dict())
-    if args['proc_shape'] == (1, 1, 1):
-        test_make_hermitian(None, **args)
+    from common import parser
+    parser.set_defaults(grid_shape=(32,)*3)
+    args = parser.parse_args()
+
+    if args.proc_shape == (1, 1, 1):
+        test_make_hermitian(
+            None, grid_shape=args.grid_shape, proc_shape=args.proc_shape,
+            dtype=args.dtype,
+        )
     for random in [True, False]:
-        test_generate_WKB(None, **args, random=random, timing=True)
-        test_generate(None, **args, random=random, timing=True)
+        test_generate_WKB(
+            None, grid_shape=args.grid_shape, proc_shape=args.proc_shape,
+            dtype=args.dtype, timing=args.timing, random=random
+        )
+        test_generate(
+            None, grid_shape=args.grid_shape, proc_shape=args.proc_shape,
+            dtype=args.dtype, timing=args.timing, random=random
+        )

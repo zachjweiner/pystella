@@ -77,7 +77,7 @@ def test_relax(ctx_factory, grid_shape, proc_shape, h, dtype, Solver, timing=Fal
     rho = Field('rho2', offset='h')
     test_problems[f] = (get_laplacian(f) - f, rho)
 
-    solver = Solver(mpi, queue, test_problems, h=h, dtype=dtype,
+    solver = Solver(mpi, queue, test_problems, halo_shape=h, dtype=dtype,
                     fixed_parameters=dict(omega=1/2))
 
     def zero_mean_array():
@@ -133,8 +133,12 @@ def test_relax(ctx_factory, grid_shape, proc_shape, h, dtype, Solver, timing=Fal
 
 
 if __name__ == "__main__":
-    args = {'grid_shape': (128,)*3, 'proc_shape': (1,)*3,
-            'dtype': np.float64, 'h': 1}
-    from common import get_exec_arg_dict
-    args.update(get_exec_arg_dict())
-    test_relax(None, **args, Solver=NewtonIterator, timing=True)
+    from common import parser
+    parser.set_defaults(grid_shape=(128,)*3)
+    args = parser.parse_args()
+
+    test_relax(
+        None, grid_shape=args.grid_shape, proc_shape=args.proc_shape,
+        h=args.h, dtype=args.dtype, timing=args.timing,
+        Solver=NewtonIterator
+    )

@@ -113,9 +113,12 @@ def test_multigrid(ctx_factory, grid_shape, proc_shape, h, dtype, Solver, MG,
 
 
 if __name__ == "__main__":
-    args = {'grid_shape': (128,)*3, 'proc_shape': (1,)*3,
-            'dtype': np.float64, 'h': 1}
-    from common import get_exec_arg_dict
-    args.update(get_exec_arg_dict())
-    test_multigrid(None, **args, Solver=NewtonIterator, MG=FullApproximationScheme,
-                   timing=True)
+    from common import parser
+    parser.set_defaults(grid_shape=(128,)*3)
+    args = parser.parse_args()
+
+    test_multigrid(
+        None, grid_shape=args.grid_shape, proc_shape=args.proc_shape,
+        h=args.h, dtype=args.dtype, timing=args.timing,
+        Solver=NewtonIterator, MG=FullApproximationScheme
+    )

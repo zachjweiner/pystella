@@ -21,8 +21,10 @@ THE SOFTWARE.
 """
 
 
+import numpy as np
 from time import time
 import pyopencl as cl
+import argparse
 
 
 def timer(kernel, ntime=200, nwarmup=2):
@@ -41,23 +43,20 @@ def timer(kernel, ntime=200, nwarmup=2):
     return (end - start) / ntime * 1e3
 
 
-def get_exec_arg_dict():
-    """
-    Interprets command line arguments (obtained from `sys.argv`) as key-value
-    pairs. Entries corresponding to values are passed to :func:`eval` and stored
-    as such, unless :func:`eval` raises an exception, in which case the string
-    input itself is stored.
+class ArgumentParser(argparse.ArgumentParser):
+    def parse_args(self, *args, **kwargs):
+        args = super().parse_args(*args, **kwargs)
 
-    :returns: A :class:`dict` of the command-line arguments.
-    """
+        args.proc_shape = tuple(args.proc_shape)
+        args.grid_shape = tuple(args.grid_shape)
 
-    def eval_unless_str(string):
-        try:
-            x = eval(string)
-        except:  # noqa: E722
-            x = string
-        return x
+        return args
 
-    import sys
-    ll = sys.argv[1:]
-    return dict(zip(ll[::2], map(eval_unless_str, ll[1::2])))
+
+parser = ArgumentParser(add_help=False)
+parser.add_argument('--help', action='help', help='show this help message and exit')
+parser.add_argument('-proc', '--proc_shape', type=int, nargs=3, default=(1, 1, 1))
+parser.add_argument('-grid', '--grid_shape', type=int, nargs=3, default=(256,)*3)
+parser.add_argument('--h', '-h', type=int, default=2, metavar='h')
+parser.add_argument('--dtype', '-dtype', type=np.dtype, default=np.float64)
+parser.add_argument('--timing', '-time', type=bool, default=True)

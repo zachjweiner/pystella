@@ -194,11 +194,22 @@ def test_field_statistics(ctx_factory, grid_shape, proc_shape, dtype, _grid_shap
 
 
 if __name__ == "__main__":
-    args = {'grid_shape': (256,)*3, 'proc_shape': (1,)*3,
-            'dtype': np.float64, '_grid_shape': None}
-    from common import get_exec_arg_dict
-    args.update(get_exec_arg_dict())
+    from common import parser
+    parser.add_argument('--pass_grid_dims', type=bool, default=True)
+    args = parser.parse_args()
+
     for op in ['avg', 'sum', 'max']:
-        test_reduction(None, **args, op=op, pass_grid_dims=True, timing=True)
-    test_reduction_with_new_shape(None, **args, op='avg')
-    test_field_statistics(None, **args, pass_grid_dims=True, timing=True)
+        test_reduction(
+            None, grid_shape=args.grid_shape, proc_shape=args.proc_shape,
+            dtype=args.dtype, timing=args.timing,
+            op=op, pass_grid_dims=args.pass_grid_dims, _grid_shape=None
+        )
+    test_reduction_with_new_shape(
+        None, grid_shape=args.grid_shape, proc_shape=args.proc_shape,
+        dtype=args.dtype, timing=args.timing, op='avg', _grid_shape=None
+    )
+    test_field_statistics(
+        None, grid_shape=args.grid_shape, proc_shape=args.proc_shape,
+        dtype=args.dtype, timing=args.timing,
+        pass_grid_dims=args.pass_grid_dims, _grid_shape=None
+    )
