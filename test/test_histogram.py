@@ -34,8 +34,56 @@ from pyopencl.tools import (  # noqa
 @pytest.mark.filterwarnings(
     "ignore::pyopencl.characterize.CLCharacterizationWarning")
 @pytest.mark.filterwarnings("ignore::loopy.diagnostic.LoopyAdvisory")
+@pytest.mark.parametrize("dtype", ['float64'])
+@pytest.mark.parametrize("num_bins", [123, 1024, 1493])
+@pytest.mark.parametrize("_N", [256, 1200])
+def test_trivial_histogram(ctx_factory, grid_shape, proc_shape, dtype,
+                           num_bins, _N, timing=False):
+    if ctx_factory:
+        ctx = ctx_factory()
+    else:
+        ctx = ps.choose_device_and_make_context()
+
+    grid_shape = (_N,)*3
+    queue = cl.CommandQueue(ctx)
+    h = 1
+    mpi = ps.DomainDecomposition(proc_shape, h, grid_shape=grid_shape)
+    rank_shape, _ = mpi.get_rank_shape_start(grid_shape)
+
+    histograms = {
+        'a': (13., 1),
+        'b': (10.3, 2),
+        'c': (100.9, 3),
+    }
+    hist = ps.Histogrammer(mpi, histograms, num_bins, dtype, rank_shape=rank_shape)
+
+    result = hist(queue)
+
+    for key, (_b, weight) in histograms.items():
+        res = result[key]
+        b = int(np.floor(_b))
+        expected = weight * np.product(grid_shape)
+        assert res[b] == expected, \
+            f"{key}: result={res[b]}, {expected=}, ratio={res[b]/expected}"
+        assert np.all(res[res != res[b]] == 0.)
+
+
+def get_errs(a, b):
+    mask = (a != 0.) | (b != 0.)
+    a = a[mask]
+    b = b[mask]
+    err = np.abs((a - b) / np.maximum(a, b))
+
+    return np.max(err), np.average(err)
+
+
+@pytest.mark.filterwarnings(
+    "ignore::pyopencl.characterize.CLCharacterizationWarning")
+@pytest.mark.filterwarnings("ignore::loopy.diagnostic.LoopyAdvisory")
 @pytest.mark.parametrize("dtype", ['float64', 'float32'])
-def test_histogram(ctx_factory, grid_shape, proc_shape, dtype, timing=False):
+@pytest.mark.parametrize("num_bins", [123, 1024, 1493])
+def test_histogram(ctx_factory, grid_shape, proc_shape, dtype, num_bins,
+                   timing=False):
     if ctx_factory:
         ctx = ctx_factory()
     else:
@@ -46,22 +94,18 @@ def test_histogram(ctx_factory, grid_shape, proc_shape, dtype, timing=False):
     mpi = ps.DomainDecomposition(proc_shape, h, grid_shape=grid_shape)
     rank_shape, _ = mpi.get_rank_shape_start(grid_shape)
 
-    num_bins = 193
-
     if np.dtype(dtype) in (np.dtype('float64'), np.dtype('complex128')):
-        max_rtol, avg_rtol = 1e-12, 1e-13
+        max_rtol, avg_rtol = 1e-10, 1e-11
     else:
         max_rtol, avg_rtol = 5e-4, 5e-5
 
-    from pystella.histogram import Histogrammer
     from pymbolic import var
-
     _fx = ps.Field('fx')
     histograms = {
         'count': (var('abs')(_fx) * num_bins, 1),
         'squared': (var('abs')(_fx) * num_bins, _fx**2),
     }
-    hist = Histogrammer(mpi, histograms, num_bins, rank_shape, dtype)
+    hist = ps.Histogrammer(mpi, histograms, num_bins, dtype, rank_shape=rank_shape)
 
     rng = clr.ThreefryGenerator(ctx, seed=12321)
     fx = rng.uniform(queue, rank_shape, dtype)
@@ -70,21 +114,27 @@ def test_histogram(ctx_factory, grid_shape, proc_shape, dtype, timing=False):
     result = hist(queue, fx=fx)
 
     res = result['count']
-    np_res = np.histogram(fx_h, bins=np.linspace(0, 1, num_bins+1))[0]
-    np_res = mpi.allreduce(np_res)
-    err = np.abs((res - np_res) / np.maximum(np.abs(res), np.abs(np_res)))
+    assert np.sum(res.astype('int64')) == np.product(grid_shape), \
+        f"Count histogram doesn't sum to grid_size ({np.sum(res)})"
 
-    assert np.max(err) < max_rtol and np.average(err) < avg_rtol, \
-        f"Histogrammer inaccurate for grid_shape={grid_shape}"
+    bins = np.linspace(0, 1, num_bins+1).astype(dtype)
+    weights = np.ones_like(fx_h)
+    np_res = np.histogram(fx_h, bins=bins, weights=weights)[0]
+    np_res = mpi.allreduce(np_res)
+
+    max_err, avg_err = get_errs(res, np_res)
+    assert max_err < max_rtol and avg_err < avg_rtol, \
+        f"Histogrammer inaccurate for grid_shape={grid_shape}" \
+        f": {max_err=}, {avg_err=}"
 
     res = result['squared']
-    np_res = np.histogram(fx_h, bins=np.linspace(0, 1, num_bins+1),
-                          weights=fx_h**2)[0]
+    np_res = np.histogram(fx_h, bins=bins, weights=fx_h**2)[0]
     np_res = mpi.allreduce(np_res)
-    err = np.abs((res - np_res) / np.maximum(np.abs(res), np.abs(np_res)))
 
-    assert np.max(err) < max_rtol and np.average(err) < avg_rtol, \
-        f"Histogrammer with weights inaccurate for grid_shape={grid_shape}"
+    max_err, avg_err = get_errs(res, np_res)
+    assert max_err < max_rtol and avg_err < avg_rtol, \
+        f"Histogrammer with weights inaccurate for grid_shape={grid_shape}" \
+        f": {max_err=}, {avg_err=}"
 
     if timing:
         from common import timer
@@ -111,12 +161,12 @@ def test_field_histogram(ctx_factory, grid_shape, proc_shape, dtype, timing=Fals
     num_bins = 432
 
     if np.dtype(dtype) in (np.dtype('float64'), np.dtype('complex128')):
-        max_rtol, avg_rtol = 1e-12, 1e-13
+        max_rtol, avg_rtol = 1e-10, 1e-11
     else:
         max_rtol, avg_rtol = 5e-4, 5e-5
 
-    from pystella.histogram import FieldHistogrammer
-    hist = FieldHistogrammer(mpi, num_bins, rank_shape, dtype, halo_shape=h)
+    hist = ps.FieldHistogrammer(mpi, num_bins, dtype,
+                                rank_shape=rank_shape, halo_shape=h)
 
     rng = clr.ThreefryGenerator(ctx, seed=12321)
     fx = rng.uniform(queue, (2, 2)+pencil_shape, dtype, a=-1.2, b=3.)
@@ -132,17 +182,18 @@ def test_field_histogram(ctx_factory, grid_shape, proc_shape, dtype, timing=Fals
         res = result['linear'][slc]
         np_res = np.histogram(fx_h[slc], bins=result['linear_bins'][slc])[0]
         np_res = mpi.allreduce(np_res)
-        err = np.abs((res - np_res) / np.maximum(np.abs(res), np.abs(np_res)))
 
-        assert np.max(err) < max_rtol and np.average(err) < avg_rtol, \
-            f"Histogrammer inaccurate for grid_shape={grid_shape}"
+        max_err, avg_err = get_errs(res, np_res)
+        assert max_err < max_rtol and avg_err < avg_rtol, \
+            f"linear Histogrammer inaccurate for grid_shape={grid_shape}" \
+            f": {max_err=}, {avg_err=}"
 
         res = result['log'][slc]
         bins = result['log_bins'][slc]
 
         # avoid FPA comparison issues
         # numpy sometimes doesn't count the actual maximum/minimum
-        eps = 1e-14 if np.dtype(dtype) == np.dtype('float64') else 1.e-4
+        eps = 1e-14 if np.dtype(dtype) == np.dtype('float64') else 1e-4
         bins[0] *= (1 - eps)
         bins[-1] *= (1 + eps)
 
@@ -150,10 +201,11 @@ def test_field_histogram(ctx_factory, grid_shape, proc_shape, dtype, timing=Fals
         np_res = mpi.allreduce(np_res)
         norm = np.maximum(np.abs(res), np.abs(np_res))
         norm[norm == 0.] = 1.
-        err = np.abs((res - np_res) / norm)
 
-        assert np.max(err) < max_rtol and np.average(err) < avg_rtol, \
-            f"log Histogrammer inaccurate for grid_shape={grid_shape}"
+        max_err, avg_err = get_errs(res, np_res)
+        assert max_err < max_rtol and avg_err < avg_rtol, \
+            f"log Histogrammer inaccurate for grid_shape={grid_shape}" \
+            f": {max_err=}, {avg_err=}"
 
     if timing:
         from common import timer
@@ -165,9 +217,13 @@ if __name__ == "__main__":
     from common import parser
     args = parser.parse_args()
 
+    test_trivial_histogram(
+        None, grid_shape=args.grid_shape, proc_shape=args.proc_shape,
+        dtype='float64', timing=args.timing, num_bins=1493, _N=1200,
+    )
     test_histogram(
         None, grid_shape=args.grid_shape, proc_shape=args.proc_shape,
-        dtype=args.dtype, timing=args.timing
+        dtype=args.dtype, timing=args.timing, num_bins=1001,
     )
     test_field_histogram(
         None, grid_shape=args.grid_shape, proc_shape=args.proc_shape,

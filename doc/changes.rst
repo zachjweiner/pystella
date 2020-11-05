@@ -15,6 +15,7 @@ Version 2020.2
 * Added support for :class:`DomainDecomposition`\ s
   with processor grid dimensions that do not evenly divide the global computational grid.
 * :class:`Projector` now requires arguments ``dk`` and ``dx``.
+* :class:`Histogrammer` and :class:`FieldHistogrammer` no longer require argument ``rank_shape``.
 
 Version 2020.1
 --------------

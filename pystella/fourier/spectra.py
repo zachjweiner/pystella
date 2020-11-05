@@ -140,8 +140,8 @@ class PowerSpectra:
         ]
 
         from pystella.histogram import Histogrammer
-        return Histogrammer(self.decomp, histograms, self.num_bins, rank_shape,
-                            self.rdtype, args=args)
+        return Histogrammer(self.decomp, histograms, self.num_bins,
+                            self.rdtype, args=args, rank_shape=rank_shape)
 
     def bin_power(self, fk, queue=None, k_power=3, allocator=None):
         """

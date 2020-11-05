@@ -52,40 +52,44 @@ class Histogrammer(ElementWiseMap):
 
     :arg num_bins: The number of bins of the computed histograms.
 
-    :arg rank_shape: A 3-:class:`tuple` specifying the shape of the computational
-        sub-grid on the calling process.
-
     :arg dtype: The datatype of the resulting histogram.
 
     In addition, any keyword-only arguments accepted by :class:`ElementWiseMap`
     are also recognized.
 
-    .. automethod:: __call__
-
     .. versionadded:: 2020.1
+
+    .. versionchanged:: 2020.2
+
+        Positional argument ``rank_shape`` no longer required.
+
+    .. automethod:: __call__
     """
 
     def parallelize(self, knl, lsize):
-        knl = lp.split_iname(knl, "k", self.rank_shape[2],
-                             outer_tag="g.0", inner_tag="l.0")
-        knl = lp.split_iname(knl, "b", min(1024, self.num_bins),
-                             outer_tag="g.0", inner_tag="l.0")
-        knl = lp.tag_inames(knl, "j:g.1")
+        # global hist is zeroed in its own kernel
+        knl = lp.split_iname(knl, "bb", lsize[0], outer_tag="g.0", inner_tag="l.0",
+                             within="id:zero_hist*")
+        # outer_tag of loops writing/reading temp_hist cannot be a global index
+        knl = lp.split_iname(knl, "bb", lsize[0], inner_tag="l.0",
+                             within="id:zero_temp*")
+        knl = lp.split_iname(knl, "k", lsize[0], inner_tag="l.0",
+                             within="not id:zero* and not id:glb*")
+        knl = lp.split_iname(knl, "b", lsize[0], inner_tag="l.0",
+                             within="id:glb*")
+        knl = lp.tag_inames(knl, "j:g.0")
         return knl
 
-    def __init__(self, decomp, histograms, num_bins, rank_shape, dtype,
-                 **kwargs):
+    def __init__(self, decomp, histograms, num_bins, dtype, **kwargs):
         self.decomp = decomp
         self.histograms = histograms
-        self.rank_shape = rank_shape
         self.num_bins = num_bins
         num_hists = len(histograms)
-
-        assert num_bins <= 1024, "not working for num_bins >= 1024"  # FIXME
 
         from pymbolic import var
         _bin = var('bin')
         b = var('b')
+        bb = var('bb')
         hist = var('hist')
         temp = var('temp')
         weight_val = var('weight')
@@ -109,47 +113,60 @@ class Histogrammer(ElementWiseMap):
 
         domains = """
         [Nx, Ny, Nz, num_bins] ->
-           {[i, j, k, b]: 0<=i<Nx and 0<=j<Ny and 0<=k<Nz and 0<=b<num_bins}
+           {[i, j, k, b, bb]: 0<=i<Nx and 0<=j<Ny and 0<=k<Nz and 0<=b<num_bins
+                              and 0<=bb<num_bins}
         """
 
         insns = [
-            lp.Assignment(hist[j, b], 0, atomicity=(lp.AtomicUpdate(str(hist)),),
-                          within_inames=frozenset('b'),)
+            lp.Assignment(
+                hist[j, bb], 0,
+                id=f'zero_hist_{j}', within_inames=frozenset('bb'),
+                atomicity=(lp.AtomicInit(str(hist)),)
+            )
             for j in range(num_hists)
         ]
         insns.append(
-            lp.BarrierInstruction('post_zero_barrier',
-                                  synchronization_kind='global')
+            lp.BarrierInstruction('post_zero_barrier', synchronization_kind='global')
         )
         insns.extend([
-            lp.Assignment(temp[j, b], 0,
-                          within_inames=frozenset(('j', 'b')),
-                          atomicity=(lp.AtomicUpdate(str(temp)),))
+            lp.Assignment(
+                temp[j, bb], 0,
+                id=f'zero_temp_{j}', within_inames=frozenset(('j', 'bb')),
+                atomicity=(lp.AtomicInit(str(temp)),)
+            )
             for j in range(num_hists)
         ])
         for j, (bin_expr, weight_expr) in enumerate(histograms.values()):
             insns.extend([
-                lp.Assignment(_bin[j], bin_expr,
-                              within_inames=frozenset(('i', 'j', 'k'))),
-                lp.Assignment(weight_val[j], weight_expr,
-                              within_inames=frozenset(('i', 'j', 'k'))),
-                lp.Assignment(temp[j, _bin[j]], temp[j, _bin[j]] + weight_val[j],
-                              id='tmp_'+str(j),
-                              within_inames=frozenset(('i', 'j', 'k')),
-                              atomicity=(lp.AtomicUpdate(str(temp)),))
+                lp.Assignment(
+                    _bin[j], var('floor')(bin_expr),
+                    id=f"set_bin_{j}", within_inames=frozenset(('i', 'j', 'k'))
+                ),
+                lp.Assignment(
+                    weight_val[j], weight_expr,
+                    id=f"set_weight_{j}", within_inames=frozenset(('i', 'j', 'k'))
+                ),
+                lp.Assignment(
+                    temp[j, _bin[j]], temp[j, _bin[j]] + weight_val[j],
+                    id=f'tmp_{j}', within_inames=frozenset(('i', 'j', 'k')),
+                    atomicity=(lp.AtomicUpdate(str(temp)),)
+                )
             ])
 
         insns.extend([
-            lp.Assignment(hist[j, b], hist[j, b] + temp[j, b], id='glb_'+str(j),
-                          within_inames=frozenset(('j', 'b')),
-                          atomicity=(lp.AtomicUpdate(str(hist)),))
+            lp.Assignment(
+                hist[j, b], hist[j, b] + temp[j, b],
+                id=f'glb_{j}', within_inames=frozenset(('j', 'b')),
+                atomicity=(lp.AtomicUpdate(str(hist)),)
+            )
             for j in range(num_hists)
         ])
 
-        super().__init__(insns, rank_shape=rank_shape, args=args,
+        lsize = [min(256, self.num_bins)]
+
+        super().__init__(insns, args=args, lsize=lsize,
                          fixed_parameters=fixed_pars, domains=domains,
-                         silenced_warnings=silenced_warnings,
-                         **kwargs)
+                         silenced_warnings=silenced_warnings, **kwargs)
 
     def __call__(self, queue=None, filter_args=False, **kwargs):
         """
@@ -199,9 +216,6 @@ class FieldHistogrammer(Histogrammer):
 
     :arg num_bins: The number of bins of the computed histograms.
 
-    :arg rank_shape: A 3-:class:`tuple` specifying the shape of the computational
-        sub-grid on the calling process.
-
     :arg dtype: The datatype of the resulting histogram.
 
     The following keyword-only arguments are recognized (in addition to those
@@ -214,12 +228,16 @@ class FieldHistogrammer(Histogrammer):
         ``hx``, ``hy``, and ``hz``.
         Defaults to ``0``, i.e., no padding.
 
-    .. automethod:: __call__
-
     .. versionadded:: 2020.1
+
+    .. versionchanged:: 2020.2
+
+        Positional argument ``rank_shape`` no longer required.
+
+    .. automethod:: __call__
     """
 
-    def __init__(self, decomp, num_bins, rank_shape, dtype, **kwargs):
+    def __init__(self, decomp, num_bins, dtype, **kwargs):
         from pymbolic import parse
         import pymbolic.functions as pf
 
@@ -240,7 +258,7 @@ class FieldHistogrammer(Histogrammer):
             'log': (clip(log_bin * num_bins), 1)
         }
 
-        super().__init__(decomp, histograms, num_bins, rank_shape, dtype, **kwargs)
+        super().__init__(decomp, histograms, num_bins, dtype, **kwargs)
 
         reducers = {}
         reducers['max_f'] = [(f, 'max')]

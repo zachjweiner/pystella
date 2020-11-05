@@ -112,7 +112,7 @@ statistics = ps.FieldStatistics(decomp, halo_shape, rank_shape=rank_shape,
                                 grid_size=grid_size)
 spectra = ps.PowerSpectra(decomp, fft, dk, volume)
 projector = ps.Projector(fft, halo_shape, dk, dx)
-hist = ps.FieldHistogrammer(decomp, 1000, rank_shape, dtype)
+hist = ps.FieldHistogrammer(decomp, 1000, dtype, rank_shape=rank_shape)
 
 a_sq_rho = (3 * mpl**2 * ps.Field('hubble', indices=[])**2 / 8 / np.pi)
 rho_dict = {ps.Field('rho'): scalar_sector.stress_tensor(0, 0) / a_sq_rho}
