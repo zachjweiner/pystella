@@ -76,13 +76,13 @@ def test_scalar_energy(ctx_factory, grid_shape, proc_shape, h, dtype, timing=Fal
         grad_test.append(1/2 * mpi.allreduce(rank_sum) / grid_size)
 
     energy_test = {}
-    energy_test['kinetic'] = np.array(kin_test)
-    energy_test['gradient'] = np.array(grad_test)
+    energy_test["kinetic"] = np.array(kin_test)
+    energy_test["gradient"] = np.array(grad_test)
 
     phi = f[0].get()[h:-h, h:-h, h:-h]
     chi = f[1].get()[h:-h, h:-h, h:-h]
     pot_rank = np.sum(potential([phi, chi]))
-    energy_test['potential'] = np.array(mpi.allreduce(pot_rank) / grid_size)
+    energy_test["potential"] = np.array(mpi.allreduce(pot_rank) / grid_size)
 
     rtol = 1.e-14 if dtype == np.float64 else 1.e-5
 

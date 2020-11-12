@@ -31,7 +31,7 @@ from pyopencl.tools import (  # noqa
     pytest_generate_tests_for_pyopencl as pytest_generate_tests)
 
 
-@pytest.mark.parametrize("dtype", ['float64', 'complex128'])
+@pytest.mark.parametrize("dtype", ["float64", "complex128"])
 @pytest.mark.parametrize("random", [True, False])
 def test_generate_WKB(ctx_factory, grid_shape, proc_shape, dtype, random,
                       timing=False):
@@ -65,7 +65,7 @@ def test_generate_WKB(ctx_factory, grid_shape, proc_shape, dtype, random,
 @pytest.mark.filterwarnings(
     "ignore::pyopencl.characterize.CLCharacterizationWarning")
 @pytest.mark.filterwarnings("ignore::loopy.diagnostic.LoopyAdvisory")
-@pytest.mark.parametrize("dtype", ['float64', 'complex128'])
+@pytest.mark.parametrize("dtype", ["float64", "complex128"])
 @pytest.mark.parametrize("random", [True, False])
 def test_generate(ctx_factory, grid_shape, proc_shape, dtype, random, timing=False):
     if ctx_factory:
@@ -160,7 +160,7 @@ def is_hermitian(fk):
     return test.all()
 
 
-@pytest.mark.parametrize("dtype", ['float64'])
+@pytest.mark.parametrize("dtype", ["float64"])
 def test_make_hermitian(ctx_factory, grid_shape, proc_shape, dtype):
     if proc_shape != (1, 1, 1):
         pytest.skip("test make_hermitian only on one rank")

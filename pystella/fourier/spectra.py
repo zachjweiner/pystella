@@ -26,10 +26,10 @@ import pyopencl.array as cla
 import loopy as lp
 
 from warnings import filterwarnings
-filterwarnings('ignore', category=lp.diagnostic.LoopyAdvisory,
+filterwarnings("ignore", category=lp.diagnostic.LoopyAdvisory,
                message="could not find a conflict-free mem layout")
 from pyopencl.characterize import CLCharacterizationWarning
-filterwarnings('ignore', category=CLCharacterizationWarning)
+filterwarnings("ignore", category=CLCharacterizationWarning)
 
 
 class PowerSpectra:
@@ -75,13 +75,13 @@ class PowerSpectra:
         self.kshape = self.fft.shape(True)
 
         self.dk = dk
-        self.bin_width = kwargs.pop('bin_width', min(dk))
+        self.bin_width = kwargs.pop("bin_width", min(dk))
 
         d3x = volume / np.product(self.grid_shape)
         self.norm = (1 / 2 / np.pi**2 / volume) * d3x**2
 
         sub_k = list(x.get() for x in self.fft.sub_k.values())
-        kvecs = np.meshgrid(*sub_k, indexing='ij', sparse=False)
+        kvecs = np.meshgrid(*sub_k, indexing="ij", sparse=False)
         kmags = np.sqrt(sum((dki * ki)**2 for dki, ki in zip(self.dk, kvecs)))
 
         if self.fft.is_real:
@@ -108,33 +108,33 @@ class PowerSpectra:
 
     def make_spectra_knl(self, is_real, rank_shape):
         from pymbolic import var, parse
-        indices = i, j, k = parse('i, j, k')
-        momenta = [var('momenta_'+xx) for xx in ('x', 'y', 'z')]
+        indices = i, j, k = parse("i, j, k")
+        momenta = [var("momenta_"+xx) for xx in ("x", "y", "z")]
         ksq = sum((dk_i * mom[ii])**2
                   for mom, dk_i, ii in zip(momenta, self.dk, indices))
-        kmag = var('sqrt')(ksq)
-        bin_expr = var('round')(kmag / self.bin_width)
+        kmag = var("sqrt")(ksq)
+        bin_expr = var("round")(kmag / self.bin_width)
 
         if is_real:
             from pymbolic.primitives import If, Comparison, LogicalAnd
             nyq = self.grid_shape[-1] / 2
-            condition = LogicalAnd((Comparison(momenta[2][k], '>', 0),
-                                    Comparison(momenta[2][k], '<', nyq)))
+            condition = LogicalAnd((Comparison(momenta[2][k], ">", 0),
+                                    Comparison(momenta[2][k], "<", nyq)))
             count = If(condition, 2, 1)
         else:
             count = 1
 
-        fk = var('fk')[i, j, k]
-        weight_expr = count * kmag**(var('k_power')) * var('abs')(fk)**2
+        fk = var("fk")[i, j, k]
+        weight_expr = count * kmag**(var("k_power")) * var("abs")(fk)**2
 
-        histograms = {'spectrum': (bin_expr, weight_expr)}
+        histograms = {"spectrum": (bin_expr, weight_expr)}
 
         args = [
-            lp.GlobalArg("fk", self.cdtype, shape=('Nx', 'Ny', 'Nz'),
+            lp.GlobalArg("fk", self.cdtype, shape=("Nx", "Ny", "Nz"),
                          offset=lp.auto),
-            lp.GlobalArg("momenta_x", self.rdtype, shape=('Nx',)),
-            lp.GlobalArg("momenta_y", self.rdtype, shape=('Ny',)),
-            lp.GlobalArg("momenta_z", self.rdtype, shape=('Nz',)),
+            lp.GlobalArg("momenta_x", self.rdtype, shape=("Nx",)),
+            lp.GlobalArg("momenta_y", self.rdtype, shape=("Ny",)),
+            lp.GlobalArg("momenta_z", self.rdtype, shape=("Nz",)),
             lp.ValueArg("k_power", self.rdtype),
             ...
         ]
@@ -173,7 +173,7 @@ class PowerSpectra:
 
         result = self.knl(queue, allocator=allocator, fk=fk,
                           k_power=k_power, **self.fft.sub_k)
-        return result['spectrum'] / self.bin_counts
+        return result["spectrum"] / self.bin_counts
 
     def __call__(self, fx, queue=None, k_power=3, allocator=None):
         """

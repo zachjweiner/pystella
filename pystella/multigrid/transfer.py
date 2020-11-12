@@ -65,10 +65,10 @@ def RestrictionBase(coefs, StencilKernel, halo_shape, **kwargs):
         restriction.
     """
 
-    lsize = kwargs.pop('lsize', (4, 4, 4))
+    lsize = kwargs.pop("lsize", (4, 4, 4))
 
     # ensure grid dimensions are *not* passed, as they will be misinterpreted
-    for N in ['Nx', 'Ny', 'Nz']:
+    for N in ["Nx", "Ny", "Nz"]:
         _ = kwargs.pop(N, None)
 
     restrict_coefs = {}
@@ -78,24 +78,24 @@ def RestrictionBase(coefs, StencilKernel, halo_shape, **kwargs):
                 restrict_coefs[(a, b, c)] = c_a * c_b * c_c
 
     from pymbolic import parse, var
-    i, j, k = parse('i, j, k')
-    f1 = Field('f1', offset='h', indices=(2*i, 2*j, 2*k))
-    f2 = Field('f2', offset='h')
-    tmp = var('tmp')
+    i, j, k = parse("i, j, k")
+    f1 = Field("f1", offset="h", indices=(2*i, 2*j, 2*k))
+    f2 = Field("f2", offset="h")
+    tmp = var("tmp")
 
     tmp_dict = {tmp: expand_stencil(f1, restrict_coefs)}
 
-    if kwargs.pop('correct', False):
+    if kwargs.pop("correct", False):
         restrict_dict = {f2: f2 - tmp}
     else:
         restrict_dict = {f2: tmp}
 
-    args = [lp.GlobalArg('f1', shape='(2*Nx+2*h, 2*Ny+2*h, 2*Nz+2*h)'),
-            lp.GlobalArg('f2', shape='(Nx+2*h, Ny+2*h, Nz+2*h)')]
+    args = [lp.GlobalArg("f1", shape="(2*Nx+2*h, 2*Ny+2*h, 2*Nz+2*h)"),
+            lp.GlobalArg("f2", shape="(Nx+2*h, Ny+2*h, Nz+2*h)")]
 
     if isinstance(StencilKernel, Stencil):
         return StencilKernel(restrict_dict, tmp_instructions=tmp_dict, args=args,
-                             prefetch_args=['f1'], halo_shape=halo_shape,
+                             prefetch_args=["f1"], halo_shape=halo_shape,
                              lsize=lsize, **kwargs)
     else:
         return StencilKernel(restrict_dict, tmp_instructions=tmp_dict, args=args,
@@ -172,11 +172,11 @@ def InterpolationBase(even_coefs, odd_coefs, StencilKernel, halo_shape, **kwargs
     """
 
     from pymbolic import parse, var
-    i, j, k = parse('i, j, k')
-    f1 = Field('f1', offset='h')
+    i, j, k = parse("i, j, k")
+    f1 = Field("f1", offset="h")
 
     tmp_dict = {}
-    tmp = var('tmp')
+    tmp = var("tmp")
 
     import itertools
     for parity in tuple(itertools.product((0, 1), (0, 1), (0, 1))):
@@ -184,7 +184,7 @@ def InterpolationBase(even_coefs, odd_coefs, StencilKernel, halo_shape, **kwargs
         for a, c_a in odd_coefs.items() if parity[0] else even_coefs.items():
             for b, c_b in odd_coefs.items() if parity[1] else even_coefs.items():
                 for c, c_c in odd_coefs.items() if parity[2] else even_coefs.items():
-                    f2 = Field('f2', offset='h',
+                    f2 = Field("f2", offset="h",
                                indices=((i+a)//2, (j+b)//2, (k+c)//2))
                     result += c_a * c_b * c_c * f2
 
@@ -192,22 +192,22 @@ def InterpolationBase(even_coefs, odd_coefs, StencilKernel, halo_shape, **kwargs
 
     def is_odd(expr):
         from pymbolic.primitives import If, Comparison, Remainder
-        return If(Comparison(Remainder(expr, 2), '==', 1), 1, 0)
+        return If(Comparison(Remainder(expr, 2), "==", 1), 1, 0)
 
-    a, b, c = parse('a, b, c')
+    a, b, c = parse("a, b, c")
     for ind, val in zip((i, j, k), (a, b, c)):
         tmp_dict[val] = is_odd(ind)
 
-    if kwargs.pop('correct', False):
+    if kwargs.pop("correct", False):
         interp_dict = {f1: f1 + tmp[a, b, c]}
     else:
         interp_dict = {f1: tmp[a, b, c]}
 
-    args = [lp.GlobalArg('f1', shape='(Nx+2*h, Ny+2*h, Nz+2*h)'),
-            lp.GlobalArg('f2', shape='(Nx//2+2*h, Ny//2+2*h, Nz//2+2*h)')]
+    args = [lp.GlobalArg("f1", shape="(Nx+2*h, Ny+2*h, Nz+2*h)"),
+            lp.GlobalArg("f2", shape="(Nx//2+2*h, Ny//2+2*h, Nz//2+2*h)")]
 
     return StencilKernel(interp_dict, tmp_instructions=tmp_dict, args=args,
-                         prefetch_args=['f2'], halo_shape=halo_shape, **kwargs)
+                         prefetch_args=["f2"], halo_shape=halo_shape, **kwargs)
 
 
 def LinearInterpolation(StencilKernel=Stencil, **kwargs):
@@ -258,8 +258,8 @@ def CubicInterpolation(StencilKernel=Stencil, **kwargs):
     See :class:`transfer.InterpolationBase`.
     """
 
-    if kwargs.get('halo_shape', 0) < 2:
-        raise ValueError('CubicInterpolation requires padding >= 2')
+    if kwargs.get("halo_shape", 0) < 2:
+        raise ValueError("CubicInterpolation requires padding >= 2")
 
     from pymbolic.primitives import Quotient
     odd_coefs = {-3: Quotient(-1, 16), -1: Quotient(9, 16),

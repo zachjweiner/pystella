@@ -64,9 +64,9 @@ class SpectralPoissonSolver:
         self.fft = fft
         grid_size = fft.grid_shape[0] * fft.grid_shape[1] * fft.grid_shape[2]
 
-        queue = self.fft.sub_k['momenta_x'].queue
-        sub_k = list(x.get().astype('int') for x in self.fft.sub_k.values())
-        k_names = ('k_x', 'k_y', 'k_z')
+        queue = self.fft.sub_k["momenta_x"].queue
+        sub_k = list(x.get().astype("int") for x in self.fft.sub_k.values())
+        k_names = ("k_x", "k_y", "k_z")
         self.momenta = {}
         self.momenta = {}
         for mu, (name, kk) in enumerate(zip(k_names, sub_k)):
@@ -74,26 +74,26 @@ class SpectralPoissonSolver:
             self.momenta[name] = cla.to_device(queue, kk_mu)
 
         args = [
-            lp.GlobalArg('fk', fft.cdtype, shape="(Nx, Ny, Nz)"),
-            lp.GlobalArg("k_x", fft.rdtype, shape=('Nx',)),
-            lp.GlobalArg("k_y", fft.rdtype, shape=('Ny',)),
-            lp.GlobalArg("k_z", fft.rdtype, shape=('Nz',)),
-            lp.ValueArg('m_squared', fft.rdtype),
+            lp.GlobalArg("fk", fft.cdtype, shape="(Nx, Ny, Nz)"),
+            lp.GlobalArg("k_x", fft.rdtype, shape=("Nx",)),
+            lp.GlobalArg("k_y", fft.rdtype, shape=("Ny",)),
+            lp.GlobalArg("k_z", fft.rdtype, shape=("Nz",)),
+            lp.ValueArg("m_squared", fft.rdtype),
         ]
 
         from pystella.field import Field
         from pymbolic.primitives import Variable, If, Comparison
 
-        fk = Field('fk')
+        fk = Field("fk")
         indices = fk.indices
-        rho_tmp = Variable('rho_tmp')
-        tmp_insns = [(rho_tmp, Field('rhok') * (1/grid_size))]
+        rho_tmp = Variable("rho_tmp")
+        tmp_insns = [(rho_tmp, Field("rhok") * (1/grid_size))]
 
         mom_vars = tuple(Variable(name) for name in k_names)
         minus_k_squared = sum(kk_i[x_i] for kk_i, x_i in zip(mom_vars, indices))
-        sol = rho_tmp / (minus_k_squared - Variable('m_squared'))
+        sol = rho_tmp / (minus_k_squared - Variable("m_squared"))
 
-        solution = {Field('fk'): If(Comparison(minus_k_squared, '<', 0), sol, 0)}
+        solution = {Field("fk"): If(Comparison(minus_k_squared, "<", 0), sol, 0)}
 
         from pystella.elementwise import ElementWiseMap
         options = lp.Options(return_dict=True)
@@ -122,4 +122,4 @@ class SpectralPoissonSolver:
         rhok = self.fft.dft(rho)
         evt, out = self.knl(queue, rhok=rhok, fk=rhok, m_squared=m_squared,
                             **self.momenta)
-        self.fft.idft(out['fk'], fx)
+        self.fft.idft(out["fk"], fx)

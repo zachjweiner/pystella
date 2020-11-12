@@ -87,19 +87,19 @@ class Histogrammer(ElementWiseMap):
         num_hists = len(histograms)
 
         from pymbolic import var
-        _bin = var('bin')
-        b = var('b')
-        bb = var('bb')
-        hist = var('hist')
-        temp = var('temp')
-        weight_val = var('weight')
+        _bin = var("bin")
+        b = var("b")
+        bb = var("bb")
+        hist = var("hist")
+        temp = var("temp")
+        weight_val = var("weight")
 
-        args = kwargs.pop('args', [])
+        args = kwargs.pop("args", [])
         args += [
             lp.TemporaryVariable("temp", dtype, shape=(num_hists, self.num_bins,),
                                  for_atomic=True,
                                  address_space=lp.AddressSpace.LOCAL),
-            lp.TemporaryVariable("bin", 'int', shape=(num_hists,)),
+            lp.TemporaryVariable("bin", "int", shape=(num_hists,)),
             lp.TemporaryVariable("weight", dtype, shape=(num_hists,)),
             lp.GlobalArg("hist", dtype, shape=(num_hists, self.num_bins,),
                          for_atomic=True),
@@ -109,7 +109,7 @@ class Histogrammer(ElementWiseMap):
         fixed_pars.update(dict(num_bins=num_bins, num_hists=num_hists))
 
         silenced_warnings = kwargs.pop("silenced_warnings", [])
-        silenced_warnings += ['write_race(tmp*)', 'write_race(glb*)']
+        silenced_warnings += ["write_race(tmp*)", "write_race(glb*)"]
 
         domains = """
         [Nx, Ny, Nz, num_bins] ->
@@ -120,18 +120,18 @@ class Histogrammer(ElementWiseMap):
         insns = [
             lp.Assignment(
                 hist[j, bb], 0,
-                id=f'zero_hist_{j}', within_inames=frozenset('bb'),
+                id=f"zero_hist_{j}", within_inames=frozenset("bb"),
                 atomicity=(lp.AtomicInit(str(hist)),)
             )
             for j in range(num_hists)
         ]
         insns.append(
-            lp.BarrierInstruction('post_zero_barrier', synchronization_kind='global')
+            lp.BarrierInstruction("post_zero_barrier", synchronization_kind="global")
         )
         insns.extend([
             lp.Assignment(
                 temp[j, bb], 0,
-                id=f'zero_temp_{j}', within_inames=frozenset(('j', 'bb')),
+                id=f"zero_temp_{j}", within_inames=frozenset(("j", "bb")),
                 atomicity=(lp.AtomicInit(str(temp)),)
             )
             for j in range(num_hists)
@@ -139,16 +139,16 @@ class Histogrammer(ElementWiseMap):
         for j, (bin_expr, weight_expr) in enumerate(histograms.values()):
             insns.extend([
                 lp.Assignment(
-                    _bin[j], var('floor')(bin_expr),
-                    id=f"set_bin_{j}", within_inames=frozenset(('i', 'j', 'k'))
+                    _bin[j], var("floor")(bin_expr),
+                    id=f"set_bin_{j}", within_inames=frozenset(("i", "j", "k"))
                 ),
                 lp.Assignment(
                     weight_val[j], weight_expr,
-                    id=f"set_weight_{j}", within_inames=frozenset(('i', 'j', 'k'))
+                    id=f"set_weight_{j}", within_inames=frozenset(("i", "j", "k"))
                 ),
                 lp.Assignment(
                     temp[j, _bin[j]], temp[j, _bin[j]] + weight_val[j],
-                    id=f'tmp_{j}', within_inames=frozenset(('i', 'j', 'k')),
+                    id=f"tmp_{j}", within_inames=frozenset(("i", "j", "k")),
                     atomicity=(lp.AtomicUpdate(str(temp)),)
                 )
             ])
@@ -156,7 +156,7 @@ class Histogrammer(ElementWiseMap):
         insns.extend([
             lp.Assignment(
                 hist[j, b], hist[j, b] + temp[j, b],
-                id=f'glb_{j}', within_inames=frozenset(('j', 'b')),
+                id=f"glb_{j}", within_inames=frozenset(("j", "b")),
                 atomicity=(lp.AtomicUpdate(str(hist)),)
             )
             for j in range(num_hists)
@@ -241,30 +241,30 @@ class FieldHistogrammer(Histogrammer):
         from pymbolic import parse
         import pymbolic.functions as pf
 
-        max_f, min_f = parse('max_f, min_f')
-        max_log_f, min_log_f = parse('max_log_f, min_log_f')
+        max_f, min_f = parse("max_f, min_f")
+        max_log_f, min_log_f = parse("max_log_f, min_log_f")
 
-        halo_shape = kwargs.pop('halo_shape', 0)
-        f = Field('f', offset=halo_shape)
+        halo_shape = kwargs.pop("halo_shape", 0)
+        f = Field("f", offset=halo_shape)
 
         def clip(expr):
-            _min, _max = parse('min, max')
+            _min, _max = parse("min, max")
             return _max(_min(expr, num_bins - 1), 0)
 
         linear_bin = (f - min_f) / (max_f - min_f)
         log_bin = (pf.log(pf.fabs(f)) - min_log_f) / (max_log_f - min_log_f)
         histograms = {
-            'linear': (clip(linear_bin * num_bins), 1),
-            'log': (clip(log_bin * num_bins), 1)
+            "linear": (clip(linear_bin * num_bins), 1),
+            "log": (clip(log_bin * num_bins), 1)
         }
 
         super().__init__(decomp, histograms, num_bins, dtype, **kwargs)
 
         reducers = {}
-        reducers['max_f'] = [(f, 'max')]
-        reducers['min_f'] = [(f, 'min')]
-        reducers['max_log_f'] = [(pf.log(pf.fabs(f)), 'max')]
-        reducers['min_log_f'] = [(pf.log(pf.fabs(f)), 'min')]
+        reducers["max_f"] = [(f, "max")]
+        reducers["min_f"] = [(f, "min")]
+        reducers["max_log_f"] = [(pf.log(pf.fabs(f)), "max")]
+        reducers["min_log_f"] = [(pf.log(pf.fabs(f)), "min")]
 
         self.get_min_max = Reduction(decomp, reducers, halo_shape=halo_shape,
                                      **kwargs)
@@ -304,13 +304,13 @@ class FieldHistogrammer(Histogrammer):
 
         :returns: A :class:`dict` with the the following items:
 
-            * ``'linear'``: the histogram(s) of ``f`` with linear binning
+            * ``"linear"``: the histogram(s) of ``f`` with linear binning
 
-            * ``'linear_bins'``: the bins used for the linear histogram(s) of ``f``
+            * ``"linear_bins"``: the bins used for the linear histogram(s) of ``f``
 
-            * ``'log'``: the histogram(s) of ``f`` with logarithmic binning
+            * ``"log"``: the histogram(s) of ``f`` with logarithmic binning
 
-            * ``'log_bins'``: the bins used for the logarithmic histogram(s) of
+            * ``"log_bins"``: the bins used for the logarithmic histogram(s) of
               ``f``
 
             Each :mod:`numpy` array has shape ``f.shape[:-3] + (num_bins,)``.
@@ -326,9 +326,9 @@ class FieldHistogrammer(Histogrammer):
         bounds_passed = min_max_kwargs.issubset(set(kwargs.keys()))
 
         out = dict()
-        for key in ('linear', 'log'):
+        for key in ("linear", "log"):
             out[key] = np.zeros(outer_shape+(self.num_bins,))
-            out[key+'_bins'] = np.zeros(outer_shape+(self.num_bins+1,))
+            out[key+"_bins"] = np.zeros(outer_shape+(self.num_bins+1,))
 
         for s in slices:
             if not bounds_passed:
@@ -341,10 +341,10 @@ class FieldHistogrammer(Histogrammer):
             for key, val in hists.items():
                 out[key][s] = val
 
-            out['linear_bins'][s] = np.linspace(bounds['min_f'], bounds['max_f'],
+            out["linear_bins"][s] = np.linspace(bounds["min_f"], bounds["max_f"],
                                                 self.num_bins+1)
-            out['log_bins'][s] = np.exp(np.linspace(bounds['min_log_f'],
-                                                    bounds['max_log_f'],
+            out["log_bins"][s] = np.exp(np.linspace(bounds["min_log_f"],
+                                                    bounds["max_log_f"],
                                                     self.num_bins+1))
 
         return out

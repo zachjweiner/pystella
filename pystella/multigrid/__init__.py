@@ -205,11 +205,11 @@ class FullApproximationScheme:
         self.solver = solver
         self.halo_shape = halo_shape
 
-        Restrictor = kwargs.pop('Restrictor', FullWeighting)
+        Restrictor = kwargs.pop("Restrictor", FullWeighting)
         self.restrict = Restrictor(halo_shape=halo_shape)
         self.restrict_and_correct = Restrictor(halo_shape=halo_shape, correct=True)
 
-        Interpolator = kwargs.pop('Interpolator', LinearInterpolation)
+        Interpolator = kwargs.pop("Interpolator", LinearInterpolation)
         self.interpolate = Interpolator(halo_shape=halo_shape)
         self.interpolate_and_correct = Interpolator(halo_shape=halo_shape,
                                                     correct=True)
@@ -351,8 +351,8 @@ class FullApproximationScheme:
             self.tmp[0] = {}
             self.resid[0] = {}
             for k, f in self.unknowns[0].items():
-                self.tmp[0]['tmp_'+k] = cla.zeros_like(f)
-                self.resid[0]['r_'+k] = self.tmp[0]['tmp_'+k]
+                self.tmp[0]["tmp_"+k] = cla.zeros_like(f)
+                self.resid[0]["r_"+k] = self.tmp[0]["tmp_"+k]
 
         for i in range(depth+1):
             if i not in self.dx:
@@ -372,7 +372,7 @@ class FullApproximationScheme:
                 self.tmp[i] = self.coarse_level_like(self.tmp[i-1])
                 self.resid[i] = {}
                 for k, f in self.unknowns[i].items():
-                    self.resid[i]['r_'+k] = self.tmp[i]['tmp_'+k]
+                    self.resid[i]["r_"+k] = self.tmp[i]["tmp_"+k]
 
             if i not in self.rhos:
                 self.rhos[i] = self.coarse_level_like(self.rhos[i-1])
@@ -387,12 +387,12 @@ class FullApproximationScheme:
             if i not in self.smooth_args:
                 self.smooth_args[i] = {**self.unknowns[i], **self.rhos[i],
                                        **self.auxiliaries[i], **self.tmp[i]}
-                self.smooth_args[i]['dx'] = np.array(self.dx[i])
+                self.smooth_args[i]["dx"] = np.array(self.dx[i])
 
             if i not in self.resid_args:
                 self.resid_args[i] = {**self.unknowns[i], **self.rhos[i],
                                       **self.auxiliaries[i], **self.resid[i]}
-                self.resid_args[i]['dx'] = np.array(self.dx[i])
+                self.resid_args[i]["dx"] = np.array(self.dx[i])
 
     def __call__(self, decomp0, queue, dx0, cycle=None, **kwargs):
         """
@@ -432,7 +432,7 @@ class FullApproximationScheme:
             elif i == previous - 1:
                 self.transfer_up(queue, i)
             else:
-                raise ValueError('consecutive levels must be spaced by one')
+                raise ValueError("consecutive levels must be spaced by one")
             level_errors += self.smooth(queue, i, nu)
             previous = i
 
@@ -465,7 +465,7 @@ class MultiGridSolver(FullApproximationScheme):
         self.solver.residual(queue, **self.resid_args[i-1])
 
         for f, rho in self.solver.f_to_rho_dict.items():
-            r1 = self.resid[i-1]['r_'+f]
+            r1 = self.resid[i-1]["r_"+f]
             self.decomp[i-1].share_halos(queue, r1)
             r2 = self.rhos[i][rho]
             self.restrict(queue, f1=r1, f2=r2)
@@ -479,15 +479,15 @@ class MultiGridSolver(FullApproximationScheme):
 
 
 __all__ = [
-    'Injection',
-    'FullWeighting',
-    'LinearInterpolation',
-    'CubicInterpolation',
-    'JacobiIterator',
-    'NewtonIterator',
-    'FullApproximationScheme',
-    'MultiGridSolver',
-    'v_cycle',
-    'w_cycle',
-    'f_cycle',
+    "Injection",
+    "FullWeighting",
+    "LinearInterpolation",
+    "CubicInterpolation",
+    "JacobiIterator",
+    "NewtonIterator",
+    "FullApproximationScheme",
+    "MultiGridSolver",
+    "v_cycle",
+    "w_cycle",
+    "f_cycle",
 ]

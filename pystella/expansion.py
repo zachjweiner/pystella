@@ -74,7 +74,7 @@ class Expansion:
         from pystella.step import LowStorageRKStepper
 
         self.is_low_storage = LowStorageRKStepper in Stepper.__bases__
-        num_copies = Stepper.__dict__.get('num_copies', 1)
+        num_copies = Stepper.__dict__.get("num_copies", 1)
         shape = (num_copies,)
         arg_shape = (1,) if self.is_low_storage else tuple()
         self.a = np.ones(shape, dtype=dtype)
@@ -83,11 +83,11 @@ class Expansion:
 
         slc = (0,) if self.is_low_storage else ()
         from pystella import Field
-        _a = Field('a', indices=[], shape=arg_shape)[slc]
-        _adot = Field('adot', indices=[], shape=arg_shape)[slc]
+        _a = Field("a", indices=[], shape=arg_shape)[slc]
+        _adot = Field("adot", indices=[], shape=arg_shape)[slc]
         from pymbolic import var
-        _e = var('energy')
-        _p = var('pressure')
+        _e = var("energy")
+        _p = var("pressure")
         rhs_dict = {_a: _adot,
                     _adot: self.addot_friedmann_2(_a, _e, _p)}
 

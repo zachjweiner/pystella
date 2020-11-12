@@ -73,7 +73,7 @@ def test_spectral_poisson(ctx_factory, grid_shape, proc_shape, h, dtype,
 
     fx = cla.empty(queue, pencil_shape, dtype)
     rho = clr.rand(queue, rank_shape, dtype)
-    rho -= statistics(rho)['mean']
+    rho -= statistics(rho)["mean"]
     lap = cla.empty(queue, rank_shape, dtype)
     rho_h = rho.get()
 

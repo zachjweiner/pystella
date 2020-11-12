@@ -47,9 +47,9 @@ def test_stencil(ctx_factory, grid_shape, proc_shape, dtype, stream, h=1,
     rank_shape = tuple(Ni // pi for Ni, pi in zip(grid_shape, proc_shape))
 
     from pymbolic import var
-    x = var('x')
-    y = var('y')
-    i, j, k = var('i'), var('j'), var('k')
+    x = var("x")
+    y = var("y")
+    i, j, k = var("i"), var("j"), var("k")
 
     map_dict = {}
     map_dict[y[i, j, k]] = (
@@ -64,12 +64,12 @@ def test_stencil(ctx_factory, grid_shape, proc_shape, dtype, stream, h=1,
     if stream:
         try:
             stencil_map = ps.StreamingStencil(
-                map_dict, prefetch_args=['x'], halo_shape=h
+                map_dict, prefetch_args=["x"], halo_shape=h
             )
         except:  # noqa
             pytest.skip("StreamingStencil unavailable")
     else:
-        stencil_map = ps.Stencil(map_dict, h, prefetch_args=['x'])
+        stencil_map = ps.Stencil(map_dict, h, prefetch_args=["x"])
 
     x = clr.rand(queue, tuple(ni + 2*h for ni in rank_shape), dtype)
     y = clr.rand(queue, rank_shape, dtype)

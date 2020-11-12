@@ -64,17 +64,17 @@ def test_multigrid(ctx_factory, grid_shape, proc_shape, h, dtype, Solver, MG,
         lap_coefs = _lap_coefs[h]
         from pymbolic import var
         return sum([centered_diff(f, lap_coefs, direction=mu, order=2)
-                    for mu in range(1, 4)]) / var('dx')**2
+                    for mu in range(1, 4)]) / var("dx")**2
 
     test_problems = {}
 
     from pystella import Field
-    f = Field('f', offset='h')
-    rho = Field('rho', offset='h')
+    f = Field("f", offset="h")
+    rho = Field("rho", offset="h")
     test_problems[f] = (get_laplacian(f), rho)
 
-    f = Field('f2', offset='h')
-    rho = Field('rho2', offset='h')
+    f = Field("f2", offset="h")
+    rho = Field("rho2", offset="h")
     test_problems[f] = (get_laplacian(f) - f, rho)
 
     solver = Solver(mpi, queue, test_problems, halo_shape=h, dtype=dtype,
@@ -85,7 +85,7 @@ def test_multigrid(ctx_factory, grid_shape, proc_shape, h, dtype, Solver, MG,
         f0 = clr.rand(queue, grid_shape, dtype)
         f = clr.rand(queue, tuple(ni + 2*h for ni in rank_shape), dtype)
         mpi.scatter_array(queue, f0, f, root=0)
-        avg = statistics(f)['mean']
+        avg = statistics(f)["mean"]
         f = f - avg
         mpi.share_halos(queue, f)
         return f
@@ -101,10 +101,10 @@ def test_multigrid(ctx_factory, grid_shape, proc_shape, h, dtype, Solver, MG,
     num_v_cycles = 15 if MG == MultiGridSolver else 10
     for i in range(num_v_cycles):
         errs = mg(mpi, queue, dx0=dx, f=f, rho=rho, f2=f2, rho2=rho2)
-        poisson_errs.append(errs[-1][-1]['f'])
-        helmholtz_errs.append(errs[-1][-1]['f2'])
+        poisson_errs.append(errs[-1][-1]["f"])
+        helmholtz_errs.append(errs[-1][-1]["f2"])
 
-    for name, cycle_errs in zip(['poisson', 'helmholtz'],
+    for name, cycle_errs in zip(["poisson", "helmholtz"],
                                 [poisson_errs, helmholtz_errs]):
         tol = 1.e-6 if MG == MultiGridSolver else 1.e-15
         assert cycle_errs[-1][1] < tol and cycle_errs[-2][1] < 10*tol, \

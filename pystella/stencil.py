@@ -25,10 +25,10 @@ import loopy as lp
 from pystella.elementwise import ElementWiseMap
 
 from warnings import filterwarnings
-filterwarnings('ignore', category=lp.diagnostic.LoopyAdvisory,
+filterwarnings("ignore", category=lp.diagnostic.LoopyAdvisory,
                message="could not find a conflict-free mem layout")
 from pyopencl.characterize import CLCharacterizationWarning
-filterwarnings('ignore', category=CLCharacterizationWarning)
+filterwarnings("ignore", category=CLCharacterizationWarning)
 
 __doc__ = """
 .. currentmodule:: pystella
@@ -64,7 +64,7 @@ class Stencil(ElementWiseMap):
     """
 
     def _assignment(self, assignee, expression, **kwargs):
-        no_sync_with = kwargs.pop('no_sync_with', None)
+        no_sync_with = kwargs.pop("no_sync_with", None)
         return lp.Assignment(assignee, expression,
                              no_sync_with=no_sync_with,
                              **kwargs)
@@ -77,23 +77,23 @@ class Stencil(ElementWiseMap):
         for arg in self.prefetch_args:
             knl = lp.add_prefetch(knl, arg, ["i_inner", "j_inner", "k_inner"],
                                   fetch_bounding_box=True, default_tag=None,
-                                  temporary_name='_'+arg)
-            for x in [arg+'_dim_0:l.2', arg+'_dim_1:l.1', arg+'_dim_2:l.0']:
+                                  temporary_name="_"+arg)
+            for x in [arg+"_dim_0:l.2", arg+"_dim_1:l.1", arg+"_dim_2:l.0"]:
                 knl = lp.tag_inames(knl, x)
         return knl
 
     def __init__(self, map_instructions, halo_shape, **kwargs):
-        self.prefetch_args = kwargs.pop('prefetch_args', [])
+        self.prefetch_args = kwargs.pop("prefetch_args", [])
 
         _halo_shape = (halo_shape,)*3 if isinstance(halo_shape, int) else halo_shape
 
         _lsize = tuple(10 - 2*hi for hi in _halo_shape)
         if halo_shape == 2:
             _lsize = (8, 4, 4)  # default should be only powers of two
-        lsize = kwargs.pop('lsize', _lsize)
+        lsize = kwargs.pop("lsize", _lsize)
 
         super().__init__(map_instructions, lsize=lsize,
-                         silenced_warnings=['single_writer_after_creation'],
+                         silenced_warnings=["single_writer_after_creation"],
                          **kwargs, halo_shape=halo_shape)
 
 
@@ -117,18 +117,18 @@ class StreamingStencil(Stencil):
                                   ["i_inner", "j_inner", "k_inner"],
                                   stream_iname="i_outer",
                                   fetch_bounding_box=True, default_tag=None,
-                                  temporary_name='_'+arg)
-            for x in [arg+'_dim_1:l.1', arg+'_dim_2:l.0']:
+                                  temporary_name="_"+arg)
+            for x in [arg+"_dim_1:l.1", arg+"_dim_2:l.0"]:
                 knl = lp.tag_inames(knl, x)
 
         return knl
 
     def __init__(self, map_instructions, halo_shape, **kwargs):
-        if len(kwargs.get('prefetch_args', [])) > 1:
-            raise NotImplementedError('Streaming codegen can only handle one \
-                                       prefetch array for now')
+        if len(kwargs.get("prefetch_args", [])) > 1:
+            raise NotImplementedError(
+                "Streaming codegen can only handle one prefetch array for now")
 
-        lsize = kwargs.pop('lsize', (16, 4, 8))
+        lsize = kwargs.pop("lsize", (16, 4, 8))
 
         super().__init__(map_instructions, lsize=lsize, halo_shape=halo_shape,
                          **kwargs)

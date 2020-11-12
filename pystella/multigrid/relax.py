@@ -106,23 +106,23 @@ class RelaxationBase:
     def __init__(self, decomp, queue, lhs_dict, MapKernel=Stencil, **kwargs):
         self.decomp = decomp
         self.lhs_dict = lhs_dict
-        self.halo_shape = kwargs.get('halo_shape')
+        self.halo_shape = kwargs.get("halo_shape")
 
         # get GlobalArgs of unknowns, or infer from lhs_dict.keys()
-        self.unknown_args = kwargs.pop('unknown_args', None)
+        self.unknown_args = kwargs.pop("unknown_args", None)
         if self.unknown_args is None:
             self.unknown_args = get_field_args(list(lhs_dict.keys()))
 
-        def array_args_like(args, prefix='', suffix=''):
+        def array_args_like(args, prefix="", suffix=""):
             return [lp.GlobalArg(prefix+arg.name+suffix,
                                  shape=arg.shape, dtype=arg.dtype)
                     for arg in args]
 
-        self.temp_args = array_args_like(self.unknown_args, prefix='tmp_')
-        self.residual_args = array_args_like(self.unknown_args, prefix='r_')
+        self.temp_args = array_args_like(self.unknown_args, prefix="tmp_")
+        self.residual_args = array_args_like(self.unknown_args, prefix="r_")
 
         # get GlobalArgs of unknowns, or infer from lhs_dict.keys()
-        self.rho_args = kwargs.pop('rho_args', None)
+        self.rho_args = kwargs.pop("rho_args", None)
         if self.rho_args is None:
             rho_list = [lhs[1] for lhs in lhs_dict.values()]
             self.rho_args = get_field_args(rho_list)
@@ -152,7 +152,7 @@ class RelaxationBase:
     def make_stepper(self, MapKernel, **kwargs):
         self.step_dict = {}
         for f, (lhs, rho) in self.lhs_dict.items():
-            tmp = Field('tmp_'+f.child.name, offset=f.offset)
+            tmp = Field("tmp_"+f.child.name, offset=f.offset)
             self.step_dict[tmp] = self.step_operator(f, lhs, rho)
 
         args = self.unknown_args + self.rho_args + self.temp_args
@@ -186,14 +186,14 @@ class RelaxationBase:
         All arrays required for the relaxation step must be passed by keyword.
         """
 
-        solve_constraint = kwargs.pop('solve_constraint', False)
+        solve_constraint = kwargs.pop("solve_constraint", False)
 
         even_iterations = iterations if iterations % 2 == 0 else iterations + 1
         for i in range(even_iterations):
             self.stepper(queue, **kwargs)
             for arg in self.unknown_args:
                 f = arg.name
-                kwargs[f], kwargs['tmp_'+f] = kwargs['tmp_'+f], kwargs[f]
+                kwargs[f], kwargs["tmp_"+f] = kwargs["tmp_"+f], kwargs[f]
                 decomp.share_halos(queue, kwargs[f])
 
             if solve_constraint:
@@ -203,10 +203,10 @@ class RelaxationBase:
         tmp_dict = {}
         lhs_dict = {}
         from pymbolic import var
-        tmp_lhs = var('tmp_lhs')
+        tmp_lhs = var("tmp_lhs")
         for i, (f, (lhs, rho)) in enumerate(self.lhs_dict.items()):
             tmp_dict[tmp_lhs[i]] = lhs
-            resid = Field('r_'+f.child.name, offset='h')
+            resid = Field("r_"+f.child.name, offset="h")
             lhs_dict[rho] = resid + tmp_lhs[i]
 
         args = self.unknown_args + self.rho_args + self.residual_args
@@ -216,7 +216,7 @@ class RelaxationBase:
     def make_residual_kernel(self, MapKernel, **kwargs):
         residual_dict = {}
         for f, (lhs, rho) in self.lhs_dict.items():
-            resid = Field('r_'+f.child.name, offset='h')
+            resid = Field("r_"+f.child.name, offset="h")
             residual_dict[resid] = rho - lhs
 
         args = self.unknown_args + self.rho_args + self.residual_args
@@ -227,12 +227,12 @@ class RelaxationBase:
         avg_reducers = {}
         # from pymbolic.functions import fabs
         from pymbolic import var
-        fabs = var('fabs')
+        fabs = var("fabs")
         for arg in self.unknown_args:
             f = arg.name
-            resid = Field('r_'+f, offset='h')
-            reducers[f] = [(fabs(resid), 'max'), (resid**2, 'avg')]
-            avg_reducers[f] = [(resid, 'avg')]
+            resid = Field("r_"+f, offset="h")
+            reducers[f] = [(fabs(resid), "max"), (resid**2, "avg")]
+            avg_reducers[f] = [(resid, "avg")]
 
         args = self.residual_args
         from pystella import Reduction
@@ -266,11 +266,11 @@ class RelaxationBase:
         return errs
 
     def make_shift_kernel(self, **kwargs):
-        f = Field('f', offset=0)
-        tmp = Field('tmp', offset=0)
+        f = Field("f", offset=0)
+        tmp = Field("tmp", offset=0)
         from pymbolic import var
-        shift = var('shift')
-        scale = var('scale')
+        shift = var("shift")
+        scale = var("scale")
         self.shift_dict = {tmp: scale * f + shift}
 
         args = [...]
@@ -280,7 +280,7 @@ class RelaxationBase:
     def eval_constraint(self, queue, shifts, scales, **kwargs):
         for arg, shift, scale in zip(self.unknown_args, shifts, scales):
             f = arg.name
-            self.shifter(queue, f=kwargs[f], tmp=kwargs['tmp_'+f],
+            self.shifter(queue, f=kwargs[f], tmp=kwargs["tmp_"+f],
                          shift=np.array(shift), scale=np.array(scale))
 
         padded_shape = kwargs.get(self.unknown_args[0].name).shape
@@ -290,14 +290,14 @@ class RelaxationBase:
         args_to_avg_resid = kwargs.copy()
         for arg in self.unknown_args:
             f = arg.name
-            args_to_avg_resid[f] = kwargs['tmp_'+f]
+            args_to_avg_resid[f] = kwargs["tmp_"+f]
 
         result = self.avg_resid(queue, **args_to_avg_resid, filter_args=True,
                                 rank_shape=rank_shape, grid_size=grid_size)
-        return result['avg']
+        return result["avg"]
 
     def solve_constraint(self, queue, **kwargs):
-        raise NotImplementedError('constraint solving untested')
+        raise NotImplementedError("constraint solving untested")
 
         def integral_condition(shifts):
             scales = np.ones_like(shifts)
@@ -308,7 +308,7 @@ class RelaxationBase:
         x0 = np.zeros(len(self.unknown_args))
         x1 = x0 + 1.e-3
         x0 += - 1.e-3
-        sol = root_scalar(integral_condition, x0=x0, x1=x1, method='secant')
+        sol = root_scalar(integral_condition, x0=x0, x1=x1, method="secant")
         if not sol.converged:
             print(sol)
         else:
@@ -344,7 +344,7 @@ class JacobiIterator(RelaxationBase):
         R_y = lhs - D * f  # FIXME: only valid for linear equations
 
         from pymbolic import var
-        omega = var('omega')
+        omega = var("omega")
 
         return (1 - omega) * f + omega * (rho - R_y) / D
 
@@ -368,6 +368,6 @@ class NewtonIterator(RelaxationBase):
         D = diff(lhs, f)
 
         from pymbolic import var
-        omega = var('omega')
+        omega = var("omega")
 
         return f - omega * (lhs - rho) / D

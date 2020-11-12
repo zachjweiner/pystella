@@ -29,30 +29,30 @@ from pyopencl.tools import (  # noqa
     pytest_generate_tests_for_pyopencl as pytest_generate_tests)
 
 examples = {
-    'examples/wave_equation.py': None,
-    'examples/scalar_preheating.py': 3.e-8,
+    "examples/wave_equation.py": None,
+    "examples/scalar_preheating.py": 3.e-8,
 }
 
 
 @pytest.mark.parametrize("filename, expected", examples.items())
 def test_examples(ctx_factory, grid_shape, proc_shape, filename, expected):
     if proc_shape[0] * proc_shape[1] * proc_shape[2] > 1:
-        pytest.skip('run examples on only one rank')
+        pytest.skip("run examples on only one rank")
 
-    on_github = os.environ.get('GITHUB_WORKSPACE', False)
+    on_github = os.environ.get("GITHUB_WORKSPACE", False)
     if on_github:
-        filename = os.environ.get('GITHUB_WORKSPACE') + '/' + filename
+        filename = os.environ.get("GITHUB_WORKSPACE") + "/" + filename
 
-    result = subprocess.run(['python', filename], stdout=subprocess.PIPE)
+    result = subprocess.run(["python", filename], stdout=subprocess.PIPE)
 
     assert result.returncode == 0, f"{filename} failed"
 
     if expected is not None:
         from glob import glob
         from h5py import File
-        files = sorted(glob('20*.h5'))
-        f = File(files[-1], 'r')
-        constraint = f['energy/constraint'][-1]
+        files = sorted(glob("20*.h5"))
+        f = File(files[-1], "r")
+        constraint = f["energy/constraint"][-1]
         print(filename, constraint)
         f.close()
         os.remove(files[-1])

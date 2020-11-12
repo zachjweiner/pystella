@@ -126,7 +126,7 @@ class Stepper:
         raise NotImplementedError
 
     def __init__(self, input, MapKernel=ElementWiseMap, **kwargs):
-        single_stage = kwargs.pop('single_stage', True)
+        single_stage = kwargs.pop("single_stage", True)
         from pystella import Sector
         if isinstance(input, Sector):
             self.rhs_dict = input.rhs_dict
@@ -140,15 +140,15 @@ class Stepper:
         else:
             prepend_with = None
 
-        args = kwargs.pop('args', [...])
-        args = args + [lp.ValueArg('dt')]
+        args = kwargs.pop("args", [...])
+        args = args + [lp.ValueArg("dt")]
         from pystella import get_field_args
         inferred_args = get_field_args(self.rhs_dict, prepend_with=prepend_with)
         from pystella.elementwise import append_new_args
         self.args = append_new_args(args, inferred_args)
 
-        dt = kwargs.pop('dt', None)
-        fixed_parameters = kwargs.pop('fixed_parameters', dict())
+        dt = kwargs.pop("dt", None)
+        fixed_parameters = kwargs.pop("fixed_parameters", dict())
         if dt is not None:
             fixed_parameters.update(dict(dt=dt))
 
@@ -200,10 +200,10 @@ class RungeKuttaStepper(Stepper):
         raise NotImplementedError
 
     def make_steps(self, MapKernel=ElementWiseMap, **kwargs):
-        rhs = var('rhs')
-        dt = var('dt')
-        q = var('q')
-        fixed_parameters = kwargs.pop('fixed_parameters', dict())
+        rhs = var("rhs")
+        dt = var("dt")
+        q = var("q")
+        fixed_parameters = kwargs.pop("fixed_parameters", dict())
 
         rhs_statements = {rhs[i]: index_fields(value, prepend_with=(q,))
                           for i, value in enumerate(self.rhs_dict.values())}
@@ -422,7 +422,7 @@ def get_name(expr):
         return expr
 
 
-def gen_tmp_name(expr, prefix='_', suffix='_tmp'):
+def gen_tmp_name(expr, prefix="_", suffix="_tmp"):
     name = get_name(expr)
     return prefix + name + suffix
 
@@ -473,15 +473,15 @@ class LowStorageRKStepper(Stepper):
     def make_steps(self, MapKernel=ElementWiseMap, **kwargs):
         tmp_arrays = [copy_and_rename(key) for key in self.rhs_dict.keys()]
         self.dof_names = {get_name(key) for key in self.rhs_dict.keys()}
-        rhs_statements = {var(gen_tmp_name(key, suffix=f'_rhs_{i}')): val
+        rhs_statements = {var(gen_tmp_name(key, suffix=f"_rhs_{i}")): val
                           for i, (key, val) in enumerate(self.rhs_dict.items())}
 
         steps = []
         for stage in range(self.num_stages):
             RK_dict = {}
             for i, (f, k) in enumerate(zip(self.rhs_dict.keys(), tmp_arrays)):
-                rhs = var(gen_tmp_name(f, suffix=f'_rhs_{i}'))
-                RK_dict[k] = self._A[stage] * k + var('dt') * rhs
+                rhs = var(gen_tmp_name(f, suffix=f"_rhs_{i}"))
+                RK_dict[k] = self._A[stage] * k + var("dt") * rhs
                 RK_dict[f] = f + self._B[stage] * k
 
             step = MapKernel(RK_dict, tmp_instructions=rhs_statements,

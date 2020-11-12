@@ -98,7 +98,7 @@ class ScalarSector(Sector):
     The following keyword-only arguments are recognized:
 
     :arg f: The :class:`DynamicField` of scalar fields.
-        Defaults to ``DynamicField('f', offset='h', shape=(nscalars,))``.
+        Defaults to ``DynamicField("f", offset="h", shape=(nscalars,))``.
 
     :arg potential: A :class:`~collections.abc.Callable` which takes as input a
         :mod:`pymbolic` expression or a :class:`list` thereof, returning
@@ -111,14 +111,14 @@ class ScalarSector(Sector):
 
     def __init__(self, nscalars, **kwargs):
         self.nscalars = nscalars
-        self.f = kwargs.pop('f', DynamicField('f', offset='h', shape=(nscalars,)))
-        self.potential = kwargs.pop('potential', lambda x: 0)
+        self.f = kwargs.pop("f", DynamicField("f", offset="h", shape=(nscalars,)))
+        self.potential = kwargs.pop("potential", lambda x: 0)
 
     @property
     def rhs_dict(self):
         f = self.f
-        H = Field('hubble', indices=[])
-        a = Field('a', indices=[])
+        H = Field("hubble", indices=[])
+        a = Field("a", indices=[])
 
         rhs_dict = {}
         V = self.potential(f)
@@ -133,19 +133,19 @@ class ScalarSector(Sector):
     @property
     def reducers(self):
         f = self.f
-        a = var('a')
+        a = var("a")
 
         reducers = {}
-        reducers['kinetic'] = [f.dot[fld]**2 / 2 / a**2
+        reducers["kinetic"] = [f.dot[fld]**2 / 2 / a**2
                                for fld in range(self.nscalars)]
-        reducers['potential'] = [self.potential(f)]
-        reducers['gradient'] = [- f[fld] * f.lap[fld] / 2 / a**2
+        reducers["potential"] = [self.potential(f)]
+        reducers["gradient"] = [- f[fld] * f.lap[fld] / 2 / a**2
                                 for fld in range(self.nscalars)]
         return reducers
 
     def stress_tensor(self, mu, nu, drop_trace=False):
         f = self.f
-        a = Field('a', indices=[])
+        a = Field("a", indices=[])
 
         Tmunu = sum(f.d(fld, mu) * f.d(fld, nu) for fld in range(self.nscalars))
 
@@ -177,17 +177,17 @@ class TensorPerturbationSector:
     The following keyword-only arguments are recognized:
 
     :arg hij: The :class:`DynamicField` of tensor fields.
-        Defaults to ``DynamicField('hij', offset='h', shape=(6,))``.
+        Defaults to ``DynamicField("hij", offset="h", shape=(6,))``.
     """
 
     def __init__(self, sectors, **kwargs):
-        self.hij = kwargs.pop('hij', DynamicField('hij', offset='h', shape=(6,)))
+        self.hij = kwargs.pop("hij", DynamicField("hij", offset="h", shape=(6,)))
         self.sectors = sectors
 
     @property
     def rhs_dict(self):
         hij = self.hij
-        H = Field('hubble', indices=[])
+        H = Field("hubble", indices=[])
 
         rhs_dict = {}
 
@@ -217,13 +217,13 @@ def get_rho_and_p(energy):
         :class:`~pystella.Reduction`.
     """
 
-    energy['total'] = sum(sum(e) for e in energy.values())
-    energy['pressure'] = 0
-    if 'kinetic' in energy:
-        energy['pressure'] += sum(energy['kinetic'])
-    if 'gradient' in energy:
-        energy['pressure'] += - sum(energy['gradient']) / 3
-    if 'potential' in energy:
-        energy['pressure'] += - sum(energy['potential'])
+    energy["total"] = sum(sum(e) for e in energy.values())
+    energy["pressure"] = 0
+    if "kinetic" in energy:
+        energy["pressure"] += sum(energy["kinetic"])
+    if "gradient" in energy:
+        energy["pressure"] += - sum(energy["gradient"]) / 3
+    if "potential" in energy:
+        energy["pressure"] += - sum(energy["potential"])
 
     return energy

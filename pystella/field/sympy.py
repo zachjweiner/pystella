@@ -82,10 +82,10 @@ class PymbolicToSympyMapperWithField(PymbolicToSympyMapper):
 
 
 class SympyToPymbolicMapperMathLookup(SympyToPymbolicMapper):
-    functions = {'exp', 'expm1', 'log',
-                 'sin', 'cos', 'tan',
-                 'sinh', 'cosh', 'tanh',
-                 'fabs', 'Abs', 'sign'}
+    functions = {"exp", "expm1", "log",
+                 "sin", "cos", "tan",
+                 "sinh", "cosh", "tanh",
+                 "fabs", "Abs", "sign"}
 
     def map_Function(self, expr):
         name = self.function_name(expr)
@@ -93,13 +93,13 @@ class SympyToPymbolicMapperMathLookup(SympyToPymbolicMapper):
             args = tuple(self.rec(arg) for arg in expr.args)
 
             from pymbolic.primitives import Variable, Lookup
-            if name == 'Abs':
-                call = Lookup(Variable('math'), 'fabs')
-            elif name == 'sign':
-                call = Lookup(Variable('math'), 'copysign')
+            if name == "Abs":
+                call = Lookup(Variable("math"), "fabs")
+            elif name == "sign":
+                call = Lookup(Variable("math"), "copysign")
                 args = (1,)+args
             else:
-                call = Lookup(Variable('math'), name)
+                call = Lookup(Variable("math"), name)
             return call(*args)
         else:
             return self.not_supported(expr)
@@ -126,7 +126,7 @@ class SympyToPymbolicMapperWithField(SympyToPymbolicMapperMathLookup):
 #: .. warning::
 #:
 #:    Currently, :class:`~pystella.Field`\ s of the form
-#:    ``Field('f[0]')`` will not be processed correctly.
+#:    ``Field("f[0]")`` will not be processed correctly.
 #:
 pymbolic_to_sympy = PymbolicToSympyMapperWithField()
 

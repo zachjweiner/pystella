@@ -31,7 +31,7 @@ class FieldDifferentiationMapper(DifferentiationMapper):
         if xmu is not None:
             self.xmu = xmu
         else:
-            self.xmu = {var('t'): 0, var('x'): 1, var('y'): 2, var('z'): 3}
+            self.xmu = {var("t"): 0, var("x"): 1, var("y"): 2, var("z"): 3}
         super().__init__(variable, **kwargs)
 
     map_field = DifferentiationMapper.map_variable
@@ -54,7 +54,7 @@ class FieldDifferentiationMapper(DifferentiationMapper):
         return If(expr.condition, self.rec(expr.then), self.rec(expr.else_))
 
 
-def diff(f, *x, allowed_nonsmoothness='discontinuous'):
+def diff(f, *x, allowed_nonsmoothness="discontinuous"):
     """
     A differentiator which computes :math:`\\partial f / \\partial x` and understands
     :class:`Field`\\ s. If ``x`` is one of ``t``, ``x``, ``y``, or ``z`` and ``f``
@@ -63,16 +63,16 @@ def diff(f, *x, allowed_nonsmoothness='discontinuous'):
 
     Examples::
 
-        >>> f = DynamicField('f')
+        >>> f = DynamicField("f")
         >>> print(diff(f**3, f))
         3*f**2
         >>> print(diff(f**3, f, f))
         3*2*f
-        >>> print(diff(f**3, 't'))
+        >>> print(diff(f**3, "t"))
         3*f**2*dfdt
-        >>> print(diff(f**3, f, 't'))
+        >>> print(diff(f**3, f, "t"))
         3*2*f*dfdt
-        >>> print(diff(f + 2, 'x'))
+        >>> print(diff(f + 2, "x"))
         dfdx[0]
 
     :arg f: A :mod:`pymbolic` expression to be differentiated.

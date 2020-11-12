@@ -64,17 +64,17 @@ def test_relax(ctx_factory, grid_shape, proc_shape, h, dtype, Solver, timing=Fal
         lap_coefs = _lap_coefs[h]
         from pymbolic import var
         return sum([centered_diff(f, lap_coefs, direction=mu, order=2)
-                    for mu in range(1, 4)]) / var('dx')**2
+                    for mu in range(1, 4)]) / var("dx")**2
 
     test_problems = {}
 
     from pystella import Field
-    f = Field('f', offset='h')
-    rho = Field('rho', offset='h')
+    f = Field("f", offset="h")
+    rho = Field("rho", offset="h")
     test_problems[f] = (get_laplacian(f), rho)
 
-    f = Field('f2', offset='h')
-    rho = Field('rho2', offset='h')
+    f = Field("f2", offset="h")
+    rho = Field("rho2", offset="h")
     test_problems[f] = (get_laplacian(f) - f, rho)
 
     solver = Solver(mpi, queue, test_problems, halo_shape=h, dtype=dtype,
@@ -84,7 +84,7 @@ def test_relax(ctx_factory, grid_shape, proc_shape, h, dtype, Solver, timing=Fal
         f0 = clr.rand(queue, grid_shape, dtype)
         f = clr.rand(queue, tuple(ni + 2*h for ni in rank_shape), dtype)
         mpi.scatter_array(queue, f0, f, root=0)
-        avg = statistics(f)['mean']
+        avg = statistics(f)["mean"]
         f = f - avg
         mpi.share_halos(queue, f)
         return f
@@ -98,8 +98,8 @@ def test_relax(ctx_factory, grid_shape, proc_shape, h, dtype, Solver, timing=Fal
     tmp2 = cla.zeros_like(f)
 
     num_iterations = 1000
-    errors = {'f': [], 'f2': []}
-    first_mode_zeroed = {'f': [], 'f2': []}
+    errors = {"f": [], "f2": []}
+    first_mode_zeroed = {"f": [], "f2": []}
     for i in range(0, num_iterations, 2):
         solver(mpi, queue, iterations=2, dx=np.array(dx),
                f=f, tmp_f=tmp, rho=rho,
@@ -111,7 +111,7 @@ def test_relax(ctx_factory, grid_shape, proc_shape, h, dtype, Solver, timing=Fal
         for k, v in err.items():
             errors[k].append(v)
 
-        for key, resid in zip(['f', 'f2'], [tmp, tmp2]):
+        for key, resid in zip(["f", "f2"], [tmp, tmp2]):
             spectrum = spectra(resid, k_power=0)
             if mpi.rank == 0:
                 max_amp = np.max(spectrum)

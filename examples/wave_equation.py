@@ -31,7 +31,7 @@ grid_shape = (128, 128, 128)
 proc_shape = (1, 1, 1)
 rank_shape = tuple(Ni // pi for Ni, pi in zip(grid_shape, proc_shape))
 halo_shape = 1
-dtype = 'float64'
+dtype = "float64"
 dx = tuple(10 / Ni for Ni in grid_shape)
 dt = min(dx) / 10
 
@@ -46,7 +46,7 @@ dfdt = clr.rand(queue, tuple(ni + 2 * halo_shape for ni in rank_shape), dtype)
 lap_f = cla.zeros(queue, rank_shape, dtype)
 
 # define system of equations
-f_ = ps.DynamicField('f', offset='h')  # don't overwrite f
+f_ = ps.DynamicField("f", offset="h")  # don't overwrite f
 rhs_dict = {
     f_: f_.dot,  # df/dt = \dot{f}
     f_.dot: f_.lap  # d\dot{f}/dt = \nabla^2 f

@@ -41,7 +41,7 @@ from pyopencl.tools import (  # noqa
 def test_gradient_laplacian(ctx_factory, grid_shape, proc_shape, h, dtype,
                             stream, timing=False):
     if h == 0 and stream is True:
-        pytest.skip('no streaming spectral')
+        pytest.skip("no streaming spectral")
 
     if ctx_factory:
         ctx = ctx_factory()
@@ -85,7 +85,7 @@ def test_gradient_laplacian(ctx_factory, grid_shape, proc_shape, h, dtype,
     kvec = np.array(dk) * np.array([-5, 4, -3]).astype(dtype)
     xvec = np.meshgrid(*[dxi * np.arange(si, si + ni)
                          for dxi, si, ni in zip(dx, start, rank_shape)],
-                       indexing='ij')
+                       indexing="ij")
 
     phases = sum(ki * xi for ki, xi in zip(kvec, xvec))
     if h > 0:
@@ -151,19 +151,19 @@ def test_gradient_laplacian(ctx_factory, grid_shape, proc_shape, h, dtype,
         if h == 0:
             import pyopencl.tools as clt
             pool = clt.MemoryPool(clt.ImmediateAllocator(queue))
-            base_args['allocator'] = pool
-            div_args['allocator'] = pool
+            base_args["allocator"] = pool
+            div_args["allocator"] = pool
 
         times = {}
-        times['gradient and laplacian'] = timer(
+        times["gradient and laplacian"] = timer(
             lambda: derivs(lap=lap, grd=grd, **base_args)
         )
-        times['gradient'] = timer(lambda: derivs(grd=grd, **base_args))
-        times['laplacian'] = timer(lambda: derivs(lap=lap, **base_args))
-        times['pdx'] = timer(lambda: derivs(pdx=grd[0], **base_args))
-        times['pdy'] = timer(lambda: derivs(pdy=grd[1], **base_args))
-        times['pdz'] = timer(lambda: derivs(pdz=grd[2], **base_args))
-        times['divergence'] = timer(lambda: derivs.divergence(**div_args))
+        times["gradient"] = timer(lambda: derivs(grd=grd, **base_args))
+        times["laplacian"] = timer(lambda: derivs(lap=lap, **base_args))
+        times["pdx"] = timer(lambda: derivs(pdx=grd[0], **base_args))
+        times["pdy"] = timer(lambda: derivs(pdy=grd[1], **base_args))
+        times["pdz"] = timer(lambda: derivs(pdz=grd[2], **base_args))
+        times["divergence"] = timer(lambda: derivs.divergence(**div_args))
 
         if mpi.rank == 0:
             print(f"{grid_shape=}, {h=}, {proc_shape=}")

@@ -29,11 +29,11 @@ from pystella.fourier.derivs import SpectralCollocator
 from pystella.fourier.poisson import SpectralPoissonSolver
 
 
-_r_to_c_dtype_map = {np.dtype('float32'): np.dtype('complex64'),
-                     np.dtype('float64'): np.dtype('complex128')}
+_r_to_c_dtype_map = {np.dtype("float32"): np.dtype("complex64"),
+                     np.dtype("float64"): np.dtype("complex128")}
 
-_c_to_r_dtype_map = {np.dtype('complex64'): np.dtype('float32'),
-                     np.dtype('complex128'): np.dtype('float64')}
+_c_to_r_dtype_map = {np.dtype("complex64"): np.dtype("float32"),
+                     np.dtype("complex128"): np.dtype("float64")}
 
 
 def get_real_dtype_with_matching_prec(dtype):

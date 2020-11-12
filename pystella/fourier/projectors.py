@@ -73,9 +73,9 @@ class Projector:
                 def effective_k(k, dx):  # pylint: disable=function-redefined
                     return k
 
-        queue = self.fft.sub_k['momenta_x'].queue
-        sub_k = list(x.get().astype('int') for x in self.fft.sub_k.values())
-        eff_mom_names = ('eff_mom_x', 'eff_mom_y', 'eff_mom_z')
+        queue = self.fft.sub_k["momenta_x"].queue
+        sub_k = list(x.get().astype("int") for x in self.fft.sub_k.values())
+        eff_mom_names = ("eff_mom_x", "eff_mom_y", "eff_mom_z")
         self.eff_mom = {}
         for mu, (name, kk) in enumerate(zip(eff_mom_names, sub_k)):
             eff_k = effective_k(dk[mu] * kk.astype(fft.rdtype), dx[mu])
@@ -88,22 +88,22 @@ class Projector:
         from pymbolic import var, parse
         from pymbolic.primitives import If, Comparison, LogicalAnd
         from pystella import Field
-        indices = parse('i, j, k')
+        indices = parse("i, j, k")
         eff_k = tuple(var(array)[mu] for array, mu in zip(eff_mom_names, indices))
-        fabs, sqrt, conj = parse('fabs, sqrt, conj')
+        fabs, sqrt, conj = parse("fabs, sqrt, conj")
         kmag = sqrt(sum(kk**2 for kk in eff_k))
 
         from pystella import ElementWiseMap
-        vector = Field('vector', shape=(3,))
-        vector_T = Field('vector_T', shape=(3,))
+        vector = Field("vector", shape=(3,))
+        vector_T = Field("vector_T", shape=(3,))
 
         kvec_zero = LogicalAnd(
-            tuple(Comparison(fabs(eff_k[mu]), '<', 1e-14) for mu in range(3))
+            tuple(Comparison(fabs(eff_k[mu]), "<", 1e-14) for mu in range(3))
         )
 
         # note: write all output via private temporaries to allow for in-place
 
-        div = var('div')
+        div = var("div")
         div_insn = [(div, sum(eff_k[mu] * vector[mu] for mu in range(3)))]
         self.transversify_knl = ElementWiseMap(
             {vector_T[mu]: If(kvec_zero, 0, vector[mu] - eff_k[mu] / kmag**2 * div)
@@ -114,21 +114,21 @@ class Projector:
         import loopy as lp
 
         def assign(asignee, expr, **kwargs):
-            default = dict(within_inames=frozenset(('i', 'j', 'k')),
-                           no_sync_with=[('*', 'any')])
+            default = dict(within_inames=frozenset(("i", "j", "k")),
+                           no_sync_with=[("*", "any")])
             default.update(kwargs)
             return lp.Assignment(asignee, expr, **default)
 
-        kmag, Kappa = parse('kmag, Kappa')
+        kmag, Kappa = parse("kmag, Kappa")
         eps_insns = [assign(kmag, sqrt(sum(kk**2 for kk in eff_k))),
                      assign(Kappa, sqrt(sum(kk**2 for kk in eff_k[:2])))]
 
         zero = fft.cdtype.type(0)
-        kx_ky_zero = LogicalAnd(tuple(Comparison(fabs(eff_k[mu]), '<', 1e-10)
+        kx_ky_zero = LogicalAnd(tuple(Comparison(fabs(eff_k[mu]), "<", 1e-10)
                                       for mu in range(2)))
-        kz_nonzero = Comparison(fabs(eff_k[2]), '>', 1e-10)
+        kz_nonzero = Comparison(fabs(eff_k[2]), ">", 1e-10)
 
-        eps = var('eps')
+        eps = var("eps")
         eps_insns.extend([
             assign(eps[0],
                    If(kx_ky_zero,
@@ -141,14 +141,14 @@ class Projector:
             assign(eps[2], If(kx_ky_zero, zero, - Kappa / kmag / 2**.5))
         ])
 
-        plus, minus, lng = Field('plus'), Field('minus'), Field('lng')
+        plus, minus, lng = Field("plus"), Field("minus"), Field("lng")
 
-        plus_tmp, minus_tmp = parse('plus_tmp, minus_tmp')
+        plus_tmp, minus_tmp = parse("plus_tmp, minus_tmp")
         pol_isns = [(plus_tmp, sum(vector[mu] * conj(eps[mu]) for mu in range(3))),
                     (minus_tmp, sum(vector[mu] * eps[mu] for mu in range(3)))]
 
-        args = [lp.TemporaryVariable('kmag'), lp.TemporaryVariable('Kappa'),
-                lp.TemporaryVariable('eps', shape=(3,)), ...]
+        args = [lp.TemporaryVariable("kmag"), lp.TemporaryVariable("Kappa"),
+                lp.TemporaryVariable("eps", shape=(3,)), ...]
 
         self.vec_to_pol_knl = ElementWiseMap(
             {plus: plus_tmp, minus: minus_tmp},
@@ -156,7 +156,7 @@ class Projector:
             lsize=(32, 1, 1), rank_shape=fft.shape(True),
         )
 
-        vector_tmp = var('vector_tmp')
+        vector_tmp = var("vector_tmp")
         vec_insns = [(vector_tmp[mu], plus * eps[mu] + minus * conj(eps[mu]))
                      for mu in range(3)]
 
@@ -183,17 +183,17 @@ class Projector:
         from pystella.sectors import tensor_index as tid
 
         eff_k_hat = tuple(kk / sqrt(sum(kk**2 for kk in eff_k)) for kk in eff_k)
-        hij = Field('hij', shape=(6,))
-        hij_TT = Field('hij_TT', shape=(6,))
+        hij = Field("hij", shape=(6,))
+        hij_TT = Field("hij_TT", shape=(6,))
 
-        Pab = var('P')
+        Pab = var("P")
         Pab_insns = [
             (Pab[tid(a, b)],
-             (If(Comparison(a, '==', b), 1, 0) - eff_k_hat[a-1] * eff_k_hat[b-1]))
+             (If(Comparison(a, "==", b), 1, 0) - eff_k_hat[a-1] * eff_k_hat[b-1]))
             for a in range(1, 4) for b in range(a, 4)
         ]
 
-        hij_TT_tmp = var('hij_TT_tmp')
+        hij_TT_tmp = var("hij_TT_tmp")
         TT_insns = [
             (hij_TT_tmp[tid(a, b)],
              sum((Pab[tid(a, c)] * Pab[tid(d, b)]

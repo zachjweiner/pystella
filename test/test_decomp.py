@@ -183,22 +183,22 @@ def test_gather_scatter(ctx_factory, grid_shape, proc_shape, h, dtype,
         ntime = 25
         times = {}
 
-        times['scatter cl.Array -> cl.Array'] = \
+        times["scatter cl.Array -> cl.Array"] = \
             timer(lambda: mpi.scatter_array(queue, data, subdata, 0), ntime=ntime)
-        times['scatter cl.Array -> np.ndarray'] = \
+        times["scatter cl.Array -> np.ndarray"] = \
             timer(lambda: mpi.scatter_array(queue, data, sub_h, 0), ntime=ntime)
-        times['scatter np.ndarray -> cl.Array'] = \
+        times["scatter np.ndarray -> cl.Array"] = \
             timer(lambda: mpi.scatter_array(queue, data_h, subdata, 0), ntime=ntime)
-        times['scatter np.ndarray -> np.ndarray'] = \
+        times["scatter np.ndarray -> np.ndarray"] = \
             timer(lambda: mpi.scatter_array(queue, data_h, sub_h, 0), ntime=ntime)
 
-        times['gather cl.Array -> cl.Array'] = \
+        times["gather cl.Array -> cl.Array"] = \
             timer(lambda: mpi.gather_array(queue, subdata, data, 0), ntime=ntime)
-        times['gather cl.Array -> np.ndarray'] = \
+        times["gather cl.Array -> np.ndarray"] = \
             timer(lambda: mpi.gather_array(queue, subdata, data_h, 0), ntime=ntime)
-        times['gather np.ndarray -> cl.Array'] = \
+        times["gather np.ndarray -> cl.Array"] = \
             timer(lambda: mpi.gather_array(queue, sub_h, data, 0), ntime=ntime)
-        times['gather np.ndarray -> np.ndarray'] = \
+        times["gather np.ndarray -> np.ndarray"] = \
             timer(lambda: mpi.gather_array(queue, sub_h, data_h, 0), ntime=ntime)
 
         if mpi.rank == 0:
@@ -209,7 +209,7 @@ def test_gather_scatter(ctx_factory, grid_shape, proc_shape, h, dtype,
 
 if __name__ == "__main__":
     from common import parser
-    parser.add_argument('--pass_grid_shape', type=bool, default=True)
+    parser.add_argument("--pass_grid_shape", type=bool, default=True)
     args = parser.parse_args()
 
     test_share_halos(

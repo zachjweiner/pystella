@@ -21,9 +21,7 @@ def find_git_revision(tree_root):
               cwd=tree_root)
     (git_rev, _) = p.communicate()
 
-    import sys
-    if sys.version_info >= (3,):
-        git_rev = git_rev.decode()
+    git_rev = git_rev.decode()
 
     git_rev = git_rev.rstrip()
 
@@ -43,7 +41,7 @@ def write_git_revision(package_name):
     git_rev = find_git_revision(dn)
 
     with open(join(dn, package_name, "_git_rev.py"), "w") as outf:
-        outf.write("GIT_REVISION = %s\n" % repr(git_rev))
+        outf.write('GIT_REVISION = "%s"\n' % git_rev)
 
 
 write_git_revision("pystella")
@@ -63,19 +61,19 @@ setup(
     url="https://github.com/zachjweiner/pystella",
     license="MIT",
     classifiers=[
-        'Development Status :: 5 - Production/Stable',
-        'Intended Audience :: Developers',
-        'Intended Audience :: Science/Research',
-        'License :: OSI Approved :: MIT License',
-        'Programming Language :: Python :: 3',
-        'Topic :: Scientific/Engineering',
-        'Topic :: Scientific/Engineering :: Physics',
-        'Topic :: Software Development :: Code Generators',
+        "Development Status :: 5 - Production/Stable",
+        "Intended Audience :: Developers",
+        "Intended Audience :: Science/Research",
+        "License :: OSI Approved :: MIT License",
+        "Programming Language :: Python :: 3",
+        "Topic :: Scientific/Engineering",
+        "Topic :: Scientific/Engineering :: Physics",
+        "Topic :: Software Development :: Code Generators",
     ],
     packages=find_packages(),
-    python_requires='>=3',
+    python_requires=">=3",
     project_urls={
-        'Documentation': 'https://pystella.readthedocs.io/en/latest/',
-        'Source': 'https://github.com/zachjweiner/pystella',
+        "Documentation": "https://pystella.readthedocs.io/en/latest/",
+        "Source": "https://github.com/zachjweiner/pystella",
     },
 )

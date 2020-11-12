@@ -31,52 +31,52 @@ def test_field(proc_shape):
     if proc_shape != (1, 1, 1):
         pytest.skip("test field only on one rank")
 
-    y = ps.Field('y', offset='h')
+    y = ps.Field("y", offset="h")
     result = ps.index_fields(y)
     assert result == parse("y[i + h, j + h, k + h]"), result
 
-    y = ps.Field('y', offset='h', indices=('a', 'b', 'c'))
+    y = ps.Field("y", offset="h", indices=("a", "b", "c"))
     result = ps.index_fields(y)
     assert result == parse("y[a + h, b + h, c + h]"), result
 
-    y = ps.Field('y', ignore_prepends=True)
+    y = ps.Field("y", ignore_prepends=True)
     result = ps.index_fields(y, prepend_with=(0, 1))
     assert result == parse("y[i, j, k]"), result
 
-    y = ps.Field('y[4, 5]', ignore_prepends=True)
+    y = ps.Field("y[4, 5]", ignore_prepends=True)
     result = ps.index_fields(y, prepend_with=(0, 1))
     assert result == parse("y[4, 5, i, j, k]"), result
 
-    y = ps.Field('y', ignore_prepends=True)
+    y = ps.Field("y", ignore_prepends=True)
     result = ps.index_fields(y[2, 3], prepend_with=(0, 1))
     assert result == parse("y[2, 3, i, j, k]"), result
 
-    y = ps.Field('y[4, 5]', ignore_prepends=True)
+    y = ps.Field("y[4, 5]", ignore_prepends=True)
     result = ps.index_fields(y[2, 3], prepend_with=(0, 1))
     assert result == parse("y[2, 3, 4, 5, i, j, k]"), result
 
-    y = ps.Field('y', ignore_prepends=False)
+    y = ps.Field("y", ignore_prepends=False)
     result = ps.index_fields(y, prepend_with=(0, 1))
     assert result == parse("y[0, 1, i, j, k]"), result
 
-    y = ps.Field('y[4, 5]', ignore_prepends=False)
+    y = ps.Field("y[4, 5]", ignore_prepends=False)
     result = ps.index_fields(y, prepend_with=(0, 1))
     assert result == parse("y[0, 1, 4, 5, i, j, k]"), result
 
-    y = ps.Field('y', ignore_prepends=False)
+    y = ps.Field("y", ignore_prepends=False)
     result = ps.index_fields(y[2, 3], prepend_with=(0, 1))
     assert result == parse("y[0, 1, 2, 3, i, j, k]"), result
 
-    y = ps.Field('y[4, 5]', ignore_prepends=False)
+    y = ps.Field("y[4, 5]", ignore_prepends=False)
     result = ps.index_fields(y[2, 3], prepend_with=(0, 1))
     assert result == parse("y[0, 1, 2, 3, 4, 5, i, j, k]"), result
 
-    y = ps.Field('y', offset=('hx', 'hy', 'hz'))
+    y = ps.Field("y", offset=("hx", "hy", "hz"))
     result = ps.index_fields(shift_fields(y, (1, 2, 3)))
     assert result == parse("y[i + hx + 1, j + hy + 2, k + hz + 3]"), result
 
-    y = ps.Field('y', offset=('hx', var('hy'), 'hz'))
-    result = ps.index_fields(shift_fields(y, (1, 2, var('a'))))
+    y = ps.Field("y", offset=("hx", var("hy"), "hz"))
+    result = ps.index_fields(shift_fields(y, (1, 2, var("a"))))
     assert result == parse("y[i + hx + 1, j + hy + 2, k + hz + a]"), result
 
 
@@ -84,7 +84,7 @@ def test_dynamic_field(proc_shape):
     if proc_shape != (1, 1, 1):
         pytest.skip("test field only on one rank")
 
-    y = ps.DynamicField('y', offset='h')
+    y = ps.DynamicField("y", offset="h")
 
     result = ps.index_fields(y)
     assert result == parse("y[i + h, j + h, k + h]"), result
@@ -95,7 +95,7 @@ def test_dynamic_field(proc_shape):
     result = ps.index_fields(y.dot)
     assert result == parse("dydt[i + h, j + h, k + h]"), result
 
-    result = ps.index_fields(y.pd[var('x')])
+    result = ps.index_fields(y.pd[var("x")])
     assert result == parse("dydx[x, i, j, k]"), result
 
     result = ps.index_fields(y.d(1, 0))
@@ -111,21 +111,21 @@ def test_field_diff(proc_shape):
 
     from pystella import diff
 
-    y = ps.Field('y')
+    y = ps.Field("y")
     assert diff(y, y) == 1
     assert diff(y[0], y[0]) == 1
     assert diff(y[0], y[1]) == 0
 
-    y = ps.DynamicField('y')
+    y = ps.DynamicField("y")
     assert diff(y, y) == 1
     assert diff(y[0], y[0]) == 1
     assert diff(y[0], y[1]) == 0
 
     import pymbolic.primitives as pp
-    assert diff(y**3, y, 't') == pp.Product((3, 2, y, y.d(0)))
-    assert diff(y**3, 't', y) == pp.Product((3, y.d(0), 2, y))
+    assert diff(y**3, y, "t") == pp.Product((3, 2, y, y.d(0)))
+    assert diff(y**3, "t", y) == pp.Product((3, y.d(0), 2, y))
 
-    for i, x in enumerate(['t', 'x', 'y', 'z']):
+    for i, x in enumerate(["t", "x", "y", "z"]):
         assert diff(y, x) == y.d(i)
         assert diff(y[1, 3], x) == y.d(1, 3, i)
         assert diff(y[1]**2, x) == 2 * y[1] * y.d(1, i)
@@ -137,16 +137,16 @@ def test_get_field_args(proc_shape):
 
     from pystella import Field, DynamicField, get_field_args
 
-    x = Field('x', offset=(1, 2, 3))
-    y = Field('y', offset='h')
-    z = DynamicField('z', shape=(2, 'a'))
+    x = Field("x", offset=(1, 2, 3))
+    y = Field("y", offset="h")
+    z = DynamicField("z", shape=(2, "a"))
 
     import loopy as lp
     true_args = [
-        lp.GlobalArg('x', shape='(Nx+2, Ny+4, Nz+6)', offset=lp.auto),
-        lp.GlobalArg('y', shape='(Nx+2*h, Ny+2*h, Nz+2*h)', offset=lp.auto),
-        lp.GlobalArg('z', shape='(2, a, Nx, Ny, Nz)', offset=lp.auto),
-        lp.GlobalArg('dzdx', shape='(2, a, 3, Nx, Ny, Nz)', offset=lp.auto),
+        lp.GlobalArg("x", shape="(Nx+2, Ny+4, Nz+6)", offset=lp.auto),
+        lp.GlobalArg("y", shape="(Nx+2*h, Ny+2*h, Nz+2*h)", offset=lp.auto),
+        lp.GlobalArg("z", shape="(2, a, Nx, Ny, Nz)", offset=lp.auto),
+        lp.GlobalArg("dzdx", shape="(2, a, 3, Nx, Ny, Nz)", offset=lp.auto),
     ]
 
     def lists_equal(a, b):
@@ -181,21 +181,21 @@ def test_collect_field_indices(proc_shape):
     from pystella import Field, DynamicField
     from pystella.field import collect_field_indices
 
-    x = Field('x', offset=(1, 2, 3))
-    y = Field('y', indices=('i', 'x'), offset='h')
-    z = DynamicField('z', shape=(2, 'a'))
+    x = Field("x", offset=(1, 2, 3))
+    y = Field("y", indices=("i", "x"), offset="h")
+    z = DynamicField("z", shape=(2, "a"))
 
     expressions = {x: y, y: x * z + z.pd[0]}
     indices = collect_field_indices(expressions)
-    assert indices == {'i', 'j', 'k', 'x'}
+    assert indices == {"i", "j", "k", "x"}
 
     expressions = [x, z]
     indices = collect_field_indices(expressions)
-    assert indices == {'i', 'j', 'k'}
+    assert indices == {"i", "j", "k"}
 
     expressions = [shift_fields(x, (1, 2, 3)), y + z.pd[0], y * z**2]
     indices = collect_field_indices(expressions)
-    assert indices == {'i', 'j', 'k', 'x'}
+    assert indices == {"i", "j", "k", "x"}
 
 
 def test_sympy_interop(proc_shape):
@@ -205,8 +205,8 @@ def test_sympy_interop(proc_shape):
     from pystella.field.sympy import pymbolic_to_sympy, sympy_to_pymbolic
     import sympy as sym
 
-    f = ps.Field('f', offset='h')
-    g = ps.Field('g', offset='h')
+    f = ps.Field("f", offset="h")
+    g = ps.Field("g", offset="h")
 
     expr = f[0]**2 * g + 2 * g[1] * f
     sympy_expr = pymbolic_to_sympy(expr)
@@ -223,23 +223,23 @@ def test_sympy_interop(proc_shape):
         "sympy <-> pymbolic conversion not invertible with shifted indices"
 
     # from pymbolic.functions import fabs, exp, exmp1
-    fabs = parse('math.fabs')
-    exp = parse('math.exp')
-    expm1 = parse('math.expm1')
-    x = sym.Symbol('x')
+    fabs = parse("math.fabs")
+    exp = parse("math.exp")
+    expm1 = parse("math.expm1")
+    x = sym.Symbol("x")
 
     expr = sym.Abs(x)
-    assert sympy_to_pymbolic(expr) == fabs(var('x'))
+    assert sympy_to_pymbolic(expr) == fabs(var("x"))
 
     expr = sym.exp(x)
-    assert sympy_to_pymbolic(expr) == exp(var('x'))
+    assert sympy_to_pymbolic(expr) == exp(var("x"))
 
-    expr = sym.Function('expm1')(x)  # pylint: disable=E1102
-    assert sympy_to_pymbolic(expr) == expm1(var('x'))
+    expr = sym.Function("expm1")(x)  # pylint: disable=E1102
+    assert sympy_to_pymbolic(expr) == expm1(var("x"))
 
-    expr = sym.Function('aaa')(x)  # pylint: disable=E1102
+    expr = sym.Function("aaa")(x)  # pylint: disable=E1102
     from pymbolic.primitives import Call, Variable
-    assert sympy_to_pymbolic(expr) == Call(Variable('aaa'), (Variable('x'),))
+    assert sympy_to_pymbolic(expr) == Call(Variable("aaa"), (Variable("x"),))
 
 
 if __name__ == "__main__":

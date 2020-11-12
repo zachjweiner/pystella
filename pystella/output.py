@@ -37,7 +37,7 @@ def get_versions(dependencies):
         except (ModuleNotFoundError, DistributionNotFound):
             versions[dep] = None
         try:
-            file = importlib.import_module(dep.replace('.', '')).__file__
+            file = importlib.import_module(dep.replace(".", "")).__file__
             git_revs[dep] = find_module_git_revision(file, n_levels_up=1)
         except ModuleNotFoundError:
             git_revs[dep] = None
@@ -68,7 +68,7 @@ class OutputFile:
         Defaults to *None*.
 
     :arg runfile: A file whose content will be saved as a string to
-        ``attrs['runfile']``, if not *None*. Useful for attaching the run file
+        ``attrs["runfile"]``, if not *None*. Useful for attaching the run file
         of a simulation to its output.
         Defaults to *None*.
 
@@ -78,8 +78,8 @@ class OutputFile:
     ``str(val)`` is saved.
 
     Versions and git revisions (when available) of :mod:`pystella` and its
-    dependencies are saved as ``'versions'`` and ``'git_revs'``
-    :class:`h5py:Dataset`\\ s. The hostname is recorded in the ``'hostname'``
+    dependencies are saved as ``"versions"`` and ``"git_revs"``
+    :class:`h5py:Dataset`\\ s. The hostname is recorded in the ``"hostname"``
     key of the :attr:`attrs` dictionary.
 
     .. automethod:: output
@@ -102,8 +102,8 @@ class OutputFile:
 
         while True:
             try:
-                self.filename = name + '.h5'
-                self.file = h5py.File(self.filename, 'x')
+                self.filename = name + ".h5"
+                self.file = h5py.File(self.filename, "x")
                 self.file.close()
                 break
             except OSError:
@@ -114,12 +114,12 @@ class OutputFile:
         with self.open() as f:
             if context is not None:
                 device, = context.devices
-                f.attrs['device'] = device.name
-                f.attrs['driver_version'] = device.driver_version
-                f.attrs['platform_version'] = device.platform.version
+                f.attrs["device"] = device.name
+                f.attrs["driver_version"] = device.driver_version
+                f.attrs["platform_version"] = device.platform.version
 
             import socket
-            f.attrs['hostname'] = socket.getfqdn()
+            f.attrs["hostname"] = socket.getfqdn()
 
             for key, val in kwargs.items():
                 try:
@@ -134,22 +134,22 @@ class OutputFile:
                 fp = open(runfile)
                 content = fp.read()
                 fp.close()
-                f.attrs['runfile'] = content
+                f.attrs["runfile"] = content
 
             # output current dependency versions
-            dependencies = {'pystella', 'numpy', 'scipy',
-                            'pyopencl', 'loopy', 'pymbolic',
-                            'mpi4py', 'gpyfft', 'mpi4py_fft', 'h5py'}
-            dependencies |= set(kwargs.pop('dependencies', {}))
+            dependencies = {"pystella", "numpy", "scipy",
+                            "pyopencl", "loopy", "pymbolic",
+                            "mpi4py", "gpyfft", "mpi4py_fft", "h5py"}
+            dependencies |= set(kwargs.pop("dependencies", {}))
             versions, git_revs = get_versions(dependencies)
 
-            f.create_group('versions')
+            f.create_group("versions")
             for k, v in versions.items():
-                f['versions'][k] = v or ''
+                f["versions"][k] = v or ""
 
-            f.create_group('git_revs')
+            f.create_group("git_revs")
             for k, v in git_revs.items():
-                f['git_revs'][k] = v or ''
+                f["git_revs"][k] = v or ""
 
     def open(self, mode="a"):
         return h5py.File(self.filename, mode)

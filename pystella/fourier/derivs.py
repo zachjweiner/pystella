@@ -46,49 +46,49 @@ class SpectralCollocator:
         self.fft = fft
         grid_size = fft.grid_shape[0] * fft.grid_shape[1] * fft.grid_shape[2]
 
-        queue = self.fft.sub_k['momenta_x'].queue
-        sub_k = list(x.get().astype('int') for x in self.fft.sub_k.values())
-        k_names = ('k_x', 'k_y', 'k_z')
+        queue = self.fft.sub_k["momenta_x"].queue
+        sub_k = list(x.get().astype("int") for x in self.fft.sub_k.values())
+        k_names = ("k_x", "k_y", "k_z")
         self.momenta = {}
         for mu, (name, kk) in enumerate(zip(k_names, sub_k)):
             kk_mu = dk[mu] * kk.astype(fft.rdtype)
-            self.momenta[name+'_2'] = cla.to_device(queue, kk_mu)
+            self.momenta[name+"_2"] = cla.to_device(queue, kk_mu)
 
             # zero Nyquist mode for first derivatives
             kk_mu[abs(sub_k[mu]) == fft.grid_shape[mu]//2] = 0.
             kk_mu[sub_k[mu] == 0] = 0.
-            self.momenta[name+'_1'] = cla.to_device(queue, kk_mu)
+            self.momenta[name+"_1"] = cla.to_device(queue, kk_mu)
 
         args = [
-            lp.GlobalArg('fk', shape="(Nx, Ny, Nz)"),
-            lp.GlobalArg("k_x_1, k_x_2", fft.rdtype, shape=('Nx',)),
-            lp.GlobalArg("k_y_1, k_y_2", fft.rdtype, shape=('Ny',)),
-            lp.GlobalArg("k_z_1, k_z_2", fft.rdtype, shape=('Nz',)),
+            lp.GlobalArg("fk", shape="(Nx, Ny, Nz)"),
+            lp.GlobalArg("k_x_1, k_x_2", fft.rdtype, shape=("Nx",)),
+            lp.GlobalArg("k_y_1, k_y_2", fft.rdtype, shape=("Ny",)),
+            lp.GlobalArg("k_z_1, k_z_2", fft.rdtype, shape=("Nz",)),
         ]
 
         from pystella.field import Field
-        fk = Field('fk')
-        pd = tuple(Field(pdi) for pdi in ('pdx_k', 'pdy_k', 'pdz_k'))
+        fk = Field("fk")
+        pd = tuple(Field(pdi) for pdi in ("pdx_k", "pdy_k", "pdz_k"))
 
         indices = fk.indices
 
         from pymbolic import var
-        mom_vars = tuple(var(name+'_1') for name in k_names)
+        mom_vars = tuple(var(name+"_1") for name in k_names)
 
-        fk_tmp = var('fk_tmp')
+        fk_tmp = var("fk_tmp")
         tmp_insns = [(fk_tmp, fk * (1/grid_size))]
 
         pdx, pdy, pdz = ({pdi: kk_i[indices[i]] * 1j * fk_tmp}
                          for i, (pdi, kk_i) in enumerate(zip(pd, mom_vars)))
 
         pdx_incr, pdy_incr, pdz_incr = (
-            {Field('div'): Field('div') + kk_i[indices[i]] * 1j * fk_tmp}
+            {Field("div"): Field("div") + kk_i[indices[i]] * 1j * fk_tmp}
             for i, kk_i in enumerate(mom_vars)
         )
 
-        mom_vars = tuple(var(name+'_2') for name in k_names)
+        mom_vars = tuple(var(name+"_2") for name in k_names)
         kmag_sq = sum(kk_i[x_i]**2 for kk_i, x_i in zip(mom_vars, indices))
-        lap = {Field('lap_k'): - kmag_sq * fk_tmp}
+        lap = {Field("lap_k"): - kmag_sq * fk_tmp}
 
         from pystella.elementwise import ElementWiseMap
         common_args = dict(halo_shape=0, args=args, lsize=(16, 2, 1),
@@ -102,7 +102,7 @@ class SpectralCollocator:
         self.pdz_incr_knl = ElementWiseMap(pdz_incr, **common_args)
         self.lap_knl = ElementWiseMap(lap, **common_args)
 
-        common_args['lsize'] = (16, 1, 1)
+        common_args["lsize"] = (16, 1, 1)
         self.grad_knl = ElementWiseMap({**pdx, **pdy, **pdz}, **common_args)
         self.grad_lap_knl = ElementWiseMap({**pdx, **pdy, **pdz, **lap},
                                            **common_args)
@@ -146,8 +146,8 @@ class SpectralCollocator:
 
         for s in slices:
             fk = self.fft.dft(fx[s])
-            arguments = {'queue': queue, 'fk': fk,
-                         **self.momenta, 'allocator': allocator}
+            arguments = {"queue": queue, "fk": fk,
+                         **self.momenta, "allocator": allocator}
 
             if (lap is not None and pdx is not None
                     and pdy is not None and pdz is not None):
@@ -163,14 +163,14 @@ class SpectralCollocator:
             elif pdz is not None:
                 evt, out = self.pdz_knl(**arguments, pdz_k=fk, filter_args=True)
 
-            if 'lap_k' in out:
-                self.fft.idft(out['lap_k'], lap[s])
-            if 'pdx_k' in out:
-                self.fft.idft(out['pdx_k'], pdx[s])
-            if 'pdy_k' in out:
-                self.fft.idft(out['pdy_k'], pdy[s])
-            if 'pdz_k' in out:
-                self.fft.idft(out['pdz_k'], pdz[s])
+            if "lap_k" in out:
+                self.fft.idft(out["lap_k"], lap[s])
+            if "pdx_k" in out:
+                self.fft.idft(out["pdx_k"], pdx[s])
+            if "pdy_k" in out:
+                self.fft.idft(out["pdy_k"], pdy[s])
+            if "pdz_k" in out:
+                self.fft.idft(out["pdz_k"], pdz[s])
 
         return None
 
@@ -189,11 +189,11 @@ class SpectralCollocator:
         slices = list(product(*[range(n) for n in vec.shape[:-4]]))
 
         for s in slices:
-            arguments = {'queue': queue, **self.momenta, 'allocator': allocator}
+            arguments = {"queue": queue, **self.momenta, "allocator": allocator}
 
             fk = self.fft.dft(vec[s][0])
             evt, out = self.pdx_knl(fk=fk, **arguments, filter_args=True)
-            div_k = out['pdx_k']
+            div_k = out["pdx_k"]
             fk = self.fft.dft(vec[s][1])
             evt, _ = self.pdy_incr_knl(fk=fk, **arguments, div=div_k,
                                        filter_args=True)

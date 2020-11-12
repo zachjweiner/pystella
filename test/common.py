@@ -54,9 +54,9 @@ class ArgumentParser(argparse.ArgumentParser):
 
 
 parser = ArgumentParser(add_help=False)
-parser.add_argument('--help', action='help', help='show this help message and exit')
-parser.add_argument('-proc', '--proc_shape', type=int, nargs=3, default=(1, 1, 1))
-parser.add_argument('-grid', '--grid_shape', type=int, nargs=3, default=(256,)*3)
-parser.add_argument('--h', '-h', type=int, default=2, metavar='h')
-parser.add_argument('--dtype', '-dtype', type=np.dtype, default=np.float64)
-parser.add_argument('--timing', '-time', type=bool, default=True)
+parser.add_argument("--help", action="help", help="show this help message and exit")
+parser.add_argument("-proc", "--proc_shape", type=int, nargs=3, default=(1, 1, 1))
+parser.add_argument("-grid", "--grid_shape", type=int, nargs=3, default=(256,)*3)
+parser.add_argument("--h", "-h", type=int, default=2, metavar="h")
+parser.add_argument("--dtype", "-dtype", type=np.dtype, default=np.float64)
+parser.add_argument("--timing", "-time", type=bool, default=True)

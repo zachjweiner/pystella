@@ -67,7 +67,7 @@ def DFT(decomp, context, queue, grid_shape, dtype, **kwargs):
     should this function return such an object.
     """
 
-    use_fftw = kwargs.pop('use_fftw', False)
+    use_fftw = kwargs.pop("use_fftw", False)
     if tuple(decomp.proc_shape) == (1, 1, 1) and not use_fftw:
         return gDFT(decomp, context, queue, grid_shape, dtype)
     else:
@@ -271,7 +271,7 @@ class BaseDFT:
             Defaults to *False*, i.e., setting the mode to ``0+0j``.
         """
 
-        sub_k = list(x.get().astype('int') for x in self.sub_k.values())
+        sub_k = list(x.get().astype("int") for x in self.sub_k.values())
         shape = self.grid_shape
 
         where_to_zero = []
@@ -305,11 +305,11 @@ def get_sliced_momenta(grid_shape, dtype, slc, queue):
 
     k = [fftfreq(n).astype(rdtype) for n in grid_shape]
 
-    if dtype.kind == 'f':
+    if dtype.kind == "f":
         from numpy.fft import rfftfreq
         k[-1] = rfftfreq(grid_shape[-1], 1/grid_shape[-1]).astype(rdtype)
 
-    names = ('momenta_x', 'momenta_y', 'momenta_z')
+    names = ("momenta_x", "momenta_y", "momenta_z")
     sub_k = {direction: cla.to_device(queue, k_i[s_i])
              for direction, k_i, s_i in zip(names, k, slc)}
 
@@ -348,7 +348,7 @@ class pDFT(BaseDFT):
         self.grid_shape = grid_shape
         self.proc_shape = decomp.proc_shape
         self.dtype = np.dtype(dtype)
-        self.is_real = self.dtype.kind == 'f'
+        self.is_real = self.dtype.kind == "f"
 
         from pystella.fourier import get_complex_dtype_with_matching_prec
         self.cdtype = get_complex_dtype_with_matching_prec(self.dtype)
@@ -362,7 +362,7 @@ class pDFT(BaseDFT):
 
         from mpi4py_fft.pencil import Subcomm
         default_kwargs = dict(
-            axes=([0], [1], [2]), threads=16, backend='fftw', collapse=True,
+            axes=([0], [1], [2]), threads=16, backend="fftw", collapse=True,
         )
         default_kwargs.update(kwargs)
         comm = decomp.comm if slab else Subcomm(decomp.comm, self.proc_shape)
@@ -425,7 +425,7 @@ class gDFT(BaseDFT):
         self.decomp = decomp
         self.grid_shape = grid_shape
         self.dtype = np.dtype(dtype)
-        self.is_real = is_real = self.dtype.kind == 'f'
+        self.is_real = is_real = self.dtype.kind == "f"
 
         from pystella.fourier import get_complex_dtype_with_matching_prec
         self.cdtype = cdtype = get_complex_dtype_with_matching_prec(self.dtype)

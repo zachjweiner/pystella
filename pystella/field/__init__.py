@@ -60,7 +60,7 @@ class Field(pp.AlgebraicLeaf):
 
     Examples::
 
-        >>> f = Field('f', offset='h')
+        >>> f = Field("f", offset="h")
         >>> print(index_fields(f))
         f[i + h, j + h, k + h]
         >>> print(index_fields(f[0]))
@@ -89,7 +89,7 @@ class Field(pp.AlgebraicLeaf):
     .. attribute:: shape
 
         The shape of axes preceding those indexed by `indices`.
-        For example, ``Field('f', shape=(3, 'n'))``
+        For example, ``Field("f", shape=(3, "n"))``
         would correspond to an array with shape ``(3, n, Nx, Ny, Nz)``
         (using ``(Nx, Ny, Nz)`` as the shape along the final three axes
         indexed with ``indices``).
@@ -102,7 +102,7 @@ class Field(pp.AlgebraicLeaf):
         the array.
         Each entry may be a :class:`pymbolic.primitives.Variable` or a string
         which parses to one.
-        Defaults to ``('i', 'j', 'k')``
+        Defaults to ``("i", "j", "k")``
 
     .. attribute:: ignore_prepends
 
@@ -140,10 +140,10 @@ class Field(pp.AlgebraicLeaf):
         Added :attr:`shape`.
     """
 
-    init_arg_names = ('child', 'offset', 'shape', 'indices',
-                      'ignore_prepends', 'base_offset', 'dtype', 'dim_tags')
+    init_arg_names = ("child", "offset", "shape", "indices",
+                      "ignore_prepends", "base_offset", "dtype", "dim_tags")
 
-    def __init__(self, child, offset=0, shape=tuple(), indices=('i', 'j', 'k'),
+    def __init__(self, child, offset=0, shape=tuple(), indices=("i", "j", "k"),
                  ignore_prepends=False, base_offset=None, dtype=None,
                  dim_tags=None):
         self.child = parse_if_str(child)
@@ -156,7 +156,7 @@ class Field(pp.AlgebraicLeaf):
             offset = (offset,)*len(indices)
         if len(offset) != len(indices):
             raise ValueError(
-                'offset (if not length-1) must have same length as indices'
+                "offset (if not length-1) must have same length as indices"
             )
 
         self.offset = tuple(parse_if_str(o) for o in offset)
@@ -236,10 +236,10 @@ class DynamicField(Field):
         replaced by passing actual :class:`Field` instances.
     """
 
-    init_arg_names = ('child', 'offset', 'shape', 'indices', 'base_offset',
-                      'dot', 'lap', 'pd', 'dtype')
+    init_arg_names = ("child", "offset", "shape", "indices", "base_offset",
+                      "dot", "lap", "pd", "dtype")
 
-    def __init__(self, child, offset='0', shape=tuple(), indices=('i', 'j', 'k'),
+    def __init__(self, child, offset="0", shape=tuple(), indices=("i", "j", "k"),
                  base_offset=None, dot=None, lap=None, pd=None, dtype=None):
         super().__init__(child, offset=offset, indices=indices,
                          base_offset=base_offset, shape=shape, dtype=dtype)
@@ -266,7 +266,7 @@ class DynamicField(Field):
 
         For example, the "time" derivative of a field would be
 
-            >>> f = DynamicField('f')
+            >>> f = DynamicField("f")
             >>> print(f.d(0))  # x^0 = "time"
             dfdt
 
@@ -381,10 +381,10 @@ class IndexMapper(IdentityMapper):
         if expr.ignore_prepends:
             pre_index = ()
         else:
-            prepend = kwargs.get('prepend_with') or ()
+            prepend = kwargs.get("prepend_with") or ()
             pre_index = tuple(parse_if_str(x) for x in prepend)
 
-        pre_index = pre_index + kwargs.pop('outer_subscript', ())
+        pre_index = pre_index + kwargs.pop("outer_subscript", ())
         full_index = pre_index + expr.index_tuple
 
         if full_index == tuple():
@@ -519,13 +519,13 @@ def get_field_args(expressions, unpadded_shape=None, prepend_with=None):
 
     Example::
 
-        >>> f, g = Field('f', offset='h'), Field('g', shape=(3, 'a'), offset=1)
+        >>> f, g = Field("f", offset="h"), Field("g", shape=(3, "a"), offset=1)
         >>> get_field_args({f: g + 1})
 
     would return the equivalent of::
 
-        >>> [lp.GlobalArg('f', shape='(Nx+2*h, Ny+2*h, Nz+2*h)', offset=lp.auto),
-        ...  lp.GlobalArg('g', shape='(3, a, Nx+2, Ny+2, Nz+2)', offset=lp.auto)]
+        >>> [lp.GlobalArg("f", shape="(Nx+2*h, Ny+2*h, Nz+2*h)", offset=lp.auto),
+        ...  lp.GlobalArg("g", shape="(3, a, Nx+2, Ny+2, Nz+2)", offset=lp.auto)]
 
     .. versionchanged:: 2020.1
 
@@ -533,7 +533,7 @@ def get_field_args(expressions, unpadded_shape=None, prepend_with=None):
     """
 
     from pymbolic import parse
-    unpadded_shape = unpadded_shape or parse('Nx, Ny, Nz')
+    unpadded_shape = unpadded_shape or parse("Nx, Ny, Nz")
 
     fields = FieldCollector()(expressions)
 
@@ -556,7 +556,7 @@ def get_field_args(expressions, unpadded_shape=None, prepend_with=None):
             other_arg = field_args[f.name]
             if arg.shape != other_arg.shape:
                 raise ValueError(
-                    "Encountered instances of field '{f.name}' "
+                    'Encountered instances of field "{f.name}" '
                     "with conflicting shapes"
                 )
         else:

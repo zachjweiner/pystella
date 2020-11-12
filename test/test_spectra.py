@@ -47,7 +47,7 @@ def make_hermitian(data, fft):
 @pytest.mark.filterwarnings(
     "ignore::pyopencl.characterize.CLCharacterizationWarning")
 @pytest.mark.filterwarnings("ignore::loopy.diagnostic.LoopyAdvisory")
-@pytest.mark.parametrize("dtype", ['float64', 'complex128'])
+@pytest.mark.parametrize("dtype", ["float64", "complex128"])
 @pytest.mark.parametrize("L", [(10,)*3, (10, 7, 8), (3, 8, 19), (13.2, 5.71, 9.4),
                                (11, 11, 4), (4, 11, 11), (11, 4, 11)])
 def test_spectra(ctx_factory, grid_shape, proc_shape, dtype, L, timing=False):
@@ -80,7 +80,7 @@ def test_spectra(ctx_factory, grid_shape, proc_shape, dtype, L, timing=False):
     bins = np.arange(-.5, spec.num_bins + .5) * spec.bin_width
 
     sub_k = list(x.get() for x in fft.sub_k.values())
-    kvecs = np.meshgrid(*sub_k, indexing='ij', sparse=False)
+    kvecs = np.meshgrid(*sub_k, indexing="ij", sparse=False)
     kmags = np.sqrt(sum((dki * ki)**2 for dki, ki in zip(dk, kvecs)))
 
     if fft.is_real:
@@ -90,7 +90,7 @@ def test_spectra(ctx_factory, grid_shape, proc_shape, dtype, L, timing=False):
     else:
         counts = 1. * np.ones_like(kmags)
 
-    if np.dtype(dtype) in (np.dtype('float64'), np.dtype('complex128')):
+    if np.dtype(dtype) in (np.dtype("float64"), np.dtype("complex128")):
         max_rtol = 1.e-8
         avg_rtol = 1.e-11
     else:
@@ -119,15 +119,15 @@ def test_spectra(ctx_factory, grid_shape, proc_shape, dtype, L, timing=False):
 @pytest.mark.filterwarnings(
     "ignore::pyopencl.characterize.CLCharacterizationWarning")
 @pytest.mark.filterwarnings("ignore::loopy.diagnostic.LoopyAdvisory")
-@pytest.mark.parametrize("dtype", ['float64', 'float32'])
+@pytest.mark.parametrize("dtype", ["float64", "float32"])
 def test_pol_spectra(ctx_factory, grid_shape, proc_shape, dtype, timing=False):
     if ctx_factory:
         ctx = ctx_factory()
     else:
         ctx = ps.choose_device_and_make_context()
 
-    if np.dtype(dtype).kind != 'f':
-        dtype = 'float64'
+    if np.dtype(dtype).kind != "f":
+        dtype = "float64"
 
     queue = cl.CommandQueue(ctx)
     h = 1

@@ -46,7 +46,7 @@ def expand_stencil(f, coefs):
 
     Example::
 
-        >>> f = Field('f', offset='h')
+        >>> f = Field("f", offset="h")
         >>> coefs = {(1, 0, 0): 1, (-1, 0, 0): -1}
         >>> stencil = expand_stencil(f, coefs)
         >>> print(index_fields(stencil))
@@ -80,7 +80,7 @@ def centered_diff(f, coefs, direction, order):
 
     Example::
 
-        >>> f = Field('f', offset='h')
+        >>> f = Field("f", offset="h")
         >>> coefs = {1: 1}
         >>> stencil = centered_diff(f, coefs, 0, 1)
         >>> print(index_fields(stencil))
@@ -188,30 +188,30 @@ class SecondCenteredDifference(FiniteDifferenceStencil):
 
 
 knl_h_arch_lsizes = {
-    ('gradlap', 1, 'volta'): (32, 16, 1),
-    ('grad', 1, 'volta'): (32, 16, 1),
-    ('lap', 1, 'volta'): (32, 16, 2),
-    ('gradlap', 1, 'pascal'): (32, 16, 1),
-    ('grad', 1, 'pascal'): (32, 16, 1),
-    ('lap', 1, 'pascal'): (32, 16, 4),
-    ('gradlap', 2, 'volta'): (32, 16, 1),
-    ('grad', 2, 'volta'): (32, 16, 1),
-    ('lap', 2, 'volta'): (32, 16, 2),
-    ('gradlap', 2, 'pascal'): (32, 8, 2),
-    ('grad', 2, 'pascal'): (32, 8, 2),
-    ('lap', 2, 'pascal'): (16, 8, 4),
-    ('gradlap', 3, 'volta'): (32, 8, 1),
-    ('grad', 3, 'volta'): (32, 8, 2),
-    ('lap', 3, 'volta'): (32, 8, 4),
-    ('gradlap', 3, 'pascal'): (16, 8, 4),
-    ('grad', 3, 'pascal'): (16, 8, 4),
-    ('lap', 3, 'pascal'): (16, 8, 4),
-    ('gradlap', 4, 'volta'): (32, 4, 4),
-    ('grad', 4, 'volta'): (32, 4, 4),
-    ('lap', 4, 'volta'): (16, 8, 4),
-    ('gradlap', 4, 'pascal'): (16, 8, 2),
-    ('grad', 4, 'pascal'): (16, 8, 2),
-    ('lap', 4, 'pascal'): (16, 8, 4)
+    ("gradlap", 1, "volta"): (32, 16, 1),
+    ("grad", 1, "volta"): (32, 16, 1),
+    ("lap", 1, "volta"): (32, 16, 2),
+    ("gradlap", 1, "pascal"): (32, 16, 1),
+    ("grad", 1, "pascal"): (32, 16, 1),
+    ("lap", 1, "pascal"): (32, 16, 4),
+    ("gradlap", 2, "volta"): (32, 16, 1),
+    ("grad", 2, "volta"): (32, 16, 1),
+    ("lap", 2, "volta"): (32, 16, 2),
+    ("gradlap", 2, "pascal"): (32, 8, 2),
+    ("grad", 2, "pascal"): (32, 8, 2),
+    ("lap", 2, "pascal"): (16, 8, 4),
+    ("gradlap", 3, "volta"): (32, 8, 1),
+    ("grad", 3, "volta"): (32, 8, 2),
+    ("lap", 3, "volta"): (32, 8, 4),
+    ("gradlap", 3, "pascal"): (16, 8, 4),
+    ("grad", 3, "pascal"): (16, 8, 4),
+    ("lap", 3, "pascal"): (16, 8, 4),
+    ("gradlap", 4, "volta"): (32, 4, 4),
+    ("grad", 4, "volta"): (32, 4, 4),
+    ("lap", 4, "volta"): (16, 8, 4),
+    ("gradlap", 4, "pascal"): (16, 8, 2),
+    ("grad", 4, "pascal"): (16, 8, 2),
+    ("lap", 4, "pascal"): (16, 8, 4)
 }
 
 
@@ -263,21 +263,21 @@ class FiniteDifferencer:
 
     def __init__(self, decomp, halo_shape, dx, **kwargs):
         self.decomp = decomp
-        stream = kwargs.pop('stream', False)
-        first_stencil = kwargs.pop('first_stencil',
+        stream = kwargs.pop("stream", False)
+        first_stencil = kwargs.pop("first_stencil",
                                    FirstCenteredDifference(halo_shape))
-        second_stencil = kwargs.pop('second_stencil',
+        second_stencil = kwargs.pop("second_stencil",
                                     SecondCenteredDifference(halo_shape))
-        rank_shape = kwargs.pop('rank_shape', None)
+        rank_shape = kwargs.pop("rank_shape", None)
 
-        fx = Field('fx', offset='h')
-        pd = tuple(Field(pdi) for pdi in ('pdx', 'pdy', 'pdz'))
+        fx = Field("fx", offset="h")
+        pd = tuple(Field(pdi) for pdi in ("pdx", "pdy", "pdz"))
         pdx, pdy, pdz = ({pdi: first_stencil(fx, i+1) * (1/dxi)}
                          for i, (pdi, dxi) in enumerate(zip(pd, dx)))
-        lap = {Field('lap'): sum(second_stencil(fx, i+1) * dxi**-2
+        lap = {Field("lap"): sum(second_stencil(fx, i+1) * dxi**-2
                                  for i, dxi in enumerate(dx))}
 
-        common_args = dict(halo_shape=halo_shape, prefetch_args=['fx'],
+        common_args = dict(halo_shape=halo_shape, prefetch_args=["fx"],
                            rank_shape=rank_shape)
 
         self.pdx_knl = Stencil(pdx, lsize=(16, 2, 16), **common_args)
@@ -285,7 +285,7 @@ class FiniteDifferencer:
         self.pdz_knl = Stencil(pdz, lsize=(16, 8, 2), **common_args)
 
         pdx_incr, pdy_incr, pdz_incr = (
-            {Field('div'): Field('div') + first_stencil(fx, i+1) * (1/dxi)}
+            {Field("div"): Field("div") + first_stencil(fx, i+1) * (1/dxi)}
             for i, dxi in enumerate(dx)
         )
 
@@ -296,26 +296,26 @@ class FiniteDifferencer:
         _h = max(max(first_stencil.coefs.keys()), max(second_stencil.coefs.keys()))
 
         if stream:
-            arch = 'volta'
-            if 'target' in kwargs:
-                dev = kwargs['target'].device
+            arch = "volta"
+            if "target" in kwargs:
+                dev = kwargs["target"].device
                 try:
-                    arch_map = {6: 'pascal', 7: 'volta'}
+                    arch_map = {6: "pascal", 7: "volta"}
                     arch = arch_map[dev.compute_capability_major_nv]
                 except:  # noqa: E722
                     pass
 
             gradlap_lsize = kwargs.get(
-                'gradlap_lsize', knl_h_arch_lsizes[('gradlap', _h, arch)])
+                "gradlap_lsize", knl_h_arch_lsizes[("gradlap", _h, arch)])
             grad_lsize = kwargs.get(
-                'grad_lsize', knl_h_arch_lsizes[('grad', _h, arch)])
+                "grad_lsize", knl_h_arch_lsizes[("grad", _h, arch)])
             lap_lsize = kwargs.get(
-                'lap_lsize', knl_h_arch_lsizes[('lap', _h, arch)])
+                "lap_lsize", knl_h_arch_lsizes[("lap", _h, arch)])
         else:
             lsize = {1: (8, 8, 8), 2: (8, 4, 4), 3: (4, 4, 4), 4: (2, 2, 2)}[_h]
-            gradlap_lsize = kwargs.get('gradlap_lsize', lsize)
-            grad_lsize = kwargs.get('grad_lsize', lsize)
-            lap_lsize = kwargs.get('lap_lsize', lsize)
+            gradlap_lsize = kwargs.get("gradlap_lsize", lsize)
+            grad_lsize = kwargs.get("grad_lsize", lsize)
+            lap_lsize = kwargs.get("lap_lsize", lsize)
 
         SS = StreamingStencil if stream else Stencil
         self.grad_lap_knl = SS({**pdx, **pdy, **pdz, **lap}, lsize=gradlap_lsize,

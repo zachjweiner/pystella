@@ -144,7 +144,7 @@ class DomainDecomposition:
                              hy=self.halo_shape[1],
                              hz=self.halo_shape[2])
         if self.rank_shape is not None:
-            for k, v in zip(('Nx', 'Ny', 'Nz'), self.rank_shape):
+            for k, v in zip(("Nx", "Ny", "Nz"), self.rank_shape):
                 params_to_fix[k] = v
 
         pencil_shape_str = "(Nx+2*hx, Ny+2*hy, Nz+2*hz)"
@@ -157,7 +157,7 @@ class DomainDecomposition:
                 [
                     lp.GlobalArg("arr", shape=pencil_shape_str, offset=lp.auto),
                     lp.GlobalArg("buf", shape="(2, hx, Ny+2*hy, Nz+2*hz)"),
-                    lp.ValueArg('Nx', dtype='int'),
+                    lp.ValueArg("Nx", dtype="int"),
                     ...,
                 ],
                 default_offset=lp.auto,
@@ -185,7 +185,7 @@ class DomainDecomposition:
                 [
                     lp.GlobalArg("arr", shape=pencil_shape_str, offset=lp.auto),
                     lp.GlobalArg("buf", shape="(2, Nx+2*hx, hy, Nz+2*hz)"),
-                    lp.ValueArg('Ny', dtype='int'),
+                    lp.ValueArg("Ny", dtype="int"),
                     ...,
                 ],
                 default_offset=lp.auto,
@@ -212,7 +212,7 @@ class DomainDecomposition:
                 instructions,
                 [
                     lp.GlobalArg("arr", shape=pencil_shape_str, offset=lp.auto),
-                    lp.ValueArg('Nz', dtype='int'),
+                    lp.ValueArg("Nz", dtype="int"),
                     ...,
                 ],
                 default_offset=lp.auto,
@@ -254,8 +254,8 @@ class DomainDecomposition:
     def get_displs_and_counts(self, full_shape, x_slice):
         NX, NY, NZ = full_shape
 
-        displs = np.ones(np.product(self.proc_shape[:2]), dtype='int')
-        counts = np.ones(np.product(self.proc_shape[:2]), dtype='int')
+        displs = np.ones(np.product(self.proc_shape[:2]), dtype="int")
+        counts = np.ones(np.product(self.proc_shape[:2]), dtype="int")
         for ri in range(self.proc_shape[0]):
             for rj in range(self.proc_shape[1]):
                 (Nx, Ny, Nz), (sx, sy, sz) = self.get_rank_shape_start(
@@ -355,7 +355,7 @@ class DomainDecomposition:
             if self.proc_shape[2] == 1:
                 evt, _ = self.pack_unpack_z_knl(queue, arr=fx)
             else:
-                raise NotImplementedError('domain decomposition in z direction')
+                raise NotImplementedError("domain decomposition in z direction")
 
         if h[0] > 0:
             if self.proc_shape[0] == 1:

@@ -32,7 +32,7 @@ __doc__ = """
 
 def append_new_args(old_args, new_args):
     all_args = old_args.copy()
-    supplied_arg_names = {arg.name for arg in old_args if hasattr(arg, 'name')}
+    supplied_arg_names = {arg.name for arg in old_args if hasattr(arg, "name")}
     for arg in new_args:
         if arg.name not in supplied_arg_names:
             all_args.append(arg)
@@ -117,7 +117,7 @@ class ElementWiseMap:
         return knl
 
     def _assignment(self, assignee, expression, **kwargs):
-        no_sync_with = kwargs.pop('no_sync_with', [('*', 'any')])
+        no_sync_with = kwargs.pop("no_sync_with", [("*", "any")])
         return lp.Assignment(assignee, expression,
                              no_sync_with=no_sync_with,
                              **kwargs)
@@ -163,10 +163,10 @@ class ElementWiseMap:
                     self._assignment(assignee, expression)
                 ]
 
-        options = kwargs.pop('options', lp.Options())
+        options = kwargs.pop("options", lp.Options())
         # ignore lack of supposed dependency for single-instruction kernels
         if len(map_instructions) + len(tmp_instructions) == 1:
-            setattr(options, 'check_dep_resolution', False)
+            setattr(options, "check_dep_resolution", False)
 
         from pystella import get_field_args
         inferred_args = get_field_args([map_instructions, tmp_instructions])
@@ -175,7 +175,7 @@ class ElementWiseMap:
         knl = lp.make_kernel(
             domains,
             temp_statements + output_statements,
-            all_args + [lp.ValueArg('Nx, Ny, Nz', dtype='int'), ...],
+            all_args + [lp.ValueArg("Nx, Ny, Nz", dtype="int"), ...],
             options=options,
             **kwargs,
         )
@@ -193,38 +193,38 @@ class ElementWiseMap:
         return knl
 
     def __init__(self, map_instructions, **kwargs):
-        if 'map_dict' in kwargs:
+        if "map_dict" in kwargs:
             from warnings import warn
             warn("Passing map_dict is deprecated. Pass map_instructions instead.",
                  DeprecationWarning, stacklevel=2)
-            map_instructions = kwargs.pop('map_dict')
+            map_instructions = kwargs.pop("map_dict")
 
         self.map_instructions = map_instructions
         if isinstance(self.map_instructions, dict):
             self.map_instructions = list(self.map_instructions.items())
 
-        if 'tmp_dict' in kwargs:
+        if "tmp_dict" in kwargs:
             from warnings import warn
             warn("Passing tmp_dict is deprecated. Pass tmp_instructions instead.",
                  DeprecationWarning, stacklevel=2)
-            tmp_instructions = kwargs.pop('tmp_dict')
+            tmp_instructions = kwargs.pop("tmp_dict")
         else:
             tmp_instructions = []
 
-        self.tmp_instructions = kwargs.pop('tmp_instructions', tmp_instructions)
+        self.tmp_instructions = kwargs.pop("tmp_instructions", tmp_instructions)
         if isinstance(self.tmp_instructions, dict):
             self.tmp_instructions = list(self.tmp_instructions.items())
 
-        self.args = kwargs.pop('args', [...])
-        self.dtype = kwargs.pop('dtype', None)
+        self.args = kwargs.pop("args", [...])
+        self.dtype = kwargs.pop("dtype", None)
 
         # default local size which saturates memory bandwidth
-        self.lsize = kwargs.pop('lsize', (16, 4, 1))
-        rank_shape = kwargs.pop('rank_shape', None)
-        halo_shape = kwargs.pop('halo_shape', None)
+        self.lsize = kwargs.pop("lsize", (16, 4, 1))
+        rank_shape = kwargs.pop("rank_shape", None)
+        halo_shape = kwargs.pop("halo_shape", None)
 
         domains = kwargs.pop(
-            'domains',
+            "domains",
             "[Nx, Ny, Nz] -> {[i,j,k]: 0<=i<Nx and 0<=j<Ny and 0<=k<Nz}"
         )
 
@@ -291,21 +291,21 @@ class ElementWiseMap:
 
             # add back PyOpenCLExecuter arguments
             if isinstance(self.knl.target, lp.PyOpenCLTarget):
-                for arg in ['allocator', 'wait_for', 'out_host']:
+                for arg in ["allocator", "wait_for", "out_host"]:
                     if arg in kwargs:
                         input_args[arg] = kwargs.get(arg)
 
         if isinstance(self.knl.target, lp.PyOpenCLTarget):
-            input_args['queue'] = queue
+            input_args["queue"] = queue
 
         knl_output = self.knl(**input_args)
 
         return knl_output
 
     def __str__(self):
-        string = ''
+        string = ""
         for key, value in self.tmp_instructions:
-            string += str(key) + ' = ' + str(value) + '\n'
+            string += str(key) + " = " + str(value) + "\n"
         for key, value in self.map_instructions:
-            string += str(key) + ' = ' + str(value) + '\n'
+            string += str(key) + " = " + str(value) + "\n"
         return string

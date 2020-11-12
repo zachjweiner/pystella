@@ -32,7 +32,7 @@ from pyopencl.tools import (  # noqa
     pytest_generate_tests_for_pyopencl as pytest_generate_tests)
 
 
-@pytest.mark.parametrize("dtype", ['float64', 'complex128'])
+@pytest.mark.parametrize("dtype", ["float64", "complex128"])
 def test_dft(ctx_factory, grid_shape, proc_shape, dtype, timing=False):
     if ctx_factory:
         ctx = ctx_factory()
@@ -70,7 +70,7 @@ def test_dft(ctx_factory, grid_shape, proc_shape, dtype, timing=False):
         fx2 = fft.idft(fk).get()
         fx_np = np_idft(fk1)
 
-        rtol = 1.e-11 if dtype in ('float64', 'complex128') else 2.e-3
+        rtol = 1.e-11 if dtype in ("float64", "complex128") else 2.e-3
         assert np.allclose(fx1, fx2 / grid_size, rtol=rtol, atol=0), \
             f"IDFT(DFT(f)) != f for grid_shape={grid_shape}"
 
@@ -99,7 +99,7 @@ def test_dft(ctx_factory, grid_shape, proc_shape, dtype, timing=False):
         # FIXME: not currently testing individual transforms against numpy
 
         if mpi.rank == 0:
-            rtol = 1.e-11 if dtype in ('float64', 'complex128') else 2.e-3
+            rtol = 1.e-11 if dtype in ("float64", "complex128") else 2.e-3
             assert np.allclose(fx1, fx2 / grid_size, rtol=rtol, atol=0), \
                 f"IDFT(DFT(f)) != f for grid_shape={grid_shape}"
 
@@ -118,11 +118,11 @@ def test_dft(ctx_factory, grid_shape, proc_shape, dtype, timing=False):
     fk_np = np.empty(fft.shape(True), fft.fk.dtype)
 
     # FIXME: check that these actually produce the correct result
-    fx_types = {'cl': fx_cl, 'cl halo': fx_cl_halo,
-                'np': fx_np, 'np halo': fx_np_halo,
-                'None': None}
+    fx_types = {"cl": fx_cl, "cl halo": fx_cl_halo,
+                "np": fx_np, "np halo": fx_np_halo,
+                "None": None}
 
-    fk_types = {'cl': fk_cl, 'np': fk_np, 'None': None}
+    fk_types = {"cl": fk_cl, "np": fk_np, "None": None}
 
     # run all of these to ensure no runtime errors even if no timing
     if timing:
@@ -134,7 +134,7 @@ def test_dft(ctx_factory, grid_shape, proc_shape, dtype, timing=False):
 
     if mpi.rank == 0:
         print(f"N = {grid_shape}, ",
-              'complex' if np.dtype(dtype).kind == 'c' else 'real')
+              "complex" if np.dtype(dtype).kind == "c" else "real")
 
     from itertools import product
     for (a, input_), (b, output) in product(fx_types.items(), fk_types.items()):

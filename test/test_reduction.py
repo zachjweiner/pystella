@@ -32,7 +32,7 @@ from pyopencl.tools import (  # noqa
 
 
 @pytest.mark.parametrize("dtype", [np.float64, np.float32])
-@pytest.mark.parametrize("op", ['avg', 'sum', 'max'])
+@pytest.mark.parametrize("op", ["avg", "sum", "max"])
 @pytest.mark.parametrize("_grid_shape", [None, (128, 64, 32)])
 @pytest.mark.parametrize("pass_grid_dims", [True, False])
 def test_reduction(ctx_factory, grid_shape, proc_shape, dtype, op,
@@ -50,10 +50,10 @@ def test_reduction(ctx_factory, grid_shape, proc_shape, dtype, op,
 
     from pymbolic import var
     from pystella import Field
-    tmp_insns = [(var('x'), Field('f') / 2 + .31)]
+    tmp_insns = [(var("x"), Field("f") / 2 + .31)]
 
     reducers = {}
-    reducers['avg'] = [(var('x'), op)]
+    reducers["avg"] = [(var("x"), op)]
 
     if pass_grid_dims:
         reducer = ps.Reduction(mpi, reducers, rank_shape=rank_shape,
@@ -68,10 +68,10 @@ def test_reduction(ctx_factory, grid_shape, proc_shape, dtype, op,
     pool = clt.MemoryPool(clt.ImmediateAllocator(queue))
 
     result = reducer(queue, f=f, allocator=pool)
-    avg = result['avg']
+    avg = result["avg"]
 
     avg_test = reducer.reduce_array(f / 2 + .31, op)
-    if op == 'avg':
+    if op == "avg":
         avg_test /= np.product(grid_shape)
 
     rtol = 5.e-14 if dtype == np.float64 else 1.e-5
@@ -88,7 +88,7 @@ def test_reduction(ctx_factory, grid_shape, proc_shape, dtype, op,
 
 
 @pytest.mark.parametrize("dtype", [np.float64])
-@pytest.mark.parametrize("op", ['avg'])
+@pytest.mark.parametrize("op", ["avg"])
 @pytest.mark.parametrize("_grid_shape", [None, (128, 64, 32)])
 def test_reduction_with_new_shape(ctx_factory, grid_shape, proc_shape, dtype, op,
                                   _grid_shape, timing=False):
@@ -105,16 +105,16 @@ def test_reduction_with_new_shape(ctx_factory, grid_shape, proc_shape, dtype, op
 
     from pystella import Field
     reducers = {}
-    reducers['avg'] = [(Field('f'), op)]
+    reducers["avg"] = [(Field("f"), op)]
 
     reducer = ps.Reduction(mpi, reducers)
 
     f = clr.rand(queue, rank_shape, dtype=dtype)
     result = reducer(queue, f=f)
-    avg = result['avg']
+    avg = result["avg"]
 
     avg_test = reducer.reduce_array(f, op)
-    if op == 'avg':
+    if op == "avg":
         avg_test /= np.product(grid_shape)
 
     rtol = 5.e-14 if dtype == np.float64 else 1.e-5
@@ -126,10 +126,10 @@ def test_reduction_with_new_shape(ctx_factory, grid_shape, proc_shape, dtype, op
     rank_shape, _ = mpi.get_rank_shape_start(grid_shape)
     f = clr.rand(queue, rank_shape, dtype=dtype)
     result = reducer(queue, f=f)
-    avg = result['avg']
+    avg = result["avg"]
 
     avg_test = reducer.reduce_array(f, op)
-    if op == 'avg':
+    if op == "avg":
         avg_test /= np.product(grid_shape)
 
     rtol = 5.e-14 if dtype == np.float64 else 1.e-5
@@ -167,8 +167,8 @@ def test_field_statistics(ctx_factory, grid_shape, proc_shape, dtype, _grid_shap
     pool = clt.MemoryPool(clt.ImmediateAllocator(queue))
 
     stats = statistics(f, allocator=pool)
-    avg = stats['mean']
-    var = stats['variance']
+    avg = stats["mean"]
+    var = stats["variance"]
 
     f_h = f.get()
     rank_sum = np.sum(f_h[..., h:-h, h:-h, h:-h], axis=(-3, -2, -1))
@@ -195,10 +195,10 @@ def test_field_statistics(ctx_factory, grid_shape, proc_shape, dtype, _grid_shap
 
 if __name__ == "__main__":
     from common import parser
-    parser.add_argument('--pass_grid_dims', type=bool, default=True)
+    parser.add_argument("--pass_grid_dims", type=bool, default=True)
     args = parser.parse_args()
 
-    for op in ['avg', 'sum', 'max']:
+    for op in ["avg", "sum", "max"]:
         test_reduction(
             None, grid_shape=args.grid_shape, proc_shape=args.proc_shape,
             dtype=args.dtype, timing=args.timing,
@@ -206,7 +206,7 @@ if __name__ == "__main__":
         )
     test_reduction_with_new_shape(
         None, grid_shape=args.grid_shape, proc_shape=args.proc_shape,
-        dtype=args.dtype, timing=args.timing, op='avg', _grid_shape=None
+        dtype=args.dtype, timing=args.timing, op="avg", _grid_shape=None
     )
     test_field_statistics(
         None, grid_shape=args.grid_shape, proc_shape=args.proc_shape,

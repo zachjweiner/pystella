@@ -42,13 +42,13 @@ def test_elementwise(ctx_factory, grid_shape, proc_shape, dtype, timing=False):
     rank_shape = tuple(Ni // pi for Ni, pi in zip(grid_shape, proc_shape))
 
     from pymbolic import var
-    a = var('a')
-    b = var('b')
+    a = var("a")
+    b = var("b")
 
     from pystella.field import Field
-    x = Field('x')
-    y = Field('y')
-    z = Field('z')
+    x = Field("x")
+    y = Field("y")
+    z = Field("z")
 
     tmp_dict = {a[0]: x + 2,
                 a[1]: 2 + x * y,

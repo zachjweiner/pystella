@@ -28,7 +28,7 @@ from pystella.elementwise import ElementWiseMap
 
 from warnings import filterwarnings
 from loopy.diagnostic import ParameterFinderWarning
-filterwarnings('ignore', category=ParameterFinderWarning)
+filterwarnings("ignore", category=ParameterFinderWarning)
 
 __doc__ = """
 .. currentmodule:: pystella
@@ -96,7 +96,7 @@ class Reduction(ElementWiseMap):
           :mod:`pymbolic` expressions or a lists of :class:`tuple`\\ s
           ``(expr, op)``, where ``expr`` is a :mod:`pymbolic` expression and
           ``op`` is the reduction operation to perform. Valid options are
-          ``'avg'`` (default), ``'sum'``, ``'prod'``, ``'max'``, and ``'min'``.
+          ``"avg"`` (default), ``"sum"``, ``"prod"``, ``"max"``, and ``"min"``.
 
         * a :class:`Sector`. In this case, the reduction dictionary will be
           obtained from :attr:`Sector.reducers`.
@@ -139,13 +139,13 @@ class Reduction(ElementWiseMap):
             raise NotImplementedError
 
         reducers = self.reducers
-        self.grid_size = kwargs.pop('grid_size', None)
-        self.callback = kwargs.pop('callback', lambda x: x)
+        self.grid_size = kwargs.pop("grid_size", None)
+        self.callback = kwargs.pop("callback", lambda x: x)
 
         self.num_reductions = sum(len(i) for i in reducers.values())
 
         from pymbolic import var
-        tmp = var('tmp')
+        tmp = var("tmp")
         self.tmp_dict = {}
         i = 0
         for key, val in reducers.items():
@@ -163,28 +163,28 @@ class Reduction(ElementWiseMap):
                     reduction_ops.append(v[1])
                 else:
                     flat_reducers.append(v)
-                    reduction_ops.append('avg')
+                    reduction_ops.append("avg")
         self.reduction_ops = reduction_ops
 
         def reduction(expr, op):
-            return lp.symbolic.Reduction(operation=op, inames=('i',), expr=expr,
+            return lp.symbolic.Reduction(operation=op, inames=("i",), expr=expr,
                                          allow_simultaneous=True)
 
         statements = [
-            (tmp[i, var('j'), var('k')],
-             reduction(expr, 'sum' if op == 'avg' else op))
+            (tmp[i, var("j"), var("k")],
+             reduction(expr, "sum" if op == "avg" else op))
             for i, (expr, op) in enumerate(zip(flat_reducers, reduction_ops))
         ]
-        statements += [(var('Nx_'), var('Nx'))]
+        statements += [(var("Nx_"), var("Nx"))]
 
-        args = [lp.GlobalArg('Nx_', shape=(), dtype='int')]
-        args += kwargs.pop('args', [...])
+        args = [lp.GlobalArg("Nx_", shape=(), dtype="int")]
+        args += kwargs.pop("args", [...])
 
         super().__init__(statements, **kwargs, args=args, seq_dependencies=False,
                          lsize=(32, 2, 1), options=lp.Options(return_dict=True))
 
     def reduce_array(self, arr, op):
-        if op == 'prod':
+        if op == "prod":
             np_op = get_numpy_reduction_op(op)
             rank_sum = np_op(arr.get())
         else:
@@ -229,16 +229,16 @@ class Reduction(ElementWiseMap):
         """
 
         evt, output = super().__call__(queue, filter_args=filter_args, **kwargs)
-        tmp = output['tmp']
+        tmp = output["tmp"]
         vals = {}
         for key, sub_indices in self.tmp_dict.items():
             reductions = []
             for j in sub_indices:
                 op = self.reduction_ops[j]
                 val = self.reduce_array(tmp[j], op)
-                if op == 'avg':
+                if op == "avg":
                     if self.grid_size is None:
-                        Nx = output['Nx_'].get()
+                        Nx = output["Nx_"].get()
                         sub_grid_size = Nx * np.product(tmp[j].shape)
                         grid_size = self.decomp.allreduce(sub_grid_size)
                     else:
@@ -276,21 +276,21 @@ class FieldStatistics(Reduction):
     """
 
     def __init__(self, decomp, halo_shape, **kwargs):
-        self.min_max = kwargs.pop('max_min', False)
+        self.min_max = kwargs.pop("max_min", False)
 
         from pystella import Field
-        f = Field('f', offset='h')
+        f = Field("f", offset="h")
         reducers = {}
-        reducers['mean'] = [f]
-        reducers['variance'] = [f**2]
+        reducers["mean"] = [f]
+        reducers["variance"] = [f**2]
         if self.min_max:
-            reducers['max'] = [(f, 'max')]
-            reducers['min'] = [(f, 'min')]
+            reducers["max"] = [(f, "max")]
+            reducers["min"] = [(f, "min")]
             # from pymbolic.functions import fabs
             from pymbolic import var
-            fabs = var('fabs')
-            reducers['abs_max'] = [(fabs(f), 'max')]
-            reducers['abs_min'] = [(fabs(f), 'min')]
+            fabs = var("fabs")
+            reducers["abs_max"] = [(fabs(f), "max")]
+            reducers["abs_min"] = [(fabs(f), "min")]
         self.reducers = reducers
 
         super().__init__(decomp, reducers, halo_shape=halo_shape, **kwargs)
@@ -327,8 +327,8 @@ class FieldStatistics(Reduction):
         for s in slices:
             stats = super().__call__(queue, f=f[s], allocator=allocator)
             for k, v in stats.items():
-                if k == 'variance':
-                    out[k][s] = stats['variance'][0] - stats['mean'][0]**2
+                if k == "variance":
+                    out[k][s] = stats["variance"][0] - stats["mean"][0]**2
                 else:
                     out[k][s] = v[0]
 

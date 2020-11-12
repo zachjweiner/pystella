@@ -70,7 +70,7 @@ def test_transfer(ctx_factory, grid_shape, proc_shape, h, dtype, timing=False):
 
         xvecs = np.meshgrid(np.linspace(0, 1, grid_shape[0]+1)[:-1],
                             np.linspace(0, 1, grid_shape[1]+1)[:-1],
-                            np.linspace(0, 1, grid_shape[2]+1)[:-1], indexing='ij')
+                            np.linspace(0, 1, grid_shape[2]+1)[:-1], indexing="ij")
 
         phases = kvec[0] * xvecs[0] + kvec[1] * xvecs[1] + kvec[2] * xvecs[2]
         mpi.scatter_array(queue, np.sin(phases), f1h, root=0)
@@ -97,7 +97,7 @@ def test_transfer(ctx_factory, grid_shape, proc_shape, h, dtype, timing=False):
 
         xvecs = np.meshgrid(np.linspace(0, 1, grid_shape_2[0]+1)[:-1],
                             np.linspace(0, 1, grid_shape_2[1]+1)[:-1],
-                            np.linspace(0, 1, grid_shape_2[2]+1)[:-1], indexing='ij')
+                            np.linspace(0, 1, grid_shape_2[2]+1)[:-1], indexing="ij")
 
         phases = kvec[0] * xvecs[0] + kvec[1] * xvecs[1] + kvec[2] * xvecs[2]
         mpi2.scatter_array(queue, np.sin(phases), f2h, root=0)

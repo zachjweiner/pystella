@@ -109,11 +109,11 @@ class RayleighGenerator:
             """,
             [
                 lp.ValueArg("hubble", self.rdtype),
-                lp.GlobalArg('fk, dfk', shape=lp.auto, dtype=self.cdtype),
+                lp.GlobalArg("fk, dfk", shape=lp.auto, dtype=self.cdtype),
                 ...
             ],
             seq_dependencies=True,
-            silenced_warnings=['inferred_iname'],
+            silenced_warnings=["inferred_iname"],
             lang_version=(2018, 2),
         )
         knl = lp.set_options(knl, return_dict=True)
@@ -127,7 +127,7 @@ class RayleighGenerator:
             <> phs = exp(1j * 2. * pi * rands[1, i, j, k])
             fk[i, j, k] = phs * amp * sqrt(f_power[i, j, k])
             """,
-            [lp.GlobalArg('fk', shape=lp.auto, dtype=self.cdtype), ...],
+            [lp.GlobalArg("fk", shape=lp.auto, dtype=self.cdtype), ...],
             seq_dependencies=True,
             lang_version=(2018, 2),
         )
@@ -141,17 +141,17 @@ class RayleighGenerator:
         self.volume = volume
 
         sub_k = list(x.get() for x in self.fft.sub_k.values())
-        kvecs = np.meshgrid(*sub_k, indexing='ij', sparse=False)
+        kvecs = np.meshgrid(*sub_k, indexing="ij", sparse=False)
         self.kmags = np.sqrt(sum((dki * ki)**2 for dki, ki in zip(dk, kvecs)))
 
-        seed = kwargs.pop('seed', 13298)
+        seed = kwargs.pop("seed", 13298)
         self.rng = clr.ThreefryGenerator(context, seed=seed)
 
         def parallelize(knl):
             knl = lp.fix_parameters(knl, pi=np.pi, sqrt2=np.sqrt(2.))
-            knl = lp.split_iname(knl, 'k', 32, inner_tag='l.0', outer_tag='g.0')
-            knl = lp.split_iname(knl, 'j', 1, inner_tag='unr', outer_tag='g.1')
-            knl = lp.split_iname(knl, 'i', 1, inner_tag='unr', outer_tag='g.2')
+            knl = lp.split_iname(knl, "k", 32, inner_tag="l.0", outer_tag="g.0")
+            knl = lp.split_iname(knl, "j", 1, inner_tag="unr", outer_tag="g.1")
+            knl = lp.split_iname(knl, "i", 1, inner_tag="unr", outer_tag="g.2")
             return knl
 
         self.wkb_knl = parallelize(self.get_wkb_knl())
@@ -366,8 +366,8 @@ class RayleighGenerator:
         evt, out = self.wkb_knl(queue, rands=rands, hubble=hubble,
                                 wk=wk, f_power=f_power, out_host=True)
 
-        fk = self._post_process(out['fk'])
-        dfk = self._post_process(out['dfk'])
+        fk = self._post_process(out["fk"])
+        dfk = self._post_process(out["dfk"])
 
         return fk, dfk
 

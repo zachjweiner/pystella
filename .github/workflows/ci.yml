@@ -20,7 +20,7 @@ jobs:
                 python-version: 3.8
         -   name: "Main Script"
             run: |
-                pip install flake8
+                pip install flake8 flake8-quotes
                 flake8 pystella examples/*.py test/*.py
     pylint:
         name: Pylint

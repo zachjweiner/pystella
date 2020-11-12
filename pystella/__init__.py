@@ -68,7 +68,7 @@ def choose_device_and_make_context(platform_choice=None, device_choice=None):
     platforms = cl.get_platforms()
     if platform_choice is None:
         for i, plt in enumerate(platforms):
-            if 'NVIDIA' in plt.name:
+            if "NVIDIA" in plt.name:
                 platform = plt
         platform = platform or platforms[0]
     else:
@@ -85,8 +85,8 @@ def choose_device_and_make_context(platform_choice=None, device_choice=None):
     if device_choice is None:
         def try_to_get_local_rank():
             import os
-            options = ('SLURM_LOCALID', 'OMPI_COMM_WORLD_LOCAL_RANK',
-                       'MV2_COMM_WORLD_LOCAL_RANK')
+            options = ("SLURM_LOCALID", "OMPI_COMM_WORLD_LOCAL_RANK",
+                       "MV2_COMM_WORLD_LOCAL_RANK")
             for opt in options:
                 x = os.getenv(opt)
                 if x is not None:
