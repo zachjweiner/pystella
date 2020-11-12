@@ -21,5 +21,5 @@ dependencies:
 - Cython
 
 - pip:
-    - loopy
+    - git+https://github.com/inducer/loopy.git
     - git+https://gitlab.com/zachjweiner/gpyfft.git
