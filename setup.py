@@ -1,7 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from setuptools import setup, find_packages
+import os
+from setuptools import setup, find_packages, Command
+
+PACKAGE_NAME = "pystella"
 
 
 # authoritative version in pytools/__init__.py
@@ -44,11 +47,64 @@ def write_git_revision(package_name):
         outf.write('GIT_REVISION = "%s"\n' % git_rev)
 
 
-write_git_revision("pystella")
+write_git_revision(PACKAGE_NAME)
+
+
+class PylintCommand(Command):
+    description = "run pylint on Python source files"
+    user_options = [
+        # The format is (long option, short option, description).
+        ("pylint-rcfile=", None, "path to Pylint config file"),
+    ]
+
+    def initialize_options(self):
+        if os.path.exists("setup.cfg"):
+            self.pylint_rcfile = "setup.cfg"
+        else:
+            self.pylint_rcfile = None
+
+    def finalize_options(self):
+        if self.pylint_rcfile:
+            assert os.path.exists(self.pylint_rcfile)
+
+    def run(self):
+        command = ["pylint"]
+        if self.pylint_rcfile is not None:
+            command.append(f"--rcfile={self.pylint_rcfile}")
+        command.append(PACKAGE_NAME)
+
+        from glob import glob
+        for directory in ["test", "examples", "."]:
+            command.extend(glob(f"{directory}/*.py"))
+
+        from subprocess import run
+        run(command)
+
+
+class Flake8Command(Command):
+    description = "run flake8 on Python source files"
+    user_options = []
+
+    def initialize_options(self):
+        pass
+
+    def finalize_options(self):
+        pass
+
+    def run(self):
+        command = ["flake8"]
+        command.append(PACKAGE_NAME)
+
+        from glob import glob
+        for directory in ["test", "examples", "."]:
+            command.extend(glob(f"{directory}/*.py"))
+
+        from subprocess import run
+        run(command)
 
 
 setup(
-    name="pystella",
+    name=PACKAGE_NAME,
     version="2020.1",
     description="A code generator for grid-based PDE solving on CPUs and GPUs",
     long_description=open("README.rst", "rt").read(),
@@ -75,5 +131,9 @@ setup(
     project_urls={
         "Documentation": "https://pystella.readthedocs.io/en/latest/",
         "Source": "https://github.com/zachjweiner/pystella",
+    },
+    cmdclass={
+        "run_pylint": PylintCommand,
+        "run_flake8": Flake8Command,
     },
 )
