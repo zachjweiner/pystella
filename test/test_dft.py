@@ -79,13 +79,9 @@ def test_dft(ctx_factory, grid_shape, proc_shape, dtype, use_fftw, timing=False)
     if isinstance(fx2, cla.Array):
         fx2 = fx2.get()
 
-    if mpi0.rank == 0:
-        fx_glb = np.empty(shape=grid_shape, dtype=dtype)
-    else:
-        fx_glb = None
-
-    mpi0.gather_array(queue, fx, fx_glb, root=0)
-    fx_glb = mpi0.bcast(fx_glb, root=0)
+    fx_glb = np.empty(shape=grid_shape, dtype=dtype)
+    for root in range(mpi.nranks):
+        mpi0.gather_array(queue, fx, fx_glb, root=root)
 
     fk_glb_np = np.ascontiguousarray(np_dft(fx_glb))
     fx2_glb_np = np.ascontiguousarray(np_idft(fk_glb_np))
