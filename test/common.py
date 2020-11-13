@@ -27,6 +27,15 @@ import pyopencl as cl
 import argparse
 
 
+def get_errs(a, b):
+    mask = (a != 0.) | (b != 0.)
+    a = a[mask]
+    b = b[mask]
+    err = np.abs((a - b) / np.maximum(np.abs(a), np.abs(b)))
+
+    return np.max(err), np.average(err)
+
+
 def timer(kernel, ntime=200, nwarmup=2):
     for i in range(nwarmup):
         kernel()
@@ -59,4 +68,4 @@ parser.add_argument("-proc", "--proc_shape", type=int, nargs=3, default=(1, 1, 1
 parser.add_argument("-grid", "--grid_shape", type=int, nargs=3, default=(256,)*3)
 parser.add_argument("--h", "-h", type=int, default=2, metavar="h")
 parser.add_argument("--dtype", "-dtype", type=np.dtype, default=np.float64)
-parser.add_argument("--timing", "-time", type=bool, default=True)
+parser.add_argument("--no-timing", dest="timing", default=True, action="store_false")

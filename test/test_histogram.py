@@ -26,6 +26,7 @@ import pyopencl as cl
 import pyopencl.clrandom as clr
 import pystella as ps
 import pytest
+from common import get_errs
 
 from pyopencl.tools import (  # noqa
     pytest_generate_tests_for_pyopencl as pytest_generate_tests)
@@ -66,15 +67,6 @@ def test_trivial_histogram(ctx_factory, grid_shape, proc_shape, dtype,
         assert res[b] == expected, \
             f"{key}: result={res[b]}, {expected=}, ratio={res[b]/expected}"
         assert np.all(res[res != res[b]] == 0.)
-
-
-def get_errs(a, b):
-    mask = (a != 0.) | (b != 0.)
-    a = a[mask]
-    b = b[mask]
-    err = np.abs((a - b) / np.maximum(a, b))
-
-    return np.max(err), np.average(err)
 
 
 @pytest.mark.filterwarnings(

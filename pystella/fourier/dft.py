@@ -370,9 +370,6 @@ class pDFT(BaseDFT):
         from mpi4py_fft import PFFT
         self.fft = PFFT(comm, grid_shape, dtype=dtype, slab=slab, **default_kwargs)
 
-        for transform in self.fft.xfftn:
-            transform.M = 1  # ensure normalization is not applied
-
         self.fx = self.fft.forward.input_array
         self.fk = self.fft.forward.output_array
 
@@ -390,6 +387,7 @@ class pDFT(BaseDFT):
         return self.fft.shape(forward_output=forward_output)
 
     def forward_transform(self, fx, fk, **kwargs):
+        kwargs["normalize"] = kwargs.get("normalize", False)
         return self.fft.forward(input_array=fx, output_array=fk, **kwargs)
 
     def backward_transform(self, fk, fx, **kwargs):

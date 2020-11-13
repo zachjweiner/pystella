@@ -27,13 +27,18 @@ import pyopencl.clrandom as clr
 import pyopencl.array as cla
 import pystella as ps
 import pytest
+from common import get_errs
 
 from pyopencl.tools import (  # noqa
     pytest_generate_tests_for_pyopencl as pytest_generate_tests)
 
 
 @pytest.mark.parametrize("dtype", ["float64", "complex128"])
-def test_dft(ctx_factory, grid_shape, proc_shape, dtype, timing=False):
+@pytest.mark.parametrize("use_fftw", [False, True])
+def test_dft(ctx_factory, grid_shape, proc_shape, dtype, use_fftw, timing=False):
+    if not use_fftw and np.product(proc_shape) > 1:
+        pytest.skip("Must use mpi4py-fft on more than one rank.")
+
     if ctx_factory:
         ctx = ctx_factory()
     else:
@@ -42,9 +47,10 @@ def test_dft(ctx_factory, grid_shape, proc_shape, dtype, timing=False):
     queue = cl.CommandQueue(ctx)
     h = 1
     mpi = ps.DomainDecomposition(proc_shape, h, grid_shape=grid_shape)
+    mpi0 = ps.DomainDecomposition(proc_shape, 0, grid_shape=grid_shape)
     rank_shape, _ = mpi.get_rank_shape_start(grid_shape)
 
-    fft = ps.DFT(mpi, ctx, queue, grid_shape, dtype)
+    fft = ps.DFT(mpi, ctx, queue, grid_shape, dtype, use_fftw=use_fftw)
     grid_size = np.product(grid_shape)
     rdtype = fft.rdtype
 
@@ -55,59 +61,53 @@ def test_dft(ctx_factory, grid_shape, proc_shape, dtype, timing=False):
         np_dft = np.fft.fftn
         np_idft = np.fft.ifftn
 
-    if mpi.nranks == 1:
-        rng = clr.ThreefryGenerator(ctx, seed=12321)
-        fx = rng.uniform(queue, grid_shape, rdtype) + 1.e-2
-        if not fft.is_real:
-            fx = fx + 1j * rng.uniform(queue, grid_shape, rdtype)
+    rtol = 1e-11 if dtype in ("float64", "complex128") else 2e-3
 
-        fx1 = fx.get()
+    rng = clr.ThreefryGenerator(ctx, seed=12321*(mpi.rank+1))
+    fx = rng.uniform(queue, rank_shape, rdtype) + 1e-2
+    if not fft.is_real:
+        fx = fx + 1j * rng.uniform(queue, rank_shape, rdtype)
 
-        fk = fft.dft(fx)
-        fk1 = fk.get()
-        fk_np = np_dft(fx1)
+    fx = fx.get()
 
-        fx2 = fft.idft(fk).get()
-        fx_np = np_idft(fk1)
+    fk = fft.dft(fx)
+    if isinstance(fk, cla.Array):
+        fk = fk.get()
+    fk, _fk = fk.copy(), fk  # hang on to one that fftw won't overwrite
 
-        rtol = 1.e-11 if dtype in ("float64", "complex128") else 2.e-3
-        assert np.allclose(fx1, fx2 / grid_size, rtol=rtol, atol=0), \
-            f"IDFT(DFT(f)) != f for grid_shape={grid_shape}"
+    fx2 = fft.idft(_fk)
+    if isinstance(fx2, cla.Array):
+        fx2 = fx2.get()
 
-        assert np.allclose(fk_np, fk1, rtol=rtol, atol=0), \
-            f"DFT disagrees with numpy for grid_shape={grid_shape}"
-
-        assert np.allclose(fx_np, fx2 / grid_size, rtol=rtol, atol=0), \
-            f"IDFT disagrees with numpy for grid_shape={grid_shape}"
+    if mpi0.rank == 0:
+        fx_glb = np.empty(shape=grid_shape, dtype=dtype)
     else:
-        mpi0 = ps.DomainDecomposition(proc_shape, 0, rank_shape)
-        if mpi0.rank == 0:
-            rng = clr.ThreefryGenerator(ctx, seed=12321)
-            f = rng.uniform(queue, grid_shape, rdtype) + 1.e-2
-            if not fft.is_real:
-                f = f + 1j * rng.uniform(queue, grid_shape, rdtype)
-        else:
-            f = None
+        fx_glb = None
 
-        fx = cla.zeros(queue, rank_shape, dtype)
-        mpi0.scatter_array(queue, f, fx, root=0)
-        fx1 = fx.get()
+    mpi0.gather_array(queue, fx, fx_glb, root=0)
+    fx_glb = mpi0.bcast(fx_glb, root=0)
 
-        fk = fft.dft(fx)
-        fx2 = fft.idft(fk)
+    fk_glb_np = np.ascontiguousarray(np_dft(fx_glb))
+    fx2_glb_np = np.ascontiguousarray(np_idft(fk_glb_np))
 
-        # FIXME: not currently testing individual transforms against numpy
+    if use_fftw:
+        fk_np = fk_glb_np[fft.fft.local_slice(True)]
+        fx2_np = fx2_glb_np[fft.fft.local_slice(False)]
+    else:
+        fk_np = fk_glb_np
+        fx2_np = fx2_glb_np
 
-        if mpi.rank == 0:
-            rtol = 1.e-11 if dtype in ("float64", "complex128") else 2.e-3
-            assert np.allclose(fx1, fx2 / grid_size, rtol=rtol, atol=0), \
-                f"IDFT(DFT(f)) != f for grid_shape={grid_shape}"
+    max_err, avg_err = get_errs(fx, fx2 / grid_size)
+    assert max_err < rtol, \
+        f"IDFT(DFT(f)) != f for {grid_shape=}, {max_err=}, {avg_err=}"
 
-            # assert np.allclose(fk_np, fk1, rtol=rtol, atol=0), \
-            #     f"DFT disagrees with numpy for {grid_shape=}"
+    max_err, avg_err = get_errs(fk_np, fk)
+    assert max_err < rtol, \
+        f"DFT disagrees with numpy for {grid_shape=}, {max_err=}, {avg_err=}"
 
-            # assert np.allclose(fx_np, fx2 / grid_size, rtol=rtol, atol=0), \
-            #     f"IDFT disagrees with numpy for {grid_shape=}"
+    max_err, avg_err = get_errs(fx2_np, fx2 / grid_size)
+    assert max_err < rtol, \
+        f"IDFT disagrees with numpy for {grid_shape=}, {max_err=}, {avg_err=}"
 
     fx_cl = cla.empty(queue, rank_shape, dtype)
     pencil_shape = tuple(ni + 2*h for ni in rank_shape)
@@ -125,10 +125,7 @@ def test_dft(ctx_factory, grid_shape, proc_shape, dtype, timing=False):
     fk_types = {"cl": fk_cl, "np": fk_np, "None": None}
 
     # run all of these to ensure no runtime errors even if no timing
-    if timing:
-        ntime = 20
-    else:
-        ntime = 1
+    ntime = 20 if timing else 1
 
     from common import timer
 
@@ -150,9 +147,12 @@ def test_dft(ctx_factory, grid_shape, proc_shape, dtype, timing=False):
 
 if __name__ == "__main__":
     from common import parser
+    parser.add_argument("--use-fftw", action="store_true")
     args = parser.parse_args()
+    if np.product(args.proc_shape) > 1:
+        args.use_fftw = True
 
     test_dft(
         None, grid_shape=args.grid_shape, proc_shape=args.proc_shape,
-        dtype=args.dtype, timing=args.timing,
+        dtype=args.dtype, use_fftw=args.use_fftw, timing=args.timing,
     )
