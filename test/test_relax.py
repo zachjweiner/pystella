@@ -115,7 +115,7 @@ def test_relax(ctx_factory, grid_shape, proc_shape, h, dtype, Solver, timing=Fal
             spectrum = spectra(resid, k_power=0)
             if mpi.rank == 0:
                 max_amp = np.max(spectrum)
-                first_zero = np.argmax(spectrum[1:] < 1.e-30 * max_amp)
+                first_zero = np.argmax(spectrum[1:] < 1e-30 * max_amp)
                 first_mode_zeroed[key].append(first_zero)
 
     for k, errs in errors.items():

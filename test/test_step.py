@@ -102,7 +102,7 @@ def test_step(ctx_factory, proc_shape, dtype, Stepper):
         print([max_errs[a] / max_errs[b] for a, b in zip(dtlist[:-1], dtlist[1:])])
 
         order = stepper.expected_order
-        rtol = dtlist[-1]**order if dtype == np.float64 else 1.e-1
+        rtol = dtlist[-1]**order if dtype == np.float64 else 1e-1
         assert list(max_errs.values())[-1] < rtol, \
             f"Stepper solution inaccurate for {n=}"
 

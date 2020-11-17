@@ -26,6 +26,7 @@ import pyopencl as cl
 import pyopencl.clrandom as clr
 import pystella as ps
 import pytest
+from common import get_errs
 
 from pyopencl.tools import (  # noqa
     pytest_generate_tests_for_pyopencl as pytest_generate_tests)
@@ -84,11 +85,14 @@ def test_scalar_energy(ctx_factory, grid_shape, proc_shape, h, dtype, timing=Fal
     pot_rank = np.sum(potential([phi, chi]))
     energy_test["potential"] = np.array(mpi.allreduce(pot_rank) / grid_size)
 
-    rtol = 1.e-14 if dtype == np.float64 else 1.e-5
+    max_rtol = 1e-14 if dtype == np.float64 else 1e-5
+    avg_rtol = 1e-14 if dtype == np.float64 else 1e-5
 
     for key, value in energy.items():
-        assert np.allclose(value, energy_test[key], rtol=rtol, atol=0), \
-            f"{key} energy inaccurate for {nscalars=}, {grid_shape=}, {proc_shape=}"
+        max_err, avg_err = get_errs(value, energy_test[key])
+        assert max_err < max_rtol and avg_err < avg_rtol, \
+            f"{key} inaccurate for {nscalars=}, {grid_shape=}, {proc_shape=}" \
+            f": {max_err=}, {avg_err=}"
 
     if timing:
         from common import timer

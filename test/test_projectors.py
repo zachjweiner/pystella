@@ -29,6 +29,7 @@ import pystella as ps
 from pystella.derivs import FirstCenteredDifference, SecondCenteredDifference
 from pystella.fourier import gDFT
 import pytest
+from common import get_errs
 
 from test_rayleigh import is_hermitian
 
@@ -56,7 +57,7 @@ def test_effective_momenta(ctx_factory, grid_shape, proc_shape, h, dtype):
     k_diff = np.real(diff / dx / 1j)
     eff_k = stencil.get_eigenvalues(kmag, dx)
 
-    assert np.max(np.abs(k_diff/eff_k - 1)) < 1.e-14
+    assert np.max(np.abs(k_diff/eff_k - 1)) < 1e-14
 
     diff = 0
     stencil = SecondCenteredDifference(h)
@@ -69,7 +70,7 @@ def test_effective_momenta(ctx_factory, grid_shape, proc_shape, h, dtype):
     k_diff = np.real(diff / dx**2)
     eff_k = stencil.get_eigenvalues(kmag, dx)
 
-    assert np.max(np.abs(k_diff/eff_k - 1)) < 1.e-11
+    assert np.max(np.abs(k_diff/eff_k - 1)) < 1e-11
 
 
 def make_data(queue, fft):
@@ -133,8 +134,8 @@ def test_vector_projector(ctx_factory, grid_shape, proc_shape, h, dtype,
         avg_err = cla.sum(clm.fabs(div)) / cla.sum(norm)
         return max_err, avg_err
 
-    max_rtol = 1.e-14 if dtype == np.float64 else 1.e-4
-    avg_rtol = 1.e-15 if dtype == np.float64 else 1.e-6
+    max_rtol = 1e-11 if dtype == np.float64 else 1e-4
+    avg_rtol = 1e-13 if dtype == np.float64 else 1e-5
 
     k_shape = fft.shape(True)
     vector = cla.empty(queue, (3,)+k_shape, cdtype)
@@ -145,9 +146,8 @@ def test_vector_projector(ctx_factory, grid_shape, proc_shape, h, dtype,
     project.transversify(queue, vector)
 
     max_err, avg_err = get_divergence_error(vector)
-    print(max_err, avg_err)
     assert max_err < max_rtol and avg_err < avg_rtol, \
-        f"transversify failed for {grid_shape=}, halo_shape={h}"
+        f"transversify failed for {grid_shape=}, {h=}: {max_err=}, {avg_err=}"
 
     plus = make_data(queue, fft).astype(cdtype)
     minus = make_data(queue, fft).astype(cdtype)
@@ -158,20 +158,19 @@ def test_vector_projector(ctx_factory, grid_shape, proc_shape, h, dtype,
             f"pol->vec is non-hermitian for {grid_shape=}, {h=}"
 
     max_err, avg_err = get_divergence_error(vector)
-    print(max_err, avg_err)
     assert max_err < max_rtol and avg_err < avg_rtol, \
-        f"pol_to_vec result not transverse for {grid_shape=}, {h=}"
+        f"pol_to_vec result not transverse for {grid_shape=}, {h=}" \
+        f": {max_err=}, {avg_err=}"
 
     vector_h = vector.get()
     vector_2 = cla.zeros_like(vector)
     project.transversify(queue, vector, vector_2)
     vector_2_h = vector_2.get()
 
-    max_err = np.max(np.abs(vector_h - vector_2_h))
-    avg_err = np.average(np.abs(vector_h - vector_2_h))
-    print(max_err, avg_err)
+    max_err, avg_err = get_errs(vector_h, vector_2_h)
     assert max_err < max_rtol and avg_err < avg_rtol, \
-        f"pol->vector != its own transverse proj. for {grid_shape=}, {h=}"
+        f"pol->vector != its own transverse proj. for {grid_shape=}, {h=}" \
+        f": {max_err=}, {avg_err=}"
 
     plus1 = cla.zeros_like(plus)
     minus1 = cla.zeros_like(minus)
@@ -181,15 +180,27 @@ def test_vector_projector(ctx_factory, grid_shape, proc_shape, h, dtype,
         assert is_hermitian(plus1) and is_hermitian(minus1), \
             f"polarizations aren't hermitian for {grid_shape=}, {h=}"
 
-    assert np.allclose(plus1.get(), plus.get(), atol=0., rtol=1.e-11) and \
-        np.allclose(minus1.get(), minus.get(), atol=0., rtol=1.e-11), \
-        f"pol->vec->pol is not identity for {grid_shape=}, {h=}"
+    max_err, avg_err = get_errs(plus1.get(), plus.get())
+    assert max_err < max_rtol and avg_err < avg_rtol, \
+        f"pol->vec->pol (plus) is not identity for {grid_shape=}, {h=}" \
+        f": {max_err=}, {avg_err=}"
+
+    max_err, avg_err = get_errs(minus1.get(), minus.get())
+    assert max_err < max_rtol and avg_err < avg_rtol, \
+        f"pol->vec->pol (minus) is not identity for {grid_shape=}, {h=}" \
+        f": {max_err=}, {avg_err=}"
 
     project.vec_to_pol(queue, vector[0], vector[1], vector)
 
-    assert np.allclose(plus1.get(), vector[0].get(), atol=0., rtol=1.e-11) and \
-        np.allclose(minus1.get(), vector[1].get(), atol=0., rtol=1.e-11), \
-        f"in-place vec_to_pol failed {grid_shape=}, {h=}"
+    max_err, avg_err = get_errs(plus1.get(), vector[0].get())
+    assert max_err < max_rtol and avg_err < avg_rtol, \
+        f"in-place pol->vec->pol (plus) not identity for {grid_shape=}, {h=}" \
+        f": {max_err=}, {avg_err=}"
+
+    max_err, avg_err = get_errs(minus1.get(), vector[1].get())
+    assert max_err < max_rtol and avg_err < avg_rtol, \
+        f"in-place pol->vec->pol (minus) not identity for {grid_shape=}, {h=}" \
+        f": {max_err=}, {avg_err=}"
 
     # reset and test longitudinal component
     for mu in range(3):
@@ -215,12 +226,10 @@ def test_vector_projector(ctx_factory, grid_shape, proc_shape, h, dtype,
     else:
         derivs.divergence(queue, pdx, div_long)
 
-    diff = (div_true - div_long).get()
-    max_err = np.max(np.abs(diff))
-    avg_err = np.average(np.abs(diff))
-    print(max_err, avg_err)
-    assert max_err < 1e-6 and avg_err < 1e-9, \
-        f"lap(longitudinal) != div vector for {grid_shape=}, {h=}"
+    max_err, avg_err = get_errs(div_true.get(), div_long.get())
+    assert max_err < 1e-6 and avg_err < 1e-11, \
+        f"lap(longitudinal) != div vector for {grid_shape=}, {h=}" \
+        f": {max_err=}, {avg_err=}"
 
     if timing:
         from common import timer
@@ -299,8 +308,8 @@ def test_tensor_projector(ctx_factory, grid_shape, proc_shape, h, dtype,
 
         return np.array(max_errors), np.array(avg_errors)
 
-    div_max_rtol = 1.e-14 if dtype == np.float64 else 1.e-4
-    div_avg_rtol = 1.e-15 if dtype == np.float64 else 1.e-6
+    max_rtol = 1e-11 if dtype == np.float64 else 1e-4
+    avg_rtol = 1e-13 if dtype == np.float64 else 1e-5
 
     def get_trace_errors(hij_h):
         trace = sum([hij_h[tensor_id(i, i)] for i in range(1, 4)])
@@ -309,9 +318,6 @@ def test_tensor_projector(ctx_factory, grid_shape, proc_shape, h, dtype,
         trace = np.abs(trace[norm != 0]) / norm[norm != 0]
         trace = trace[trace < .9]
         return np.max(trace), np.sum(trace) / trace.size
-
-    trace_max_rtol = 1.e-9 if dtype == np.float64 else 1.e-4
-    trace_avg_rtol = 1.e-14 if dtype == np.float64 else 1.e-6
 
     k_shape = fft.shape(True)
     hij = cla.empty(queue, shape=(6,)+k_shape, dtype=cdtype)
@@ -327,14 +333,14 @@ def test_tensor_projector(ctx_factory, grid_shape, proc_shape, h, dtype,
             f"TT projection is non-hermitian for {grid_shape=}, {h=}"
 
     max_err, avg_err = get_divergence_errors(hij)
-    print(max_err, avg_err)
-    assert all(max_err < div_max_rtol) and all(avg_err < div_avg_rtol), \
-        f"TT projection not transverse for {grid_shape=}, {h=}"
+    assert all(max_err < max_rtol) and all(avg_err < avg_rtol), \
+        f"TT projection not transverse for {grid_shape=}, {h=}" \
+        f": {max_err=}, {avg_err=}"
 
     max_err, avg_err = get_trace_errors(hij_h)
-    print(max_err, avg_err)
-    assert max_err < trace_max_rtol and avg_err < trace_avg_rtol, \
-        f"TT projected tensor isn't traceless for {grid_shape=}, {h=}"
+    assert max_err < max_rtol and avg_err < avg_rtol, \
+        f"TT projected tensor isn't traceless for {grid_shape=}, {h=}" \
+        f": {max_err=}, {avg_err=}"
 
     plus = make_data(queue, fft).astype(cdtype)
     minus = make_data(queue, fft).astype(cdtype)
@@ -345,25 +351,24 @@ def test_tensor_projector(ctx_factory, grid_shape, proc_shape, h, dtype,
             f"pol->tensor is non-hermitian for {grid_shape=}, {h=}"
 
     max_err, avg_err = get_divergence_errors(hij)
-    print(max_err, avg_err)
-    assert all(max_err < div_max_rtol) and all(avg_err < div_avg_rtol), \
-        f"pol->tensor not transverse for {grid_shape=}, {h=}"
+    assert all(max_err < max_rtol) and all(avg_err < avg_rtol), \
+        f"pol->tensor not transverse for {grid_shape=}, {h=}" \
+        f": {max_err=}, {avg_err=}"
 
     hij_h = hij.get()
     max_err, avg_err = get_trace_errors(hij_h)
-    print(max_err, avg_err)
-    assert max_err < trace_max_rtol and avg_err < trace_avg_rtol, \
-        f"pol->tensor isn't traceless for {grid_shape=}, {h=}"
+    assert max_err < max_rtol and avg_err < avg_rtol, \
+        f"pol->tensor isn't traceless for {grid_shape=}, {h=}" \
+        f": {max_err=}, {avg_err=}"
 
     hij_2 = cla.zeros_like(hij)
     project.transverse_traceless(queue, hij, hij_2)
     hij_h_2 = hij_2.get()
 
-    max_err = np.max(np.abs(hij_h - hij_h_2))
-    avg_err = np.average(np.abs(hij_h - hij_h_2))
-    print(max_err, avg_err)
-    assert max_err < div_max_rtol and avg_err < div_avg_rtol, \
-        f"pol->tensor != its own TT projection for {grid_shape=}, {h=}"
+    max_err, avg_err = get_errs(hij_h, hij_h_2)
+    assert max_err < max_rtol and avg_err < avg_rtol, \
+        f"pol->tensor != its own TT projection for {grid_shape=}, {h=}" \
+        f": {max_err=}, {avg_err=}"
 
     plus1 = cla.zeros_like(plus)
     minus1 = cla.zeros_like(minus)
@@ -373,15 +378,27 @@ def test_tensor_projector(ctx_factory, grid_shape, proc_shape, h, dtype,
         assert is_hermitian(plus1) and is_hermitian(minus1), \
             f"polarizations aren't hermitian for {grid_shape=}, {h=}"
 
-    assert np.allclose(plus1.get(), plus.get(), atol=0., rtol=1.e-11) and \
-        np.allclose(minus1.get(), minus.get(), atol=0., rtol=1.e-11), \
-        f"pol->tensor->pol is not identity for {grid_shape=}, {h=}"
+    max_err, avg_err = get_errs(plus1.get(), plus.get())
+    assert max_err < max_rtol and avg_err < avg_rtol, \
+        f"pol->tensor->pol (plus) is not identity for {grid_shape=}, {h=}" \
+        f": {max_err=}, {avg_err=}"
+
+    max_err, avg_err = get_errs(minus1.get(), minus.get())
+    assert max_err < max_rtol and avg_err < avg_rtol, \
+        f"pol->tensor->pol (minus) is not identity for {grid_shape=}, {h=}" \
+        f": {max_err=}, {avg_err=}"
 
     project.tensor_to_pol(queue, hij[0], hij[1], hij)
 
-    assert np.allclose(plus1.get(), hij[0].get(), atol=0., rtol=1.e-11) and \
-        np.allclose(minus1.get(), hij[1].get(), atol=0., rtol=1.e-11), \
-        f"in-place tensor_to_pol failed {grid_shape=}, {h=}"
+    max_err, avg_err = get_errs(plus1.get(), hij[0].get())
+    assert max_err < max_rtol and avg_err < avg_rtol, \
+        f"in-place pol->tensor->pol (plus) not identity for {grid_shape=}, {h=}" \
+        f": {max_err=}, {avg_err=}"
+
+    max_err, avg_err = get_errs(minus1.get(), hij[1].get())
+    assert max_err < max_rtol and avg_err < avg_rtol, \
+        f"in-place pol->tensor->pol (minus) not identity for {grid_shape=}, {h=}" \
+        f": {max_err=}, {avg_err=}"
 
     if timing:
         from common import timer

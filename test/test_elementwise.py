@@ -26,6 +26,7 @@ import pyopencl as cl
 import pyopencl.clrandom as clr
 import pystella as ps
 import pytest
+from common import get_errs
 
 from pyopencl.tools import (  # noqa
     pytest_generate_tests_for_pyopencl as pytest_generate_tests)
@@ -71,20 +72,25 @@ def test_elementwise(ctx_factory, grid_shape, proc_shape, dtype, timing=False):
 
     ew_map(queue, x=x, y=y, z=z)
 
-    rtol = 5.e-14 if dtype == np.float64 else 1.e-5
+    max_rtol = 5e-14 if dtype == np.float64 else 1e-5
+    avg_rtol = 5e-14 if dtype == np.float64 else 1e-5
 
-    assert np.allclose(x.get(), x_true.get(), rtol=rtol, atol=0), \
-        f"x innaccurate for {grid_shape=}, {proc_shape=}"
+    max_err, avg_err = get_errs(x_true.get(), x.get())
+    assert max_err < max_rtol and avg_err < avg_rtol, \
+        f"x innaccurate for {grid_shape=}, {proc_shape=}: {max_err=}, {avg_err=}"
 
-    assert np.allclose(z.get(), z_true.get(), rtol=rtol, atol=0), \
-        f"z innaccurate for {grid_shape=}, {proc_shape=}"
+    max_err, avg_err = get_errs(z_true.get(), z.get())
+    assert max_err < max_rtol and avg_err < avg_rtol, \
+        f"z innaccurate for {grid_shape=}, {proc_shape=}: {max_err=}, {avg_err=}"
 
     # test success of single instruction
     ew_map_single = ps.ElementWiseMap(single_insn)
     ew_map_single(queue, x=x, y=y, z=z)
 
-    assert np.allclose(x.get(), y.get() + z.get(), rtol=rtol, atol=0), \
-        f"x innaccurate for {grid_shape=}, {proc_shape=}"
+    x_true = y + z
+    max_err, avg_err = get_errs(x_true.get(), x.get())
+    assert max_err < max_rtol and avg_err < avg_rtol, \
+        f"x innaccurate for {grid_shape=}, {proc_shape=}: {max_err=}, {avg_err=}"
 
     if timing:
         from common import timer

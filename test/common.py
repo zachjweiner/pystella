@@ -28,6 +28,8 @@ import argparse
 
 
 def get_errs(a, b):
+    a = np.atleast_1d(a)
+    b = np.atleast_1d(b)
     mask = (a != 0.) | (b != 0.)
     a = a[mask]
     b = b[mask]

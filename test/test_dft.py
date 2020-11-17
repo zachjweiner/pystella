@@ -95,15 +95,17 @@ def test_dft(ctx_factory, grid_shape, proc_shape, dtype, use_fftw, timing=False)
 
     max_err, avg_err = get_errs(fx, fx2 / grid_size)
     assert max_err < rtol, \
-        f"IDFT(DFT(f)) != f for {grid_shape=}, {max_err=}, {avg_err=}"
+        f"IDFT(DFT(f)) != f for {grid_shape=}, {proc_shape=}: {max_err=}, {avg_err=}"
 
     max_err, avg_err = get_errs(fk_np, fk)
     assert max_err < rtol, \
-        f"DFT disagrees with numpy for {grid_shape=}, {max_err=}, {avg_err=}"
+        f"DFT disagrees with numpy for {grid_shape=}, {proc_shape=}:"\
+        f" {max_err=}, {avg_err=}"
 
     max_err, avg_err = get_errs(fx2_np, fx2 / grid_size)
     assert max_err < rtol, \
-        f"IDFT disagrees with numpy for {grid_shape=}, {max_err=}, {avg_err=}"
+        f"IDFT disagrees with numpy for {grid_shape=}, {proc_shape=}:"\
+        f" {max_err=}, {avg_err=}"
 
     fx_cl = cla.empty(queue, rank_shape, dtype)
     pencil_shape = tuple(ni + 2*h for ni in rank_shape)

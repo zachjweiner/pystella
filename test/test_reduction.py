@@ -74,7 +74,7 @@ def test_reduction(ctx_factory, grid_shape, proc_shape, dtype, op,
     if op == "avg":
         avg_test /= np.product(grid_shape)
 
-    rtol = 5.e-14 if dtype == np.float64 else 1.e-5
+    rtol = 5e-14 if dtype == np.float64 else 1e-5
     assert np.allclose(avg, avg_test, rtol=rtol, atol=0), \
         f"{op} reduction innaccurate for {grid_shape=}, {proc_shape=}"
 
@@ -117,7 +117,7 @@ def test_reduction_with_new_shape(ctx_factory, grid_shape, proc_shape, dtype, op
     if op == "avg":
         avg_test /= np.product(grid_shape)
 
-    rtol = 5.e-14 if dtype == np.float64 else 1.e-5
+    rtol = 5e-14 if dtype == np.float64 else 1e-5
     assert np.allclose(avg, avg_test, rtol=rtol, atol=0), \
         f"{op} reduction innaccurate for {grid_shape=}, {proc_shape=}"
 
@@ -132,7 +132,7 @@ def test_reduction_with_new_shape(ctx_factory, grid_shape, proc_shape, dtype, op
     if op == "avg":
         avg_test /= np.product(grid_shape)
 
-    rtol = 5.e-14 if dtype == np.float64 else 1.e-5
+    rtol = 5e-14 if dtype == np.float64 else 1e-5
     assert np.allclose(avg, avg_test, rtol=rtol, atol=0), \
         f"{op} reduction w/new shape innaccurate for {grid_shape=}, {proc_shape=}"
 
@@ -177,7 +177,7 @@ def test_field_statistics(ctx_factory, grid_shape, proc_shape, dtype, _grid_shap
     rank_sum = np.sum(f_h[..., h:-h, h:-h, h:-h]**2, axis=(-3, -2, -1))
     var_test = mpi.allreduce(rank_sum) / np.product(grid_shape) - avg_test**2
 
-    rtol = 5.e-14 if dtype == np.float64 else 1.e-5
+    rtol = 5e-14 if dtype == np.float64 else 1e-5
 
     assert np.allclose(avg, avg_test, rtol=rtol, atol=0), \
         f"average innaccurate for {grid_shape=}, {proc_shape=}"

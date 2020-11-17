@@ -82,7 +82,7 @@ def test_transfer(ctx_factory, grid_shape, proc_shape, h, dtype, timing=False):
                                 f2h.get()[h:-h, h:-h, h:-h])
 
         if restrict == inject:
-            expected_error_bound = 1.e-15
+            expected_error_bound = 1e-15
         else:
             expected_error_bound = .05 / (grid_shape[0]/32)**2
 

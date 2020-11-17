@@ -30,7 +30,7 @@ from pyopencl.tools import (  # noqa
 
 examples = {
     "examples/wave_equation.py": None,
-    "examples/scalar_preheating.py": 3.e-8,
+    "examples/scalar_preheating.py": 3e-8,
 }
 
 

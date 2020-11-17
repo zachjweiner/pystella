@@ -141,22 +141,22 @@ def is_hermitian(fk):
         for n, p in zip(neg[0], pos[0]):
             test = np.append(test, np.allclose(fk[n, neg[1], k],
                                                np.conj(fk[p, pos[1], k]),
-                                               atol=0, rtol=1.e-12))
+                                               atol=0, rtol=1e-12))
             test = np.append(test, np.allclose(fk[p, neg[1], k],
                                                np.conj(fk[n, pos[1], k]),
-                                               atol=0, rtol=1.e-12))
+                                               atol=0, rtol=1e-12))
         for n, p in zip(neg[1], pos[1]):
             test = np.append(test, np.allclose(fk[neg[0], n, k],
                                                np.conj(fk[pos[0], p, k]),
-                                               atol=0, rtol=1.e-12))
+                                               atol=0, rtol=1e-12))
             test = np.append(test, np.allclose(fk[neg[0], p, k],
                                                np.conj(fk[pos[0], n, k]),
-                                               atol=0, rtol=1.e-12))
+                                               atol=0, rtol=1e-12))
 
     for i in [0, grid_shape[0]//2]:
         for j in [0, grid_shape[1]//2]:
             for k in [0, grid_shape[2]//2]:
-                test = np.append(test, [np.abs(np.imag(fk[i, j, k])) < 1.e-15])
+                test = np.append(test, [np.abs(np.imag(fk[i, j, k])) < 1e-15])
     return test.all()
 
 

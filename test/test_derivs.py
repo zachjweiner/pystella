@@ -24,9 +24,9 @@ THE SOFTWARE.
 import numpy as np
 import pyopencl as cl
 import pyopencl.array as cla
-import pyopencl.clmath as clm
 import pystella as ps
 import pytest
+from common import get_errs
 
 from pyopencl.tools import (  # noqa
     pytest_generate_tests_for_pyopencl as pytest_generate_tests)
@@ -94,37 +94,35 @@ def test_gradient_laplacian(ctx_factory, grid_shape, proc_shape, h, dtype,
         fx_h[:] = np.sin(phases)
     fx_cos = np.cos(phases)
 
-    fx = cla.empty(queue, pencil_shape, dtype)
-    fx.set(fx_h)
+    fx = cla.to_device(queue, fx_h)
 
     lap = cla.empty(queue, rank_shape, dtype)
     grd = cla.empty(queue, (3,)+rank_shape, dtype)
     derivs(queue, fx=fx, lap=lap, grd=grd)
 
     eff_kmag_sq = sum(get_evals_2(kvec_i, dxi) for dxi, kvec_i in zip(dx, kvec))
+    lap_true = eff_kmag_sq * np.sin(phases)
 
-    lap_true = cla.to_device(queue, eff_kmag_sq * np.sin(phases))
-    diff = clm.fabs(lap - lap_true)
-    max_err = cla.max(diff) / cla.max(clm.fabs(lap_true))
-    avg_err = cla.sum(diff) / cla.sum(clm.fabs(lap_true))
+    max_rtol = 1e-9 if dtype == np.float64 else 3e-4
+    avg_rtol = 1e-11 if dtype == np.float64 else 5e-5
 
-    max_rtol = 1.e-11 if dtype == np.float64 else 3.e-4
-    avg_rtol = 1.e-12 if dtype == np.float64 else 5.e-5
+    # filter small values dominated by round-off error
+    mask = np.abs(lap_true) > 1e-11
+    max_err, avg_err = get_errs(lap_true[mask], lap.get()[mask])
     assert max_err < max_rtol and avg_err < avg_rtol, \
-        f"lap inaccurate for {h=}, {grid_shape=}, {proc_shape=}"
+        f"lap inaccurate for {h=}, {grid_shape=}, {proc_shape=}:" \
+        f" {max_err=}, {avg_err=}"
 
     for i in range(3):
         eff_k = get_evals_1(kvec[i], dx[i])
+        pdi_true = eff_k * fx_cos
 
-        pdi_true = cla.to_device(queue, eff_k * fx_cos)
-        diff = clm.fabs(grd[i] - pdi_true)
-        max_err = cla.max(diff) / cla.max(clm.fabs(pdi_true))
-        avg_err = cla.sum(diff) / cla.sum(clm.fabs(pdi_true))
-
-        max_rtol = 1.e-12 if dtype == np.float64 else 1.e-5
-        avg_rtol = 1.e-13 if dtype == np.float64 else 3.e-6
+        # filter small values dominated by round-off error
+        mask = np.abs(pdi_true) > 1e-11
+        max_err, avg_err = get_errs(pdi_true[mask], grd[i].get()[mask])
         assert max_err < max_rtol and avg_err < avg_rtol, \
-            f"pd{i} inaccurate for {h=}, {grid_shape=}, {proc_shape=}"
+            f"pd{i} inaccurate for {h=}, {grid_shape=}, {proc_shape=}:" \
+            f" {max_err=}, {avg_err=}"
 
     vec = cla.empty(queue, (3,)+pencil_shape, dtype)
     for mu in range(3):
@@ -132,16 +130,14 @@ def test_gradient_laplacian(ctx_factory, grid_shape, proc_shape, h, dtype,
 
     div = cla.empty(queue, rank_shape, dtype)
     derivs.divergence(queue, vec, div)
+    div_true = sum(grd[i] for i in range(3)).get()
 
-    div_true = sum(grd[i] for i in range(3))
-    diff = clm.fabs(div - div_true)
-    max_err = cla.max(diff) / cla.max(clm.fabs(div_true))
-    avg_err = cla.sum(diff) / cla.sum(clm.fabs(div_true))
-
-    max_rtol = 1.e-14 if dtype == np.float64 else 3.e-4
-    avg_rtol = 1.e-15 if dtype == np.float64 else 5.e-5
+    # filter small values dominated by round-off error
+    mask = np.abs(div_true) > 1e-11
+    max_err, avg_err = get_errs(div_true[mask], div.get()[mask])
     assert max_err < max_rtol and avg_err < avg_rtol, \
-        f"div inaccurate for {h=}, {grid_shape=}, {proc_shape=}"
+        f"div inaccurate for {h=}, {grid_shape=}, {proc_shape=}:" \
+        f" {max_err=}, {avg_err=}"
 
     if timing:
         from common import timer

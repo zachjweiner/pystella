@@ -89,15 +89,15 @@ def test_spectral_poisson(ctx_factory, grid_shape, proc_shape, h, dtype,
         max_err = np.max(diff) / cla.max(clm.fabs(rho))
         avg_err = np.sum(diff) / cla.sum(clm.fabs(rho))
 
-        max_rtol = 1.e-12 if dtype == np.float64 else 1.e-4
-        avg_rtol = 1.e-13 if dtype == np.float64 else 1.e-5
+        max_rtol = 1e-12 if dtype == np.float64 else 1e-4
+        avg_rtol = 1e-13 if dtype == np.float64 else 1e-5
 
         assert max_err < max_rtol and avg_err < avg_rtol, \
             f"solution inaccurate for {h=}, {grid_shape=}, {proc_shape=}"
 
     if timing:
         from common import timer
-        time = timer(lambda: solver(queue, fx, rho, m_squared=m_squared))
+        time = timer(lambda: solver(queue, fx, rho, m_squared=m_squared), ntime=10)
 
         if mpi.rank == 0:
             print(f"poisson took {time:.3f} ms for {grid_shape=}, {proc_shape=}")

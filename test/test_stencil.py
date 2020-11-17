@@ -26,6 +26,7 @@ import pyopencl as cl
 import pyopencl.clrandom as clr
 import pystella as ps
 import pytest
+from common import get_errs
 
 from pyopencl.tools import (  # noqa
     pytest_generate_tests_for_pyopencl as pytest_generate_tests)
@@ -86,10 +87,13 @@ def test_stencil(ctx_factory, grid_shape, proc_shape, dtype, stream, h=1,
 
     stencil_map(queue, x=x, y=y)
 
-    rtol = 5.e-14 if dtype == np.float64 else 1.e-5
+    max_rtol = 5e-14 if dtype == np.float64 else 1e-5
+    avg_rtol = 5e-14 if dtype == np.float64 else 1e-5
 
-    assert np.allclose(y.get(), y_true, rtol=rtol, atol=0), \
-        f"average innaccurate for {grid_shape=}, {h=}, {proc_shape=}"
+    max_err, avg_err = get_errs(y_true, y.get())
+    assert max_err < max_rtol and avg_err < avg_rtol, \
+        f"y innaccurate for {grid_shape=}, {h=}, {proc_shape=}" \
+        f": {max_err=}, {avg_err=}"
 
     if timing:
         from common import timer
