@@ -148,22 +148,23 @@ class DomainDecomposition:
                 params_to_fix[k] = v
 
         pencil_shape_str = "(Nx+2*hx, Ny+2*hy, Nz+2*hz)"
+        # so loopy is assured of no out-of-bounds accesses:
+        assumptions = "Nx > 0 and Ny > 0 and Nz > 0"
 
         def x_comm_knl(instructions):
             knl = lp.make_kernel(
-                "[Ny, Nz, hx, hy, hz] \
+                "[Nx, Ny, Nz, hx, hy, hz] \
                 -> { [i,j,k]: 0<=i<hx and 0<=j<Ny+2*hy and 0<=k<Nz+2*hz }",
                 instructions,
                 [
                     lp.GlobalArg("arr", shape=pencil_shape_str, offset=lp.auto),
                     lp.GlobalArg("buf", shape="(2, hx, Ny+2*hy, Nz+2*hz)"),
-                    lp.ValueArg("Nx", dtype="int"),
                     ...,
                 ],
                 default_offset=lp.auto,
                 lang_version=(2018, 2),
+                assumptions=assumptions,
             )
-            knl = lp.set_options(knl, enforce_variable_access_ordered="no_check")
             knl = lp.remove_unused_arguments(knl)
             knl = lp.fix_parameters(knl, **params_to_fix)
             knl = lp.split_iname(knl, "k", 32, outer_tag="g.0", inner_tag="l.0")
@@ -179,19 +180,18 @@ class DomainDecomposition:
 
         def y_comm_knl(instructions):
             knl = lp.make_kernel(
-                "[Nx, Nz, hx, hy, hz] \
+                "[Nx, Ny, Nz, hx, hy, hz] \
                 -> { [i,j,k]: 0<=i<Nx+2*hx and 0<=j<hy and 0<=k<Nz+2*hz }",
                 instructions,
                 [
                     lp.GlobalArg("arr", shape=pencil_shape_str, offset=lp.auto),
                     lp.GlobalArg("buf", shape="(2, Nx+2*hx, hy, Nz+2*hz)"),
-                    lp.ValueArg("Ny", dtype="int"),
                     ...,
                 ],
                 default_offset=lp.auto,
                 lang_version=(2018, 2),
+                assumptions=assumptions,
             )
-            knl = lp.set_options(knl, enforce_variable_access_ordered="no_check")
             knl = lp.remove_unused_arguments(knl)
             knl = lp.fix_parameters(knl, **params_to_fix)
             knl = lp.split_iname(knl, "k", 32, outer_tag="g.0", inner_tag="l.0")
@@ -207,18 +207,17 @@ class DomainDecomposition:
 
         def z_comm_knl(instructions):
             knl = lp.make_kernel(
-                "[Nx, Ny, hx, hy, hz] \
+                "[Nx, Ny, Nz, hx, hy, hz] \
                  -> { [i,j,k]: 0<=i<Nx+2*hx and 0<=j<Ny+2*hy and 0<=k<hz }",
                 instructions,
                 [
                     lp.GlobalArg("arr", shape=pencil_shape_str, offset=lp.auto),
-                    lp.ValueArg("Nz", dtype="int"),
                     ...,
                 ],
                 default_offset=lp.auto,
                 lang_version=(2018, 2),
+                assumptions=assumptions,
             )
-            knl = lp.set_options(knl, enforce_variable_access_ordered="no_check")
             knl = lp.remove_unused_arguments(knl)
             knl = lp.fix_parameters(knl, **params_to_fix)
             knl = lp.split_iname(knl, "k", self.halo_shape[2],
