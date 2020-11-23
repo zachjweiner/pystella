@@ -75,11 +75,17 @@ class Stencil(ElementWiseMap):
         knl = lp.split_iname(knl, "i", lsize[2], outer_tag="g.2", inner_tag="l.2")
 
         for arg in self.prefetch_args:
-            knl = lp.add_prefetch(knl, arg, ["i_inner", "j_inner", "k_inner"],
-                                  fetch_bounding_box=True, default_tag=None,
-                                  temporary_name="_"+arg)
-            for x in [arg+"_dim_0:l.2", arg+"_dim_1:l.1", arg+"_dim_2:l.0"]:
-                knl = lp.tag_inames(knl, x)
+            name = arg.replace("$", "_")  # c.f. loopy.add_prefetch: c_name
+
+            knl = lp.add_prefetch(
+                knl, arg, ("i_inner", "j_inner", "k_inner"),
+                fetch_bounding_box=True, default_tag=None, temporary_name=f"_{name}",
+            )
+
+            prefetch_inames = filter(lambda i: f"{name}_dim" in i, knl.all_inames())
+            for axis, iname in enumerate(sorted(prefetch_inames, reverse=True)):
+                if axis < 3:
+                    knl = lp.tag_inames(knl, f"{iname}:l.{axis}")
         return knl
 
     def __init__(self, map_instructions, halo_shape, **kwargs):
@@ -113,13 +119,17 @@ class StreamingStencil(Stencil):
         knl = lp.split_iname(knl, "i", lsize[2])
 
         for arg in self.prefetch_args:
-            knl = lp.add_prefetch(knl, arg,  # pylint: disable=E1123
-                                  ["i_inner", "j_inner", "k_inner"],
-                                  stream_iname="i_outer",
-                                  fetch_bounding_box=True, default_tag=None,
-                                  temporary_name="_"+arg)
-            for x in [arg+"_dim_1:l.1", arg+"_dim_2:l.0"]:
-                knl = lp.tag_inames(knl, x)
+            name = arg.replace("$", "_")  # c.f. loopy.add_prefetch: c_name
+
+            knl = lp.add_prefetch(
+                knl, arg, ("i_inner", "j_inner", "k_inner"), stream_iname="i_outer",
+                fetch_bounding_box=True, default_tag=None, temporary_name=f"_{name}",
+            )
+
+            prefetch_inames = filter(lambda i: f"{name}_dim" in i, knl.all_inames())
+            for axis, iname in enumerate(sorted(prefetch_inames, reverse=True)):
+                if axis < 2:
+                    knl = lp.tag_inames(knl, f"{iname}:l.{axis}")
 
         return knl
 
@@ -129,6 +139,5 @@ class StreamingStencil(Stencil):
                 "Streaming codegen can only handle one prefetch array for now")
 
         lsize = kwargs.pop("lsize", (16, 4, 8))
-
         super().__init__(map_instructions, lsize=lsize, halo_shape=halo_shape,
                          **kwargs)

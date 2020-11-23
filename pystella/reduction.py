@@ -179,9 +179,10 @@ class Reduction(ElementWiseMap):
 
         args = [lp.GlobalArg("Nx_", shape=(), dtype="int")]
         args += kwargs.pop("args", [...])
+        lsize = kwargs.pop("lsize", (32, 2, 1))
 
         super().__init__(statements, **kwargs, args=args, seq_dependencies=False,
-                         lsize=(32, 2, 1), options=lp.Options(return_dict=True))
+                         lsize=lsize, options=lp.Options(return_dict=True))
 
     def reduce_array(self, arr, op):
         if op == "prod":
