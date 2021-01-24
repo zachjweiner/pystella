@@ -92,7 +92,8 @@ class Expansion:
                     _adot: self.addot_friedmann_2(_a, _e, _p)}
 
         from pystella import DisableLogging
-        with DisableLogging():  # silence GCCToolchain warning
+        from loopy.target.c.c_execution import logger as c_logger
+        with DisableLogging(c_logger):  # silence GCCToolchain warning
             self.stepper = Stepper(rhs_dict, rank_shape=(0, 0, 0),
                                    halo_shape=0, dtype=dtype,
                                    target=lp.ExecutableCTarget())

@@ -42,6 +42,9 @@ from pystella.fourier import (DFT, RayleighGenerator, Projector, PowerSpectra,
 from loopy import set_caching_enabled
 set_caching_enabled(True)
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 def choose_device_and_make_context(platform_choice=None, device_choice=None):
     """
@@ -73,6 +76,7 @@ def choose_device_and_make_context(platform_choice=None, device_choice=None):
         platform = platform or platforms[0]
     else:
         platform = platforms[platform_choice]
+    logger.info(f"platform {platform.name} selected")
 
     devices = platform.get_devices()
     try:
@@ -81,6 +85,7 @@ def choose_device_and_make_context(platform_choice=None, device_choice=None):
     except:  # noqa
         pass
     num_devices = len(devices)
+    logger.info(f"found {num_devices} devices")
 
     if device_choice is None:
         def try_to_get_local_rank():
@@ -90,24 +95,35 @@ def choose_device_and_make_context(platform_choice=None, device_choice=None):
             for opt in options:
                 x = os.getenv(opt)
                 if x is not None:
+                    logger.info(f"non-null value found for {opt}: {x}")
                     return int(x)
 
+            logger.info(f"none of the environment variables {options} were set.")
             return 0
 
         device_choice = try_to_get_local_rank() % num_devices
 
-    return cl.Context([devices[device_choice]])
+    dev = devices[device_choice]
+
+    import socket
+    fqdn = socket.getfqdn()
+    logger.info(
+        f"on host {fqdn}: chose {dev.name} number {device_choice} "
+        f"with pci_bus_id_nv={dev.pci_bus_id_nv}")
+
+    return cl.Context([dev])
 
 
-class DisableLogging():  # silence logging warning
+class DisableLogging():
+    def __init__(self, logger):
+        self.logger = logger
+
     def __enter__(self):
-        import logging
-        self.original_level = logging.getLogger().getEffectiveLevel()
-        logging.disable(logging.CRITICAL)
+        self.original_level = self.logger.level
+        self.logger.setLevel(logging.CRITICAL)
 
     def __exit__(self, exception_type, exception_value, traceback):
-        import logging
-        logging.disable(self.original_level)
+        self.logger.setLevel(self.original_level)
 
 
 __all__ = [
