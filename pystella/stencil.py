@@ -121,7 +121,7 @@ class StreamingStencil(Stencil):
         for arg in self.prefetch_args:
             name = arg.replace("$", "_")  # c.f. loopy.add_prefetch: c_name
 
-            knl = lp.add_prefetch(
+            knl = lp.add_prefetch(  # pylint: disable=E1123
                 knl, arg, ("i_inner", "j_inner", "k_inner"), stream_iname="i_outer",
                 fetch_bounding_box=True, default_tag=None, temporary_name=f"_{name}",
             )
