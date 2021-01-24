@@ -107,9 +107,10 @@ def choose_device_and_make_context(platform_choice=None, device_choice=None):
 
     import socket
     fqdn = socket.getfqdn()
-    logger.info(
-        f"on host {fqdn}: chose {dev.name} number {device_choice} "
-        f"with pci_bus_id_nv={dev.pci_bus_id_nv}")
+    host_dev_info = f"on host {fqdn}: chose {dev.name} number {device_choice}"
+    if "NVIDIA" in platform.name:
+        host_dev_info += f" with pci_bus_id_nv={dev.pci_bus_id_nv}"
+    logger.info(host_dev_info)
 
     return cl.Context([dev])
 
