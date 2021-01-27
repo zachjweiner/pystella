@@ -25,6 +25,9 @@ import numpy as np
 import pyopencl.array as cla
 import loopy as lp
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 class DomainDecomposition:
     """
@@ -331,6 +334,16 @@ class DomainDecomposition:
 
         return self.buffer_arrays[(shape, dtype)]
 
+    def _debug_barrier(self, *args, **kwargs):
+        if logger.isEnabledFor(logging.DEBUG):
+            self.comm.Barrier()
+            if self.rank == 0:
+                logger.debug(*args, **kwargs)
+
+    def _debug(self, *args, **kwargs):
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug(*args, **kwargs)
+
     def share_halos(self, queue, fx):
         """
         Communicates halo data across all axes, imposing periodic boundary
@@ -360,47 +373,59 @@ class DomainDecomposition:
             if self.proc_shape[0] == 1:
                 evt, _ = self.pack_unpack_x_knl(queue, arr=fx)
             else:
+                self._debug_barrier("all ranks beginning halo share in x")
                 shape = (2, h[0], rank_shape[1] + 2*h[1], rank_shape[2] + 2*h[2])
-                buf_dev, buf_send, buf_recv = \
-                    self._get_or_create_halo_buffers(queue, shape, fx.dtype)
+                buf_dev, buf_send, buf_recv = self._get_or_create_halo_buffers(
+                    queue, shape, fx.dtype)
 
                 evt, _ = self.pack_x_knl(queue, arr=fx, buf=buf_dev)
                 buf_dev.get(ary=buf_send)
 
-                self.comm.Sendrecv(buf_send[0],
-                                   self.rankID(self.rx-1, self.ry, self.rz),
-                                   recvbuf=buf_recv[0],
-                                   source=self.rankID(self.rx+1, self.ry, self.rz))
-                self.comm.Sendrecv(buf_send[1],
-                                   self.rankID(self.rx+1, self.ry, self.rz),
-                                   recvbuf=buf_recv[1],
-                                   source=self.rankID(self.rx-1, self.ry, self.rz))
+                dest = self.rankID(self.rx-1, self.ry, self.rz)
+                source = self.rankID(self.rx+1, self.ry, self.rz)
+                self._debug(f"initiating first halo share in x: {dest=}, {source=}")
+                self.comm.Sendrecv(sendbuf=buf_send[0], dest=dest,
+                                   recvbuf=buf_recv[0], source=source)
 
+                dest = self.rankID(self.rx+1, self.ry, self.rz)
+                source = self.rankID(self.rx-1, self.ry, self.rz)
+                self._debug(f"initiating second halo share in x: {dest=}, {source=}")
+                self.comm.Sendrecv(sendbuf=buf_send[1], dest=dest,
+                                   recvbuf=buf_recv[1], source=source)
+
+                self._debug("finished halo share in x")
                 buf_dev.set(buf_recv)
                 evt, _ = self.unpack_x_knl(queue, arr=fx, buf=buf_dev)
+                self._debug_barrier("all ranks finished halo share in x")
 
         if h[1] > 0:
             if self.proc_shape[1] == 1:
                 evt, _ = self.pack_unpack_y_knl(queue, arr=fx)
             else:
+                self._debug_barrier("all ranks beginning halo share in y")
                 shape = (2, rank_shape[0] + 2*h[0], h[1], rank_shape[2] + 2*h[2])
-                buf_dev, buf_send, buf_recv = \
-                    self._get_or_create_halo_buffers(queue, shape, fx.dtype)
+                buf_dev, buf_send, buf_recv = self._get_or_create_halo_buffers(
+                    queue, shape, fx.dtype)
 
                 evt, _ = self.pack_y_knl(queue, arr=fx, buf=buf_dev)
                 buf_dev.get(ary=buf_send)
 
-                self.comm.Sendrecv(buf_send[0],
-                                   self.rankID(self.rx, self.ry-1, self.rz),
-                                   recvbuf=buf_recv[0],
-                                   source=self.rankID(self.rx, self.ry+1, self.rz))
-                self.comm.Sendrecv(buf_send[1],
-                                   self.rankID(self.rx, self.ry+1, self.rz),
-                                   recvbuf=buf_recv[1],
-                                   source=self.rankID(self.rx, self.ry-1, self.rz))
+                dest = self.rankID(self.rx, self.ry-1, self.rz)
+                source = self.rankID(self.rx, self.ry+1, self.rz)
+                self._debug(f"initiating first halo share in y: {dest=}, {source=}")
+                self.comm.Sendrecv(sendbuf=buf_send[0], dest=dest,
+                                   recvbuf=buf_recv[0], source=source)
 
+                dest = self.rankID(self.rx, self.ry+1, self.rz)
+                source = self.rankID(self.rx, self.ry-1, self.rz)
+                self._debug(f"initiating second halo share in y: {dest=}, {source=}")
+                self.comm.Sendrecv(sendbuf=buf_send[1], dest=dest,
+                                   recvbuf=buf_recv[1], source=source)
+
+                self._debug("finished halo share in y")
                 buf_dev.set(buf_recv)
                 evt, _ = self.unpack_y_knl(queue, arr=fx, buf=buf_dev)
+                self._debug_barrier("all ranks finished halo share in y")
 
     def bcast(self, x, root):
         """
@@ -415,10 +440,11 @@ class DomainDecomposition:
         :returns: The broadcasted value, on all ranks.
         """
 
+        self._debug("initiating bcast")
         if self.comm is not None:
-            return self.comm.bcast(x, root=root)
-        else:
-            return x
+            x = self.comm.bcast(x, root=root)
+        self._debug_barrier("all ranks finished bcast")
+        return x
 
     def allreduce(self, rank_reduction, op=None):
         """
@@ -433,12 +459,15 @@ class DomainDecomposition:
         :returns: The reduced value, on all ranks.
         """
 
+        self._debug("initiating allreduce")
         if self.comm is not None:
             from mpi4py import MPI
             op = op or MPI.SUM
-            return self.comm.allreduce(rank_reduction, op=op)
+            result = self.comm.allreduce(rank_reduction, op=op)
         else:
-            return rank_reduction
+            result = rank_reduction
+        self._debug_barrier("all ranks finished allreduce")
+        return result
 
     def remove_halos(self, queue, in_array, out_array):
         """

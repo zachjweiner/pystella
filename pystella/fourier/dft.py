@@ -24,6 +24,9 @@ THE SOFTWARE.
 import numpy as np
 import pyopencl.array as cla
 
+import logging
+logger = logging.getLogger(__name__)
+
 __doc__ = """
 .. currentmodule:: pystella
 .. autofunction:: DFT
@@ -119,6 +122,10 @@ class BaseDFT:
     def backward_transform(self, fk, fx, **kwargs):
         raise NotImplementedError
 
+    def _debug(self, *args, **kwargs):
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug(*args, **kwargs)
+
     def dft(self, fx=None, fk=None, **kwargs):
         """
         Computes the forward Fourier transform.
@@ -176,7 +183,9 @@ class BaseDFT:
         else:
             _fk = self.fk
 
+        self._debug("initiating forward_transform")
         _fk = self.forward_transform(_fx, _fk, **kwargs)
+        self._debug("finished forward_transform")
 
         if fk is not None:
             if not isinstance(fk, type(self.fk)):
@@ -236,7 +245,9 @@ class BaseDFT:
         else:
             _fx = self.fx
 
+        self._debug("initiating backward_transform")
         _fx = self.backward_transform(_fk, _fx, **kwargs)
+        self._debug("finished backward_transform")
 
         if fx is not None:
             if fx.shape != self.shape(False):
