@@ -334,9 +334,13 @@ class DomainDecomposition:
 
         return self.buffer_arrays[(shape, dtype)]
 
+    def Barrier(self):
+        if self.comm is not None:
+            self.comm.Barrier()
+
     def _debug_barrier(self, *args, **kwargs):
         if logger.isEnabledFor(logging.DEBUG):
-            self.comm.Barrier()
+            self.Barrier()
             if self.rank == 0:
                 logger.debug(*args, **kwargs)
 
