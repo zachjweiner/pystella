@@ -175,7 +175,7 @@ def InterpolationBase(even_coefs, odd_coefs, StencilKernel, halo_shape, **kwargs
     i, j, k = parse("i, j, k")
     f1 = Field("f1", offset="h")
 
-    tmp_dict = {}
+    tmp_insns = {}
     tmp = var("tmp")
 
     import itertools
@@ -188,15 +188,10 @@ def InterpolationBase(even_coefs, odd_coefs, StencilKernel, halo_shape, **kwargs
                                indices=((i+a)//2, (j+b)//2, (k+c)//2))
                     result += c_a * c_b * c_c * f2
 
-        tmp_dict[tmp[parity]] = result
+        tmp_insns[tmp[parity]] = result
 
-    def is_odd(expr):
-        from pymbolic.primitives import If, Comparison, Remainder
-        return If(Comparison(Remainder(expr, 2), "==", 1), 1, 0)
-
-    a, b, c = parse("a, b, c")
-    for ind, val in zip((i, j, k), (a, b, c)):
-        tmp_dict[val] = is_odd(ind)
+    from pymbolic.primitives import Remainder
+    a, b, c = (Remainder(ind, 2) for ind in (i, j, k))
 
     if kwargs.pop("correct", False):
         interp_dict = {f1: f1 + tmp[a, b, c]}
@@ -206,7 +201,7 @@ def InterpolationBase(even_coefs, odd_coefs, StencilKernel, halo_shape, **kwargs
     args = [lp.GlobalArg("f1", shape="(Nx+2*h, Ny+2*h, Nz+2*h)"),
             lp.GlobalArg("f2", shape="(Nx//2+2*h, Ny//2+2*h, Nz//2+2*h)")]
 
-    return StencilKernel(interp_dict, tmp_instructions=tmp_dict, args=args,
+    return StencilKernel(interp_dict, tmp_instructions=tmp_insns, args=args,
                          prefetch_args=["f2"], halo_shape=halo_shape, **kwargs)
 
 

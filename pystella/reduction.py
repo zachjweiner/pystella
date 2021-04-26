@@ -175,7 +175,11 @@ class Reduction(ElementWiseMap):
              reduction(expr, "sum" if op == "avg" else op))
             for i, (expr, op) in enumerate(zip(flat_reducers, reduction_ops))
         ]
-        statements += [(var("Nx_"), var("Nx"))]
+        statements += [
+            lp.Assignment(
+                var("Nx_"), var("Nx"),
+                predicates={"i == 0", "j == 0", "k == 0"})
+        ]
 
         args = [lp.GlobalArg("Nx_", shape=(), dtype="int")]
         args += kwargs.pop("args", [...])

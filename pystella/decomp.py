@@ -305,20 +305,20 @@ class DomainDecomposition:
         :returns: ``(rank_shape, rank_start)``.
         """
 
-        # borrowed from mpi4py_fft.pencil
-        def _blockdist(N, size, rank):
+        # matches decomposition by mpi4py_fft.pencil
+        def get_size_start(N, size, rank):
             q, r = divmod(N, size)
-            n = q + (1 if r > rank else 0)
-            s = rank * q + min(rank, r)
-            return (n, s)
+            size = q + (1 if r > rank else 0)  # increase size by 1 for first r ranks
+            start = rank * q + min(rank, r)
+            return (size, start)
 
         rank_shape = [None] * 3
         rank_start = [None] * 3
         rank_tuple = rank_tuple or self.rank_tuple
         for i, (Npi, ri) in enumerate(zip(self.proc_shape, rank_tuple)):
-            n, s = _blockdist(grid_shape[i], Npi, ri)
-            rank_shape[i] = n
-            rank_start[i] = s
+            n_i, s_i = get_size_start(grid_shape[i], Npi, ri)
+            rank_shape[i] = n_i
+            rank_start[i] = s_i
 
         return tuple(rank_shape), tuple(rank_start)
 
