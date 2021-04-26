@@ -67,7 +67,7 @@ class Field(pp.AlgebraicLeaf):
         f[0, i + h, j + h, k + h]
 
     See `test_field.py
-    <https://github.com/zachjweiner/pystella/blob/master/test/test_field.py>`_
+    <https://github.com/zachjweiner/pystella/blob/main/test/test_field.py>`_
     for more examples of
     the intended functionality.
 

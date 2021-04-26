@@ -7,7 +7,7 @@ What doesn't :mod:`pystella` do for me?
 :mod:`pystella` cannot ensure that kernels are
 properly ordered (i.e., with regard to data dependence).
 For example, in
-`wave_equation.py <https://github.com/zachjweiner/pystella/blob/master/examples/wave_equation.py>`_,
+`wave_equation.py <https://github.com/zachjweiner/pystella/blob/main/examples/wave_equation.py>`_,
 the Laplacian of ``f`` has to be computed by ``derivs`` before
 ``lap_f`` is read by ``stepper``.
 :mod:`pystella` only creates kernels that do exactly what you
@@ -28,10 +28,10 @@ Where can I find more examples?
 -------------------------------
 
 Aside from the complete examples implementing the
-`wave equation <https://github.com/zachjweiner/pystella/blob/master/examples/wave_equation.py>`_
+`wave equation <https://github.com/zachjweiner/pystella/blob/main/examples/wave_equation.py>`_
 and simulating gravitational waves from
-`scalar-field preheating <https://github.com/zachjweiner/pystella/blob/master/examples/scalar_preheating.py>`_,
-:mod:`pystella`'s `tests <https://github.com/zachjweiner/pystella/tree/master/test>`_
+`scalar-field preheating <https://github.com/zachjweiner/pystella/blob/main/examples/scalar_preheating.py>`_,
+:mod:`pystella`'s `tests <https://github.com/zachjweiner/pystella/tree/main/test>`_
 provide another source of examples.
 
 Common gotchas/pitfalls

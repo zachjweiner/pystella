@@ -16,10 +16,10 @@ via :mod:`mpi4py`.
 
 For a more detailed tutorial on the tools to generate OpenCL kernels provided by
 :mod:`loopy` and :mod:`pystella`, see
-`codegen-tutorial.ipynb <https://github.com/zachjweiner/pystella/blob/master/examples/codegen-tutorial.ipynb>`_.
+`codegen-tutorial.ipynb <https://github.com/zachjweiner/pystella/blob/main/examples/codegen-tutorial.ipynb>`_.
 For a complete example which simulates scalar-field preheating after
 cosmological inflation (optionally including gravitational waves), see
-`scalar_preheating.py <https://github.com/zachjweiner/pystella/blob/master/examples/scalar_preheating.py>`_
+`scalar_preheating.py <https://github.com/zachjweiner/pystella/blob/main/examples/scalar_preheating.py>`_
 (but note that ``grid_size`` and ``end_time`` are small by default so testing is
 faster).
 

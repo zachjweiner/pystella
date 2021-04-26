@@ -28,7 +28,7 @@ Optional dependencies (and what they are needed for) are:
 
 Fortunately, :mod:`conda` greatly simplifies the installation process of any
 of these dependencies (especially those which are not available on PyPI).
-The included `environment file <https://github.com/zachjweiner/pystella/blob/master/environment.yml>`_
+The included `environment file <https://github.com/zachjweiner/pystella/blob/main/environment.yml>`_
 provides a complete installation.
 
 

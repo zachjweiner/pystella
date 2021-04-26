@@ -36,7 +36,7 @@ jobs:
                 set -e
                 CONDA_ENVIRONMENT=.test-conda-env-py3.yml
                 USE_CONDA_BUILD=1
-                curl -L -O -k https://gitlab.tiker.net/inducer/ci-support/raw/master/prepare-and-run-pylint.sh
+                curl -L -O -k https://gitlab.tiker.net/inducer/ci-support/raw/main/prepare-and-run-pylint.sh
                 . ./prepare-and-run-pylint.sh pystella test/test_*.py examples/*.py
     pytest:
         name: Pytest
@@ -52,7 +52,7 @@ jobs:
                 set -e
                 CONDA_ENVIRONMENT=.test-conda-env-py3.yml
                 USE_CONDA_BUILD=1
-                curl -L -O -k https://gitlab.tiker.net/inducer/ci-support/raw/master/build-and-test-py-project-within-miniconda.sh
+                curl -L -O -k https://gitlab.tiker.net/inducer/ci-support/raw/main/build-and-test-py-project-within-miniconda.sh
                 . ./build-and-test-py-project-within-miniconda.sh
 
     pytest-distributed:
@@ -68,7 +68,7 @@ jobs:
             run: |
                 set -e
                 CONDA_ENVIRONMENT=.test-conda-env-py3.yml
-                curl -L -O -k https://gitlab.tiker.net/inducer/ci-support/raw/master/build-py-project-within-miniconda.sh
+                curl -L -O -k https://gitlab.tiker.net/inducer/ci-support/raw/main/build-py-project-within-miniconda.sh
                 . ./build-py-project-within-miniconda.sh
                 mpiexec --oversubscribe -np 4 pytest --proc_shape 2,2,1 -rw --durations=10 --tb=native -rxs
                 mpiexec --oversubscribe -np 3 pytest test/test_decomp.py test/test_derivs.py --proc_shape 3,1,1 -rw --durations=10 --tb=native -rxs

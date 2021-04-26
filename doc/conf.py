@@ -172,5 +172,5 @@ def linkcode_resolve(domain, info):
     import pystella
     fn = relpath(fn, start=dirname(pystella.__file__))
 
-    return "https://github.com/zachjweiner/pystella/blob/master/pystella/%s%s" % (
+    return "https://github.com/zachjweiner/pystella/blob/main/pystella/%s%s" % (
            fn, linespec)  # noqa
