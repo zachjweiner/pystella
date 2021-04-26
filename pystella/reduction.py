@@ -178,6 +178,7 @@ class Reduction(ElementWiseMap):
         statements += [
             lp.Assignment(
                 var("Nx_"), var("Nx"),
+                id="Nx_assign",
                 predicates={"i == 0", "j == 0", "k == 0"})
         ]
 
@@ -185,8 +186,12 @@ class Reduction(ElementWiseMap):
         args += kwargs.pop("args", [...])
         lsize = kwargs.pop("lsize", (32, 2, 1))
 
+        silenced_warnings = kwargs.pop("silenced_warnings", [])
+        silenced_warnings += ["write_race(Nx_assign)"]
+
         super().__init__(statements, **kwargs, args=args, seq_dependencies=False,
-                         lsize=lsize, options=lp.Options(return_dict=True))
+                         lsize=lsize, options=lp.Options(return_dict=True),
+                         silenced_warnings=silenced_warnings)
 
     def reduce_array(self, arr, op):
         if op == "prod":

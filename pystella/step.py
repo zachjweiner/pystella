@@ -516,6 +516,11 @@ class LowStorageRKStepper(Stepper):
 
         return tmp_arrays
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for step in self.steps:
+            step.knl = lp.add_inames_for_unused_hw_axes(step.knl)
+
     def __call__(self, stage, *, queue=None, **kwargs):
         if len(self.tmp_arrays) == 0:
             self.tmp_arrays = self.get_tmp_arrays_like(**kwargs)
@@ -557,6 +562,195 @@ class LowStorageRK54(LowStorageRKStepper):
         2526269341429 / 6820363962896,
         2006345519317 / 3224310063776,
         2802321613138 / 2924317926251,
+    ]
+
+
+class LowStorageRK144(LowStorageRKStepper):
+    """
+    A 14-stage, fourth-order low-storage Runge-Kutta method optimized for elliptic
+    stability regions.
+
+    See
+    Niegemann, Jens & Diehl, Richard & Busch, Kurt. (2012). Efficient low-storage
+    Runge-Kutta schemes with optimized stability regions. J. Comput. Physics. 231.
+    364-372. 10.1016/j.jcp.2011.09.003.
+    """
+
+    num_stages = 14
+    expected_order = 4
+
+    _A = [
+        0,
+        -0.7188012108672410,
+        -0.7785331173421570,
+        -0.0053282796654044,
+        -0.8552979934029281,
+        -3.9564138245774565,
+        -1.5780575380587385,
+        -2.0837094552574054,
+        -0.7483334182761610,
+        -0.7032861106563359,
+        0.0013917096117681,
+        -0.0932075369637460,
+        -0.9514200470875948,
+        -7.1151571693922548
+    ]
+
+    _B = [
+        0.0367762454319673,
+        0.3136296607553959,
+        0.1531848691869027,
+        0.0030097086818182,
+        0.3326293790646110,
+        0.2440251405350864,
+        0.3718879239592277,
+        0.6204126221582444,
+        0.1524043173028741,
+        0.0760894927419266,
+        0.0077604214040978,
+        0.0024647284755382,
+        0.0780348340049386,
+        5.5059777270269628
+    ]
+
+    _C = [
+        0,
+        0.0367762454319673,
+        0.1249685262725025,
+        0.2446177702277698,
+        0.2476149531070420,
+        0.2969311120382472,
+        0.3978149645802642,
+        0.5270854589440328,
+        0.6981269994175695,
+        0.8190890835352128,
+        0.8527059887098624,
+        0.8604711817462826,
+        0.8627060376969976,
+        0.8734213127600976
+    ]
+
+
+class LowStorageRK134(LowStorageRKStepper):
+    """
+    A 13-stage, fourth-order low-storage Runge-Kutta method optimized for circular
+    stability regions.
+
+    See
+    Niegemann, Jens & Diehl, Richard & Busch, Kurt. (2012). Efficient low-storage
+    Runge-Kutta schemes with optimized stability regions. J. Comput. Physics. 231.
+    364-372. 10.1016/j.jcp.2011.09.003.
+    """
+
+    num_stages = 13
+    expected_order = 4
+
+    _A = [
+        0,
+        0.6160178650170565,
+        0.4449487060774118,
+        1.0952033345276178,
+        1.2256030785959187,
+        0.2740182222332805,
+        0.0411952089052647,
+        0.179708489915356,
+        1.1771530652064288,
+        0.4078831463120878,
+        0.8295636426191777,
+        4.789597058425229,
+        0.6606671432964504
+    ]
+
+    _B = [
+        0.0271990297818803,
+        0.1772488819905108,
+        0.0378528418949694,
+        0.6086431830142991,
+        0.21543139743161,
+        0.2066152563885843,
+        0.0415864076069797,
+        0.0219891884310925,
+        0.9893081222650993,
+        0.0063199019859826,
+        0.3749640721105318,
+        1.6080235151003195,
+        0.0961209123818189
+    ]
+
+    _C = [
+        0,
+        0.0271990297818803,
+        0.0952594339119365,
+        0.1266450286591127,
+        0.1825883045699772,
+        0.3737511439063931,
+        0.5301279418422206,
+        0.5704177433952291,
+        0.5885784947099155,
+        0.6160769826246714,
+        0.6223252334314046,
+        0.6897593128753419,
+        0.9126827615920843
+    ]
+
+
+class LowStorageRK124(LowStorageRKStepper):
+    """
+    A 12-stage, fourth-order low-storage Runge-Kutta method optimized for inviscid
+    problems.
+
+    See
+    Niegemann, Jens & Diehl, Richard & Busch, Kurt. (2012). Efficient low-storage
+    Runge-Kutta schemes with optimized stability regions. J. Comput. Physics. 231.
+    364-372. 10.1016/j.jcp.2011.09.003.
+    """
+
+    num_stages = 12
+    expected_order = 4
+
+    _A = [
+        0,
+        0.0923311242368072,
+        0.9441056581158819,
+        4.327127324757639,
+        2.155777132902607,
+        0.9770727190189062,
+        0.7581835342571139,
+        1.79775254708255,
+        2.691566797270077,
+        4.646679896026814,
+        0.1539613783825189,
+        0.5943293901830616
+    ]
+
+    _B = [
+        0.0650008435125904,
+        0.0161459902249842,
+        0.5758627178358159,
+        0.1649758848361671,
+        0.3934619494248182,
+        0.0443509641602719,
+        0.2074504268408778,
+        0.6914247433015102,
+        0.3766646883450449,
+        0.0757190350155483,
+        0.2027862031054088,
+        0.2167029365631842
+    ]
+
+    _C = [
+        0,
+        0.0650008435125904,
+        0.0796560563081853,
+        0.1620416710085376,
+        0.2248877362907778,
+        0.2952293985641261,
+        0.3318332506149405,
+        0.4094724050198658,
+        0.6356954475753369,
+        0.6806551557645497,
+        0.714377371241835,
+        0.9032588871651854,
     ]
 
 
@@ -654,6 +848,6 @@ class LowStorageRK3SSP(LowStorageRKStepper):
 
 all_steppers = [RungeKutta4, RungeKutta3SSP, RungeKutta3Heun, RungeKutta3Nystrom,
                 RungeKutta3Ralston, RungeKutta2Midpoint,
-                RungeKutta2Ralston, LowStorageRK54,
+                RungeKutta2Ralston, LowStorageRK54, LowStorageRK144,
                 LowStorageRK3Williamson, LowStorageRK3Inhomogeneous,
                 LowStorageRK3SSP]
