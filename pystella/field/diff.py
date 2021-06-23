@@ -61,18 +61,20 @@ def diff(f, *x, allowed_nonsmoothness="discontinuous"):
     is a :class:`DynamicField`, the corresponding derivative :class:`Field` is
     returned.
 
-    Examples::
+    Examples:
 
-        >>> f = DynamicField("f")
-        >>> print(diff(f**3, f))
+    .. doctest::
+
+        >>> f = ps.DynamicField("f")
+        >>> print(ps.diff(f**3, f))
         3*f**2
-        >>> print(diff(f**3, f, f))
+        >>> print(ps.diff(f**3, f, f))
         3*2*f
-        >>> print(diff(f**3, "t"))
+        >>> print(ps.diff(f**3, "t"))
         3*f**2*dfdt
-        >>> print(diff(f**3, f, "t"))
+        >>> print(ps.diff(f**3, f, "t"))
         3*2*f*dfdt
-        >>> print(diff(f + 2, "x"))
+        >>> print(ps.diff(f + 2, "x"))
         dfdx[0]
 
     :arg f: A :mod:`pymbolic` expression to be differentiated.

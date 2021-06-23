@@ -58,12 +58,14 @@ class Field(pp.AlgebraicLeaf):
     (via :attr:`index_tuple`) by preprocessing
     expressions with :func:`index_fields`.
 
-    Examples::
+    Examples:
 
-        >>> f = Field("f", offset="h")
-        >>> print(index_fields(f))
+    .. doctest::
+
+        >>> f = ps.Field("f", offset="h")
+        >>> print(ps.index_fields(f))
         f[i + h, j + h, k + h]
-        >>> print(index_fields(f[0]))
+        >>> print(ps.index_fields(f[0]))
         f[0, i + h, j + h, k + h]
 
     See `test_field.py
@@ -266,7 +268,9 @@ class DynamicField(Field):
 
         For example, the "time" derivative of a field would be
 
-            >>> f = DynamicField("f")
+        .. doctest::
+
+            >>> f = ps.DynamicField("f")
             >>> print(f.d(0))  # x^0 = "time"
             dfdt
 
@@ -274,11 +278,15 @@ class DynamicField(Field):
         the final argument corresponds to the coordinate being differentiated with
         respect to.
 
+        .. doctest::
+
             >>> print(f.d(1, 2, 0))
             dfdt[1, 2]
 
         Spatial indices ``1`` through ``3`` denote spatial derivatives (whose
         array subscripts are ``0`` through ``2``).
+
+        .. doctest::
 
             >>> print(f.d(2))  # x^2 = y
             dfdx[1]
@@ -519,8 +527,9 @@ def get_field_args(expressions, unpadded_shape=None, prepend_with=None):
 
     Example::
 
-        >>> f, g = Field("f", offset="h"), Field("g", shape=(3, "a"), offset=1)
-        >>> get_field_args({f: g + 1})
+        >>> f = ps.Field("f", offset="h")
+        >>> g = ps.Field("g", shape=(3, "a"), offset=1)
+        >>> ps.get_field_args({f: g + 1})
 
     would return the equivalent of::
 

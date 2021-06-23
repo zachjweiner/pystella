@@ -35,7 +35,8 @@ extensions = [
     'sphinx.ext.intersphinx',
     'sphinx.ext.linkcode',
     'sphinx.ext.ifconfig',
-    # 'sphinx_copybutton'
+    'sphinx_copybutton',
+    "sphinx.ext.doctest",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -87,49 +88,30 @@ if on_rtd:
 # setup copy button thing
 def setup(app):
     app.add_config_value('on_rtd', on_rtd, 'env')
-    app.add_javascript('copybutton.js')
 
 
-# # Resolve function for the linkcode extension.
-# def linkcode_resolve(domain, info):
-#     def find_source():
-#         # try to find the file and line number, based on code from numpy:
-#         # https://github.com/numpy/numpy/blob/master/doc/source/conf.py#L286
-#         import sys
-#         obj = sys.modules[info['module']]
-#         for part in info['fullname'].split('.'):
-#             obj = getattr(obj, part)
-#         import inspect
-#         import os
-#         fn = inspect.getsourcefile(obj)
-#         import pystella
-#         fn = os.path.relpath(fn, start=os.path.dirname(pystella.__file__))
-#         source, lineno = inspect.getsourcelines(obj)
-#         return fn, lineno, lineno + len(source) - 1
+doctest_global_setup = '''
+import pystella as ps
+import loopy as lp
+'''
 
-#     if domain != 'py' or not info['module']:
-#         return None
-#     try:
-#         filename = 'pystella/%s#L%d-L%d' % find_source()
-#     except Exception:
-#         filename = info['module'].replace('.', '/') + '.py'
-#     tag = 'master'  # if 'dev' in release else ('v' + release)
-#     return "https://github.com/zachjweiner/pystella/blob/%s/%s" % (tag, filename)
+copybutton_prompt_text = r">>> |\.\.\. |\$ |In \[\d*\]: | {2,5}\.\.\.: | {5,8}: "
+copybutton_prompt_is_regexp = True
+
+import sys
+import inspect
+
+linkcode_revision = "main"
+linkcode_url = "https://github.com/zachjweiner/pystella/blob/" \
+               + linkcode_revision + "/{filepath}#L{linestart}-L{linestop}"
 
 
 def linkcode_resolve(domain, info):
-    """
-    Determine the URL corresponding to Python object
-    copied from numpy's conf.py
-    """
-    if domain != 'py':
+    if domain != 'py' or not info['module']:
         return None
 
-    import sys
-    import inspect
-    from os.path import relpath, dirname
-
     modname = info['module']
+    topmodulename = modname.split('.')[0]
     fullname = info['fullname']
 
     submod = sys.modules.get(modname)
@@ -143,34 +125,20 @@ def linkcode_resolve(domain, info):
         except Exception:
             return None
 
-    # strip decorators, which would resolve to the source of the decorator
-    # possibly an upstream bug in getsourcefile, bpo-1764286
     try:
-        unwrap = inspect.unwrap
-    except AttributeError:
-        pass
-    else:
-        obj = unwrap(obj)
-
-    try:
-        fn = inspect.getsourcefile(obj)
+        modpath = pkg_resources.require(topmodulename)[0].location
+        filepath = os.path.relpath(inspect.getsourcefile(obj), modpath)
+        if filepath is None:
+            return
     except Exception:
-        fn = None
-    if not fn:
         return None
 
     try:
         source, lineno = inspect.getsourcelines(obj)
-    except Exception:
-        lineno = None
-
-    if lineno:
-        linespec = "#L%d-L%d" % (lineno, lineno + len(source) - 1)
+    except OSError:
+        return None
     else:
-        linespec = ""
+        linestart, linestop = lineno, lineno + len(source) - 1
 
-    import pystella
-    fn = relpath(fn, start=dirname(pystella.__file__))
-
-    return "https://github.com/zachjweiner/pystella/blob/main/pystella/%s%s" % (
-           fn, linespec)  # noqa
+    return linkcode_url.format(
+        filepath=filepath, linestart=linestart, linestop=linestop)

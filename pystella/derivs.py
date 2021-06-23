@@ -44,12 +44,14 @@ def expand_stencil(f, coefs):
         at an offset given by the key. The keys must be 3-:class:`tuple`\\ s, and the
         values may be :mod:`pymbolic` expressions or constants.
 
-    Example::
+    Example:
 
-        >>> f = Field("f", offset="h")
+    .. doctest::
+
+        >>> f = ps.Field("f", offset="h")
         >>> coefs = {(1, 0, 0): 1, (-1, 0, 0): -1}
-        >>> stencil = expand_stencil(f, coefs)
-        >>> print(index_fields(stencil))
+        >>> stencil = ps.derivs.expand_stencil(f, coefs)
+        >>> print(ps.index_fields(stencil))
         f[i + h + 1, j + h, k + h] + (-1)*f[i + h + -1, j + h, k + h]
     """
 
@@ -71,19 +73,21 @@ def centered_diff(f, coefs, direction, order):
         values may be :mod:`pymbolic` expressions or constants. Only
         non-redundant ``(offset, coefficient)`` pairs are needed.
 
-    :arg direction: An integer in ``(0, 1, 2)`` denoting the direction over which
+    :arg direction: An integer in ``(1, 2, 3)`` denoting the direction over which
         to expand the stencil (i.e., to apply the offset).
 
     :arg order: The order of the derivative being computed, which determines
         whether coefficients at the opposite offset have the same or opposite
         sign.
 
-    Example::
+    Example:
 
-        >>> f = Field("f", offset="h")
+    .. doctest::
+
+        >>> f = ps.Field("f", offset="h")
         >>> coefs = {1: 1}
-        >>> stencil = centered_diff(f, coefs, 0, 1)
-        >>> print(index_fields(stencil))
+        >>> stencil = ps.derivs.centered_diff(f, coefs, 1, 1)
+        >>> print(ps.index_fields(stencil))
         f[i + h + 1, j + h, k + h] + (-1)*f[i + h + -1, j + h, k + h]
     """
 
