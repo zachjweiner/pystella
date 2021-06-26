@@ -128,7 +128,7 @@ class RelaxationBase:
             self.rho_args = get_field_args(rho_list)
 
         self.f_to_rho_dict = {}
-        for f, (lhs, rho) in self.lhs_dict.items():
+        for f, (_lhs, rho) in self.lhs_dict.items():
             self.f_to_rho_dict[f.child.name] = rho.child.name
 
         self.make_stepper(MapKernel, **kwargs)
@@ -189,7 +189,7 @@ class RelaxationBase:
         solve_constraint = kwargs.pop("solve_constraint", False)
 
         even_iterations = iterations if iterations % 2 == 0 else iterations + 1
-        for i in range(even_iterations):
+        for _ in range(even_iterations):
             self.stepper(queue, **kwargs)
             for arg in self.unknown_args:
                 f = arg.name

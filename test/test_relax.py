@@ -100,7 +100,7 @@ def test_relax(ctx_factory, grid_shape, proc_shape, h, dtype, Solver, timing=Fal
     num_iterations = 1000
     errors = {"f": [], "f2": []}
     first_mode_zeroed = {"f": [], "f2": []}
-    for i in range(0, num_iterations, 2):
+    for _ in range(0, num_iterations, 2):
         solver(mpi, queue, iterations=2, dx=np.array(dx),
                f=f, tmp_f=tmp, rho=rho,
                f2=f2, tmp_f2=tmp2, rho2=rho2)
@@ -118,7 +118,7 @@ def test_relax(ctx_factory, grid_shape, proc_shape, h, dtype, Solver, timing=Fal
                 first_zero = np.argmax(spectrum[1:] < 1e-30 * max_amp)
                 first_mode_zeroed[key].append(first_zero)
 
-    for k, errs in errors.items():
+    for _, errs in errors.items():
         errs = np.array(errs)
         iters = np.arange(1, errs.shape[0]+1)
         assert (errs[10:, 0] * iters[10:] / errs[0, 0] < 1.).all(), \
@@ -126,7 +126,7 @@ def test_relax(ctx_factory, grid_shape, proc_shape, h, dtype, Solver, timing=Fal
             f"{grid_shape=}, {h=}, {proc_shape=}"
 
     first_mode_zeroed = mpi.bcast(first_mode_zeroed, root=0)
-    for k, x in first_mode_zeroed.items():
+    for _, x in first_mode_zeroed.items():
         x = np.array(list(x))[2:]
         assert (x[1:] <= x[:-1]).all() and np.min(x) < np.max(x) / 5, \
             f"relaxation not smoothing error {grid_shape=}, {h=}, {proc_shape=}"

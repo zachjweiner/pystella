@@ -70,7 +70,7 @@ def choose_device_and_make_context(platform_choice=None, device_choice=None):
     platform = None
     platforms = cl.get_platforms()
     if platform_choice is None:
-        for i, plt in enumerate(platforms):
+        for plt in platforms:
             if "NVIDIA" in plt.name:
                 platform = plt
         platform = platform or platforms[0]

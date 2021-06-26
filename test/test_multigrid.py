@@ -99,7 +99,7 @@ def test_multigrid(ctx_factory, grid_shape, proc_shape, h, dtype, Solver, MG,
     poisson_errs = []
     helmholtz_errs = []
     num_v_cycles = 15 if MG == MultiGridSolver else 10
-    for i in range(num_v_cycles):
+    for _ in range(num_v_cycles):
         errs = mg(mpi, queue, dx0=dx, f=f, rho=rho, f2=f2, rho2=rho2)
         poisson_errs.append(errs[-1][-1]["f"])
         helmholtz_errs.append(errs[-1][-1]["f2"])

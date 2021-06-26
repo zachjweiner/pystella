@@ -306,7 +306,7 @@ class FiniteDifferencer:
                 try:
                     arch_map = {6: "pascal", 7: "volta"}
                     arch = arch_map[dev.compute_capability_major_nv]
-                except:  # noqa: E722
+                except KeyError:
                     pass
 
             gradlap_lsize = kwargs.get(

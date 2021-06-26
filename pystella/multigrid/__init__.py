@@ -250,20 +250,20 @@ class FullApproximationScheme:
         :arg i: The level from to transfer to.
         """
 
-        for k, f1 in self.unknowns[i-1].items():
-            f2 = self.unknowns[i][k]
+        for key, f1 in self.unknowns[i-1].items():
+            f2 = self.unknowns[i][key]
             self.restrict(queue, f1=f1, f2=f2)
             self.decomp[i].share_halos(queue, f2)
 
         self.solver.residual(queue, **self.resid_args[i-1])
 
-        for k, r1 in self.resid[i-1].items():
-            r2 = self.resid[i][k]
+        for key, r1 in self.resid[i-1].items():
+            r2 = self.resid[i][key]
             self.decomp[i-1].share_halos(queue, r1)
             self.restrict(queue, f1=r1, f2=r2)
 
         self.solver.lhs_correction(queue, **self.resid_args[i])
-        for k, rho in self.rhos[i].items():
+        for _, rho in self.rhos[i].items():
             self.decomp[i].share_halos(queue, rho)
 
     def transfer_up(self, queue, i):
@@ -371,8 +371,8 @@ class FullApproximationScheme:
             if i not in self.tmp:
                 self.tmp[i] = self.coarse_level_like(self.tmp[i-1])
                 self.resid[i] = {}
-                for k, f in self.unknowns[i].items():
-                    self.resid[i]["r_"+k] = self.tmp[i]["tmp_"+k]
+                for key, _ in self.unknowns[i].items():
+                    self.resid[i][f"r_{key}"] = self.tmp[i][f"tmp_{key}"]
 
             if i not in self.rhos:
                 self.rhos[i] = self.coarse_level_like(self.rhos[i-1])

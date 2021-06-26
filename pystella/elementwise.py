@@ -166,7 +166,7 @@ class ElementWiseMap:
         options = kwargs.pop("options", lp.Options())
         # ignore lack of supposed dependency for single-instruction kernels
         if len(map_instructions) + len(tmp_instructions) == 1:
-            setattr(options, "check_dep_resolution", False)
+            options.check_dep_resolution = False
 
         from pystella import get_field_args
         inferred_args = get_field_args([map_instructions, tmp_instructions])

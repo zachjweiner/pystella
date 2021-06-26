@@ -39,11 +39,11 @@ def get_errs(a, b):
 
 
 def timer(kernel, ntime=200, nwarmup=2):
-    for i in range(nwarmup):
+    for _ in range(nwarmup):
         kernel()
 
     start = time()
-    for i in range(ntime):
+    for _ in range(ntime):
         evt = kernel()
 
     if isinstance(evt, cl.Event):
