@@ -82,7 +82,7 @@ def test_multigrid(ctx_factory, grid_shape, proc_shape, h, dtype, Solver, MG,
         f0 = clr.rand(queue, grid_shape, dtype)
         f = clr.rand(queue, tuple(ni + 2*h for ni in rank_shape), dtype)
         mpi.scatter_array(queue, f0, f, root=0)
-        avg = statistics(f)["mean"]
+        avg = statistics(f)["mean"].item()
         f = f - avg
         mpi.share_halos(queue, f)
         return f
