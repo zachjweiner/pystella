@@ -52,10 +52,7 @@ def make_hermitian(data, fft):
 @pytest.mark.parametrize("L", [(10,)*3, (10, 7, 8), (3, 8, 19), (13.2, 5.71, 9.4),
                                (11, 11, 4), (4, 11, 11), (11, 4, 11)])
 def test_spectra(ctx_factory, grid_shape, proc_shape, dtype, L, timing=False):
-    if ctx_factory:
-        ctx = ctx_factory()
-    else:
-        ctx = ps.choose_device_and_make_context()
+    ctx = ctx_factory()
 
     queue = cl.CommandQueue(ctx)
     h = 1
@@ -125,10 +122,7 @@ def test_spectra(ctx_factory, grid_shape, proc_shape, dtype, L, timing=False):
 @pytest.mark.filterwarnings("ignore::loopy.diagnostic.LoopyAdvisory")
 @pytest.mark.parametrize("dtype", ["float64", "float32"])
 def test_pol_spectra(ctx_factory, grid_shape, proc_shape, dtype, timing=False):
-    if ctx_factory:
-        ctx = ctx_factory()
-    else:
-        ctx = ps.choose_device_and_make_context()
+    ctx = ctx_factory()
 
     if np.dtype(dtype).kind != "f":
         dtype = "float64"
@@ -224,10 +218,12 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     test_spectra(
-        None, grid_shape=args.grid_shape, proc_shape=args.proc_shape,
+        ps.choose_device_and_make_context,
+        grid_shape=args.grid_shape, proc_shape=args.proc_shape,
         dtype=args.dtype, timing=args.timing, L=None
     )
     test_pol_spectra(
-        None, grid_shape=args.grid_shape, proc_shape=args.proc_shape,
+        ps.choose_device_and_make_context,
+        grid_shape=args.grid_shape, proc_shape=args.proc_shape,
         dtype=args.dtype, timing=args.timing
     )

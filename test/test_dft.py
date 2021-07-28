@@ -39,10 +39,7 @@ def test_dft(ctx_factory, grid_shape, proc_shape, dtype, use_fftw, timing=False)
     if not use_fftw and np.product(proc_shape) > 1:
         pytest.skip("Must use mpi4py-fft on more than one rank.")
 
-    if ctx_factory:
-        ctx = ctx_factory()
-    else:
-        ctx = ps.choose_device_and_make_context()
+    ctx = ctx_factory()
 
     queue = cl.CommandQueue(ctx)
     h = 1
@@ -151,6 +148,7 @@ if __name__ == "__main__":
         args.use_fftw = True
 
     test_dft(
-        None, grid_shape=args.grid_shape, proc_shape=args.proc_shape,
+        ps.choose_device_and_make_context,
+        grid_shape=args.grid_shape, proc_shape=args.proc_shape,
         dtype=args.dtype, use_fftw=args.use_fftw, timing=args.timing,
     )

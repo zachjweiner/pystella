@@ -46,10 +46,7 @@ params = [
 @pytest.mark.parametrize("dtype", [np.float64])
 def test_share_halos(ctx_factory, grid_shape, proc_shape, h, dtype,
                      _grid_shape, pass_grid_shape, timing=False):
-    if ctx_factory:
-        ctx = ctx_factory()
-    else:
-        ctx = ps.choose_device_and_make_context()
+    ctx = ctx_factory()
 
     if isinstance(h, int):
         h = (h,)*3
@@ -110,10 +107,7 @@ def test_share_halos(ctx_factory, grid_shape, proc_shape, h, dtype,
 @pytest.mark.parametrize("dtype", [np.float64])
 def test_gather_scatter(ctx_factory, grid_shape, proc_shape, h, dtype,
                         _grid_shape, pass_grid_shape, timing=False):
-    if ctx_factory:
-        ctx = ctx_factory()
-    else:
-        ctx = ps.choose_device_and_make_context()
+    ctx = ctx_factory()
 
     if isinstance(h, int):
         h = (h,)*3
@@ -213,12 +207,14 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     test_share_halos(
-        None, grid_shape=args.grid_shape, proc_shape=args.proc_shape,
+        ps.choose_device_and_make_context,
+        grid_shape=args.grid_shape, proc_shape=args.proc_shape,
         h=args.h, dtype=args.dtype, timing=args.timing,
         pass_grid_shape=args.pass_grid_shape, _grid_shape=None
     )
     test_gather_scatter(
-        None, grid_shape=args.grid_shape, proc_shape=args.proc_shape,
+        ps.choose_device_and_make_context,
+        grid_shape=args.grid_shape, proc_shape=args.proc_shape,
         h=args.h, dtype=args.dtype, timing=args.timing,
         pass_grid_shape=args.pass_grid_shape, _grid_shape=None
     )

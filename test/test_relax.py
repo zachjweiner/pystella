@@ -41,10 +41,7 @@ def test_relax(ctx_factory, grid_shape, proc_shape, h, dtype, Solver, timing=Fal
     if min(grid_shape) < 128:
         pytest.skip("test_relax needs larger grids, for now")
 
-    if ctx_factory:
-        ctx = ctx_factory()
-    else:
-        ctx = ps.choose_device_and_make_context()
+    ctx = ctx_factory()
 
     queue = cl.CommandQueue(ctx)
     rank_shape = tuple(Ni // pi for Ni, pi in zip(grid_shape, proc_shape))
@@ -138,7 +135,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     test_relax(
-        None, grid_shape=args.grid_shape, proc_shape=args.proc_shape,
+        ps.choose_device_and_make_context,
+        grid_shape=args.grid_shape, proc_shape=args.proc_shape,
         h=args.h, dtype=args.dtype, timing=args.timing,
         Solver=NewtonIterator
     )

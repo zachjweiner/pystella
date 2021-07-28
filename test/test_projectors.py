@@ -91,10 +91,7 @@ def make_data(queue, fft):
 @pytest.mark.parametrize("dtype", [np.float64])
 def test_vector_projector(ctx_factory, grid_shape, proc_shape, h, dtype,
                           timing=False):
-    if ctx_factory:
-        ctx = ctx_factory()
-    else:
-        ctx = ps.choose_device_and_make_context()
+    ctx = ctx_factory()
 
     queue = cl.CommandQueue(ctx)
     mpi = ps.DomainDecomposition(proc_shape, h, grid_shape=grid_shape)
@@ -262,10 +259,7 @@ def tensor_id(i, j):
 @pytest.mark.parametrize("dtype", [np.float64])
 def test_tensor_projector(ctx_factory, grid_shape, proc_shape, h, dtype,
                           timing=False):
-    if ctx_factory:
-        ctx = ctx_factory()
-    else:
-        ctx = ps.choose_device_and_make_context()
+    ctx = ctx_factory()
 
     queue = cl.CommandQueue(ctx)
     mpi = ps.DomainDecomposition(proc_shape, h, grid_shape=grid_shape)
@@ -419,15 +413,18 @@ if __name__ == "__main__":
 
     for h in range(1, 5):
         test_effective_momenta(
-            None, grid_shape=args.grid_shape, proc_shape=args.proc_shape,
+            ps.choose_device_and_make_context,
+            grid_shape=args.grid_shape, proc_shape=args.proc_shape,
             h=h, dtype=args.dtype,
         )
 
     test_vector_projector(
-        None, grid_shape=args.grid_shape, proc_shape=args.proc_shape,
+        ps.choose_device_and_make_context,
+        grid_shape=args.grid_shape, proc_shape=args.proc_shape,
         h=args.h, dtype=args.dtype, timing=args.timing
     )
     test_tensor_projector(
-        None, grid_shape=args.grid_shape, proc_shape=args.proc_shape,
+        ps.choose_device_and_make_context,
+        grid_shape=args.grid_shape, proc_shape=args.proc_shape,
         h=args.h, dtype=args.dtype, timing=args.timing
     )

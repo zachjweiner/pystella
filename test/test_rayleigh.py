@@ -35,10 +35,7 @@ from pyopencl.tools import (  # noqa
 @pytest.mark.parametrize("random", [True, False])
 def test_generate_WKB(ctx_factory, grid_shape, proc_shape, dtype, random,
                       timing=False):
-    if ctx_factory:
-        ctx = ctx_factory()
-    else:
-        ctx = ps.choose_device_and_make_context()
+    ctx = ctx_factory()
 
     queue = cl.CommandQueue(ctx)
     h = 1
@@ -68,10 +65,7 @@ def test_generate_WKB(ctx_factory, grid_shape, proc_shape, dtype, random,
 @pytest.mark.parametrize("dtype", ["float64", "complex128"])
 @pytest.mark.parametrize("random", [True, False])
 def test_generate(ctx_factory, grid_shape, proc_shape, dtype, random, timing=False):
-    if ctx_factory:
-        ctx = ctx_factory()
-    else:
-        ctx = ps.choose_device_and_make_context()
+    ctx = ctx_factory()
 
     queue = cl.CommandQueue(ctx)
     h = 1
@@ -180,15 +174,18 @@ if __name__ == "__main__":
 
     if args.proc_shape == (1, 1, 1):
         test_make_hermitian(
-            None, grid_shape=args.grid_shape, proc_shape=args.proc_shape,
+            ps.choose_device_and_make_context,
+            grid_shape=args.grid_shape, proc_shape=args.proc_shape,
             dtype=args.dtype,
         )
     for random in [True, False]:
         test_generate_WKB(
-            None, grid_shape=args.grid_shape, proc_shape=args.proc_shape,
+            ps.choose_device_and_make_context,
+            grid_shape=args.grid_shape, proc_shape=args.proc_shape,
             dtype=args.dtype, timing=args.timing, random=random
         )
         test_generate(
-            None, grid_shape=args.grid_shape, proc_shape=args.proc_shape,
+            ps.choose_device_and_make_context,
+            grid_shape=args.grid_shape, proc_shape=args.proc_shape,
             dtype=args.dtype, timing=args.timing, random=random
         )

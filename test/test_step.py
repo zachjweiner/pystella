@@ -42,10 +42,7 @@ def test_step(ctx_factory, proc_shape, dtype, Stepper):
     if proc_shape != (1, 1, 1):
         pytest.skip("test step only on one rank")
 
-    if ctx_factory:
-        ctx = ctx_factory()
-    else:
-        ctx = ps.choose_device_and_make_context()
+    ctx = ctx_factory()
 
     queue = cl.CommandQueue(ctx)
 
@@ -115,10 +112,7 @@ def test_low_storage_edge_codegen_and_tmp_alloc(ctx_factory, proc_shape, dtype=N
     if proc_shape != (1, 1, 1):
         pytest.skip("test step only on one rank")
 
-    if ctx_factory:
-        ctx = ctx_factory()
-    else:
-        ctx = ps.choose_device_and_make_context()
+    ctx = ctx_factory()
 
     queue = cl.CommandQueue(ctx)
 
@@ -197,6 +191,10 @@ def test_low_storage_edge_codegen_and_tmp_alloc(ctx_factory, proc_shape, dtype=N
 
 
 if __name__ == "__main__":
-    test_low_storage_edge_codegen_and_tmp_alloc(None, (1, 1, 1), np.float64)
+    test_low_storage_edge_codegen_and_tmp_alloc(
+        ps.choose_device_and_make_context,
+        (1, 1, 1), np.float64)
     for stepper in all_steppers:
-        test_step(None, (1, 1, 1), np.float64, stepper)
+        test_step(
+            ps.choose_device_and_make_context,
+            (1, 1, 1), np.float64, stepper)

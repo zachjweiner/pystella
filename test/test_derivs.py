@@ -43,10 +43,7 @@ def test_gradient_laplacian(ctx_factory, grid_shape, proc_shape, h, dtype,
     if h == 0 and stream is True:
         pytest.skip("no streaming spectral")
 
-    if ctx_factory:
-        ctx = ctx_factory()
-    else:
-        ctx = ps.choose_device_and_make_context()
+    ctx = ctx_factory()
 
     queue = cl.CommandQueue(ctx)
     mpi = ps.DomainDecomposition(proc_shape, h, grid_shape=grid_shape)
@@ -173,11 +170,13 @@ if __name__ == "__main__":
 
     for stream in [True, False]:
         test_gradient_laplacian(
-            None, grid_shape=args.grid_shape, proc_shape=args.proc_shape,
+            ps.choose_device_and_make_context,
+            grid_shape=args.grid_shape, proc_shape=args.proc_shape,
             h=args.h, dtype=args.dtype, timing=args.timing, stream=stream
         )
 
     test_gradient_laplacian(
-        None, grid_shape=args.grid_shape, proc_shape=args.proc_shape,
+        ps.choose_device_and_make_context,
+        grid_shape=args.grid_shape, proc_shape=args.proc_shape,
         h=0, dtype=args.dtype, timing=args.timing, stream=False
     )

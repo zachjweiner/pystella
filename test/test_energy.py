@@ -35,10 +35,7 @@ from pyopencl.tools import (  # noqa
 @pytest.mark.parametrize("h", [1, 2])
 @pytest.mark.parametrize("dtype", [np.float64, np.float32])
 def test_scalar_energy(ctx_factory, grid_shape, proc_shape, h, dtype, timing=False):
-    if ctx_factory:
-        ctx = ctx_factory()
-    else:
-        ctx = ps.choose_device_and_make_context()
+    ctx = ctx_factory()
 
     queue = cl.CommandQueue(ctx)
     mpi = ps.DomainDecomposition(proc_shape, h, grid_shape=grid_shape)
@@ -108,6 +105,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     test_scalar_energy(
-        None, grid_shape=args.grid_shape, proc_shape=args.proc_shape,
+        ps.choose_device_and_make_context,
+        grid_shape=args.grid_shape, proc_shape=args.proc_shape,
         h=args.h, dtype=args.dtype, timing=args.timing
     )

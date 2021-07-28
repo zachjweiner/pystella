@@ -37,10 +37,7 @@ from pyopencl.tools import (  # noqa
 @pytest.mark.parametrize("pass_grid_dims", [True, False])
 def test_reduction(ctx_factory, grid_shape, proc_shape, dtype, op,
                    _grid_shape, pass_grid_dims, timing=False):
-    if ctx_factory:
-        ctx = ctx_factory()
-    else:
-        ctx = ps.choose_device_and_make_context()
+    ctx = ctx_factory()
 
     queue = cl.CommandQueue(ctx)
     h = 1
@@ -92,10 +89,7 @@ def test_reduction(ctx_factory, grid_shape, proc_shape, dtype, op,
 @pytest.mark.parametrize("_grid_shape", [None, (128, 64, 32)])
 def test_reduction_with_new_shape(ctx_factory, grid_shape, proc_shape, dtype, op,
                                   _grid_shape, timing=False):
-    if ctx_factory:
-        ctx = ctx_factory()
-    else:
-        ctx = ps.choose_device_and_make_context()
+    ctx = ctx_factory()
 
     queue = cl.CommandQueue(ctx)
     h = 1
@@ -142,10 +136,7 @@ def test_reduction_with_new_shape(ctx_factory, grid_shape, proc_shape, dtype, op
 @pytest.mark.parametrize("pass_grid_dims", [True, False])
 def test_field_statistics(ctx_factory, grid_shape, proc_shape, dtype, _grid_shape,
                           pass_grid_dims, timing=False):
-    if ctx_factory:
-        ctx = ctx_factory()
-    else:
-        ctx = ps.choose_device_and_make_context()
+    ctx = ctx_factory()
 
     queue = cl.CommandQueue(ctx)
     h = 1
@@ -200,16 +191,19 @@ if __name__ == "__main__":
 
     for op in ["avg", "sum", "max"]:
         test_reduction(
-            None, grid_shape=args.grid_shape, proc_shape=args.proc_shape,
+            ps.choose_device_and_make_context,
+            grid_shape=args.grid_shape, proc_shape=args.proc_shape,
             dtype=args.dtype, timing=args.timing,
             op=op, pass_grid_dims=args.pass_grid_dims, _grid_shape=None
         )
     test_reduction_with_new_shape(
-        None, grid_shape=args.grid_shape, proc_shape=args.proc_shape,
+        ps.choose_device_and_make_context,
+        grid_shape=args.grid_shape, proc_shape=args.proc_shape,
         dtype=args.dtype, timing=args.timing, op="avg", _grid_shape=None
     )
     test_field_statistics(
-        None, grid_shape=args.grid_shape, proc_shape=args.proc_shape,
+        ps.choose_device_and_make_context,
+        grid_shape=args.grid_shape, proc_shape=args.proc_shape,
         dtype=args.dtype, timing=args.timing,
         pass_grid_dims=args.pass_grid_dims, _grid_shape=None
     )
