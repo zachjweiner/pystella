@@ -48,66 +48,56 @@ logger = logging.getLogger(__name__)
 
 def choose_device_and_make_context(platform_choice=None, device_choice=None):
     """
-    A wrapper to choose a device and create a :class:`pyopencl.Context` on
+    A wrapper that chooses a device and creates a :class:`pyopencl.Context` on
     a particular device.
 
-    :arg platform_number: An integer specifying which element of the
-        :class:`list` returned by :func:`pyopencl.get_platforms` to choose.
-        Defaults to *None*, in which case a NVIDIA platform.
-        If one is not found, then the first platform is chosen.
+    :arg platform_choice: An integer or string specifying which
+        :class:`pyopencl.Platform` to choose.
+        Defaults to *None*, in which case the environment variables
+        ``PYOPENCL_CTX`` or ``PYOPENCL_TEST`` are queried.
+        If none of the above are specified, then the first platform is chosen.
 
-    :arg device_number: An integer specifying which device to run on.
-        Defaults to *None*, in which case a device is chosen according to any
-        available environment variable defining the local MPI rank (defaulting to 0).
-        Currently only looks for SLURM, OpenMPI, and MVAPICH environment variables.
+    :arg device_choice: An integer or string specifying which
+        :class:`pyopencl.Device` to run on.
+        Defaults to *None*, in which case a device is chosen according to the
+        node-local MPI rank.
+        (Note that this requires initializing MPI, i.e., importing ``mpi4py.MPI``.)
 
     :returns: A :class:`pyopencl.Context`.
     """
 
     import pyopencl as cl
 
-    # look for NVIDIA platform
-    platform = None
-    platforms = cl.get_platforms()
     if platform_choice is None:
-        for plt in platforms:
-            if "NVIDIA" in plt.name:
-                platform = plt
-        platform = platform or platforms[0]
+        import os
+        if "PYOPENCL_CTX" in os.environ:
+            ctx_spec = os.environ["PYOPENCL_CTX"]
+            platform_choice = ctx_spec.split(":")[0]
     else:
-        platform = platforms[platform_choice]
-    logger.info(f"platform {platform.name} selected")
+        platform_choice = str(platform_choice)
 
-    devices = platform.get_devices()
+    from pyopencl.tools import get_test_platforms_and_devices
+    platform, devices = get_test_platforms_and_devices(platform_choice)[0]
+    num_devices = len(devices)
+    logger.info(f"platform {platform.name} with {num_devices} devices selected")
+
     try:
         # sort devices based on their unique pci bus id
         devices = sorted(devices, key=lambda dev: dev.pci_bus_id_nv)
     except:  # noqa
-        pass
-    num_devices = len(devices)
-    logger.info(f"found {num_devices} devices")
+        logger.info("Non-NVIDIA platform; no pci_bus_id_nv attribute to sort on.")
 
     if device_choice is None:
-        def try_to_get_local_rank():
-            import os
-            options = ("SLURM_LOCALID", "OMPI_COMM_WORLD_LOCAL_RANK",
-                       "MV2_COMM_WORLD_LOCAL_RANK")
-            for opt in options:
-                x = os.getenv(opt)
-                if x is not None:
-                    logger.info(f"non-null value found for {opt}: {x}")
-                    return int(x)
-
-            logger.info(f"none of the environment variables {options} were set.")
-            return 0
-
-        device_choice = try_to_get_local_rank() % num_devices
+        from mpi4py import MPI
+        comm = MPI.COMM_WORLD.Split_type(MPI.COMM_TYPE_SHARED)
+        local_rank = comm.Get_rank()
+        comm.Free()
+        device_choice = local_rank % num_devices
 
     dev = devices[device_choice]
 
-    import socket
-    fqdn = socket.getfqdn()
-    host_dev_info = f"on host {fqdn}: chose {dev.name} number {device_choice}"
+    from socket import getfqdn
+    host_dev_info = f"on host {getfqdn()}: chose {dev.name} number {device_choice}"
     if "NVIDIA" in platform.name:
         host_dev_info += f" with pci_bus_id_nv={dev.pci_bus_id_nv}"
     logger.info(host_dev_info)
