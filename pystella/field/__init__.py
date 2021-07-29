@@ -339,6 +339,11 @@ class IdentityMapperMixin:
             return self.map_assignment(expr, *args, **kwargs)
         elif isinstance(expr, lp.InstructionBase):
             return expr
+        elif isinstance(expr, slice):
+            if expr.step is None:
+                return pp.Slice((expr.start, expr.stop))
+            else:
+                return pp.Slice((expr.start, expr.stop, expr.step))
         else:
             return super().map_foreign(expr, *args, **kwargs)
 
@@ -414,6 +419,15 @@ class IndexMapper(IdentityMapper):
                             outer_subscript=expr.index_tuple)
         else:
             return super().map_subscript(expr, *args, **kwargs)
+
+    def map_slice(self, expr, *args, **kwargs):
+        children = tuple(
+            None if child is None else
+            self.rec(child, *args, **kwargs) for child in expr.children)
+        if all(child is orig_child for child, orig_child in
+               zip(children, expr.children)):
+            return expr
+        return type(expr)(children)
 
 
 def index_fields(expr, prepend_with=None):

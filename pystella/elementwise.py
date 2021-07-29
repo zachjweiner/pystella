@@ -29,6 +29,45 @@ __doc__ = """
 .. autoclass:: ElementWiseMap
 """
 
+# FIXME: remove math callable patch once loopy #438 is in
+import numpy as np
+from loopy.types import NumpyType
+from loopy.target.opencl import OpenCLCallable
+from loopy.diagnostic import LoopyError, LoopyTypeError
+
+
+class UnaryOpenCLCallable(OpenCLCallable):
+    """
+    Records information about OpenCL functions which are not covered by
+    :class:`loopy.target.c.CMathCallable`.
+    """
+
+    def with_types(self, arg_id_to_dtype, callables_table):
+        name = self.name
+
+        for id in arg_id_to_dtype:
+            if not -1 <= id <= 0:
+                raise LoopyError(f"'{name}' can take only one argument.")
+
+        if 0 not in arg_id_to_dtype or arg_id_to_dtype[0] is None:
+            # the types provided aren't mature enough to specialize the callable
+            return self.copy(arg_id_to_dtype=arg_id_to_dtype), callables_table
+
+        dtype = arg_id_to_dtype[0]
+        dtype = dtype.numpy_dtype
+
+        if dtype.kind in ("u", "i"):
+            # ints and unsigned casted to float32
+            dtype = np.float32
+        elif dtype.kind == "c":
+            raise LoopyTypeError(f"{name} does not support type {dtype}")
+
+        typed_callable = self.copy(
+            name_in_target=name,
+            arg_id_to_dtype={0: NumpyType(dtype), -1: NumpyType(dtype)})
+
+        return typed_callable, callables_table
+
 
 def append_new_args(old_args, new_args):
     all_args = old_args.copy()
@@ -172,7 +211,7 @@ class ElementWiseMap:
         inferred_args = get_field_args([map_instructions, tmp_instructions])
         all_args = append_new_args(args, inferred_args)
 
-        knl = lp.make_kernel(
+        t_unit = lp.make_kernel(
             domains,
             temp_statements + output_statements,
             all_args + [lp.ValueArg("Nx, Ny, Nz", dtype="int"), ...],
@@ -181,16 +220,19 @@ class ElementWiseMap:
         )
 
         new_args = []
+        knl = t_unit.default_entrypoint
         for arg in knl.args:
             if isinstance(arg, lp.KernelArgument) and arg.dtype is None:
                 new_arg = arg.copy(dtype=self.dtype)
                 new_args.append(new_arg)
             else:
                 new_args.append(arg)
-        knl = knl.copy(args=new_args)
-        knl = lp.remove_unused_arguments(knl)
+        t_unit = t_unit.with_kernel(knl.copy(args=new_args))
+        t_unit = lp.remove_unused_arguments(t_unit)
+        t_unit = lp.register_callable(
+            t_unit, "round", UnaryOpenCLCallable("round"))
 
-        return knl
+        return t_unit
 
     def __init__(self, map_instructions, **kwargs):
         if "map_dict" in kwargs:
@@ -284,7 +326,7 @@ class ElementWiseMap:
 
         input_args = kwargs.copy()
         if filter_args:
-            kernel_args = [arg.name for arg in self.knl.args]
+            kernel_args = [arg.name for arg in self.knl.default_entrypoint.args]
             for arg in kwargs:
                 if arg not in kernel_args:
                     input_args.pop(arg)

@@ -102,7 +102,7 @@ class Histogrammer(ElementWiseMap):
             lp.TemporaryVariable("bin", "int", shape=(num_hists,)),
             lp.TemporaryVariable("weight", dtype, shape=(num_hists,)),
             lp.GlobalArg("hist", dtype, shape=(num_hists, self.num_bins,),
-                         for_atomic=True),
+                         for_atomic=True, is_input=False),
         ]
 
         fixed_pars = kwargs.pop("fixed_parameters", dict())
