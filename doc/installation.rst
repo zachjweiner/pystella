@@ -50,9 +50,9 @@ Steps for a complete installation
 
         export PIP_SRC=~
 
-  Alternatively, update your active environment via::
+   Alternatively, update your active environment via::
 
-    conda env update --file environment.yml
+       conda env update --file environment.yml
 
 3. Activate the environment (if you created a new one)::
 
