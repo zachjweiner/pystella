@@ -1,14 +1,16 @@
+name: rtd310
+
 channels:
 - conda-forge
 - defaults
 
 dependencies:
-- python=3.8
+- python=3.10
 - pip
 - numpy
 - pyopencl
+- islpy
 - sphinx-copybutton
-
 - pip:
-    - loopy
-    - furo
+  - "git+https://github.com/inducer/loopy.git#egg=loopy"
+  - furo
