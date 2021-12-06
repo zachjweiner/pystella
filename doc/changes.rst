@@ -3,12 +3,18 @@ User-visible Changes
 
 .. currentmodule:: pystella
 
-Version 2020.2
+Version 2021.1
 --------------
 
 .. note::
 
     This version is currently under development.
+
+* :mod:`pycl-fft` now provides the backend for OpenCL FFTs, including support for
+  :mod:`VkFFT`. :class:`gDFT` is deprecated in favor of :class:`pyclDFT`.
+
+Version 2020.2
+--------------
 
 * Low-storage Runge-Kutta timesteppers handle temporary arrays internally
   and no longer constrain all degrees of freedom to have identical datatypes and shapes.

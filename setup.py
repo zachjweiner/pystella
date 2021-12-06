@@ -97,7 +97,7 @@ class Flake8Command(Command):
 
 setup(
     name=PACKAGE_NAME,
-    version="2020.1",
+    version="2021.1",
     description="A code generator for grid-based PDE solving on CPUs and GPUs",
     long_description=open("README.rst", "rt").read(),
     install_requires=[

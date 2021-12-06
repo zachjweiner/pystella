@@ -18,8 +18,7 @@ dependencies:
 - mpi4py
 - mpi4py-fft
 - clfft
-- Cython
 
 - pip:
     - git+https://github.com/inducer/loopy.git
-    - git+https://gitlab.com/zachjweiner/gpyfft.git
+    - git+https://github.com/zachjweiner/pycl-fft.git

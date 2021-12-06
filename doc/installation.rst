@@ -16,8 +16,8 @@ Optional dependencies (and what they are needed for) are:
 
 * :mod:`mpi4py` (and an MPI implementation) for distributed, multi-device execution
 
-* :mod:`gpyfft` (and :mod:`clfft` and :mod:`Cython`) for OpenCL
-  Fast Fourier Transforms (:class:`pystella.fourier.gDFT`) (e.g., to run on a GPU),
+* :mod:`pycl-fft` (and optionally :mod:`clfft`) for OpenCL Fast Fourier Transforms
+  (:class:`pystella.fourier.pyclDFT`) (e.g., to run on a GPU),
   and/or :mod:`mpi4py_fft` (and :mod:`fftw`) for distributed, CPU FFTs
   (:class:`pystella.fourier.pDFT`)
 
@@ -42,8 +42,7 @@ Steps for a complete installation
 
     conda env create --file environment.yml
 
-   -  This will clone and install (i.e., as if via
-      :command:`python setup.py install`) :mod:`gpyfft` and :mod:`loopy` into
+   -  This will clone and pip-install :mod:`pycl-fft`, :mod:`loopy`, and :mod:`pystella` into
       :command:`src/`. You may want to first define the environment variable
       :command:`PIP_SRC` to set your desired source directory,
       e.g., to your home directory with::
