@@ -1,7 +1,13 @@
 Citing pystella
 ===============
 
-If you use :mod:`pystella` for your work, please cite the following pair of articles:
+If you use :mod:`pystella` for your work, please cite the following article:
+
+    Z. J. Weiner, "Stencil Solvers for PDEs on GPUs: An Example From Cosmology,"
+    in Computing in Science & Engineering, vol. 23, no. 4, pp. 55-64,
+    1 July-Aug. 2021, doi: 10.1109/MCSE.2021.3083547.
+
+If relevant to your work, please also cite the following pair of articles (which present the first physics results using :mod:`pystella`):
 
     P. Adshead, J. T. Giblin, M. Pieroni, and Z. J. Weiner,
     Phys. Rev. Lett. 124 (2020) 171301, arXiv:1909.12843 [astro-ph.CO].
@@ -12,6 +18,17 @@ If you use :mod:`pystella` for your work, please cite the following pair of arti
 Here are Bibtex entries for your convenience:
 
 .. code-block:: latex
+
+    @article{weiner2021stencil,
+        author={Weiner, Zachary J.},
+        journal={{Computing in Science \& Engineering}},
+        title={{Stencil Solvers for PDEs on GPUs: An Example From Cosmology}},
+        year={2021},
+        volume={23},
+        number={4},
+        pages={55-64},
+        doi={10.1109/MCSE.2021.3083547}
+    }
 
     @article{Adshead:2019igv,
         author         = "Adshead, Peter and Giblin, John T. and Pieroni, Mauro and
