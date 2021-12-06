@@ -21,7 +21,7 @@ THE SOFTWARE.
 """
 
 import numpy as np
-from pystella.fourier.dft import DFT, gDFT, pDFT
+from pystella.fourier.dft import DFT, pDFT, pyclDFT, gDFT
 from pystella.fourier.rayleigh import RayleighGenerator
 from pystella.fourier.projectors import Projector
 from pystella.fourier.spectra import PowerSpectra
@@ -46,8 +46,9 @@ def get_complex_dtype_with_matching_prec(dtype):
 
 __all__ = [
     "DFT",
-    "gDFT",
+    "pyclDFT",
     "pDFT",
+    "gDFT",
     "RayleighGenerator",
     "Projector",
     "PowerSpectra",

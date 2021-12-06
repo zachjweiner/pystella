@@ -139,7 +139,7 @@ class OutputFile:
             # output current dependency versions
             dependencies = {"pystella", "numpy", "scipy",
                             "pyopencl", "loopy", "pymbolic",
-                            "mpi4py", "gpyfft", "mpi4py_fft", "h5py"}
+                            "mpi4py", "pycl_fft", "mpi4py_fft", "h5py"}
             dependencies |= set(kwargs.pop("dependencies", {}))
             versions, git_revs = get_versions(dependencies)
 

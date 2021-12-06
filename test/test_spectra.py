@@ -37,8 +37,8 @@ def make_data(*shape):
 
 
 def make_hermitian(data, fft):
-    from pystella.fourier import gDFT
-    if isinstance(fft, gDFT):
+    from pystella.fourier import pyclDFT
+    if isinstance(fft, pyclDFT):
         from pystella.fourier.rayleigh import make_hermitian
         data = make_hermitian(data)
     data = fft.zero_corner_modes(data)

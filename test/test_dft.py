@@ -34,9 +34,9 @@ from pyopencl.tools import (  # noqa
 
 
 @pytest.mark.parametrize("dtype", ["float64", "complex128"])
-@pytest.mark.parametrize("use_fftw", [False, True])
-def test_dft(ctx_factory, grid_shape, proc_shape, dtype, use_fftw, timing=False):
-    if not use_fftw and np.product(proc_shape) > 1:
+@pytest.mark.parametrize("backend", ["fftw", "clfft", "vkfft"])
+def test_dft(ctx_factory, grid_shape, proc_shape, dtype, backend, timing=False):
+    if backend != "fftw" and np.product(proc_shape) > 1:
         pytest.skip("Must use mpi4py-fft on more than one rank.")
 
     ctx = ctx_factory()
@@ -47,7 +47,7 @@ def test_dft(ctx_factory, grid_shape, proc_shape, dtype, use_fftw, timing=False)
     mpi0 = ps.DomainDecomposition(proc_shape, 0, grid_shape=grid_shape)
     rank_shape, _ = mpi.get_rank_shape_start(grid_shape)
 
-    fft = ps.DFT(mpi, ctx, queue, grid_shape, dtype, use_fftw=use_fftw)
+    fft = ps.DFT(mpi, ctx, queue, grid_shape, dtype, backend=backend)
     grid_size = np.product(grid_shape)
     rdtype = fft.rdtype
 
@@ -83,7 +83,7 @@ def test_dft(ctx_factory, grid_shape, proc_shape, dtype, use_fftw, timing=False)
     fk_glb_np = np.ascontiguousarray(np_dft(fx_glb))
     fx2_glb_np = np.ascontiguousarray(np_idft(fk_glb_np))
 
-    if use_fftw:
+    if backend == "fftw":
         fk_np = fk_glb_np[fft.fft.local_slice(True)]
         fx2_np = fx2_glb_np[fft.fft.local_slice(False)]
     else:
@@ -119,9 +119,6 @@ def test_dft(ctx_factory, grid_shape, proc_shape, dtype, use_fftw, timing=False)
 
     fk_types = {"cl": fk_cl, "np": fk_np, "None": None}
 
-    # run all of these to ensure no runtime errors even if no timing
-    ntime = 20 if timing else 1
-
     from common import timer
 
     if mpi.rank == 0:
@@ -129,12 +126,17 @@ def test_dft(ctx_factory, grid_shape, proc_shape, dtype, use_fftw, timing=False)
               "complex" if np.dtype(dtype).kind == "c" else "real")
 
     from itertools import product
+    # run all of these to ensure no runtime errors even if no timing
     for (a, input_), (b, output) in product(fx_types.items(), fk_types.items()):
+        ntime = 200 if ("cl" in a and "cl" in b) else 20 if timing else 1
         t = timer(lambda: fft.dft(input_, output), ntime=ntime)
         if mpi.rank == 0:
             print(f"dft({a}, {b}) took {t:.3f} ms")
 
     for (a, input_), (b, output) in product(fk_types.items(), fx_types.items()):
+        ntime = 200 if ("cl" in a and "cl" in b) else 20 if timing else 1
+        if "cl" in a and "cl" in b:
+            ntime = 200
         t = timer(lambda: fft.idft(input_, output), ntime=ntime)
         if mpi.rank == 0:
             print(f"idft({a}, {b}) took {t:.3f} ms")
@@ -142,13 +144,13 @@ def test_dft(ctx_factory, grid_shape, proc_shape, dtype, use_fftw, timing=False)
 
 if __name__ == "__main__":
     from common import parser
-    parser.add_argument("--use-fftw", action="store_true")
+    parser.add_argument("--backend", type=str, default="vkfft")
     args = parser.parse_args()
     if np.product(args.proc_shape) > 1:
-        args.use_fftw = True
+        args.backend = "fftw"
 
     test_dft(
         ps.choose_device_and_make_context,
         grid_shape=args.grid_shape, proc_shape=args.proc_shape,
-        dtype=args.dtype, use_fftw=args.use_fftw, timing=args.timing,
+        dtype=args.dtype, backend=args.backend, timing=args.timing,
     )

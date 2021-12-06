@@ -44,10 +44,12 @@ def timer(kernel, ntime=200, nwarmup=2):
 
     start = time()
     for _ in range(ntime):
-        evt = kernel()
+        res = kernel()
 
-    if isinstance(evt, cl.Event):
-        evt.wait()
+    if isinstance(res, cl.Event):
+        res.wait()
+    elif isinstance(res, cl.array.Array):
+        res.finish()
 
     end = time()
 

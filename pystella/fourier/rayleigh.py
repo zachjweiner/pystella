@@ -158,10 +158,10 @@ class RayleighGenerator:
         self.non_wkb_knl = parallelize(self.get_non_wkb_knl())
 
     def _post_process(self, fk):
-        from pystella.fourier import gDFT
-        if self.fft.is_real and isinstance(self.fft, gDFT):
+        from pystella.fourier import pyclDFT
+        if self.fft.is_real and isinstance(self.fft, pyclDFT):
             # real fields must be Hermitian-symmetric, and it seems we
-            # need to do this manually when FFT'ing with gpyfft
+            # need to do this manually when FFT'ing with clfft
             fk = make_hermitian(fk)
 
         if self.fft.is_real:

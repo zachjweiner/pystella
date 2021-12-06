@@ -27,7 +27,7 @@ import pyopencl.clmath as clm
 import pyopencl.array as cla
 import pystella as ps
 from pystella.derivs import FirstCenteredDifference, SecondCenteredDifference
-from pystella.fourier import gDFT
+from pystella.fourier import pyclDFT
 import pytest
 from common import get_errs
 
@@ -76,7 +76,7 @@ def test_effective_momenta(ctx_factory, grid_shape, proc_shape, h, dtype):
 def make_data(queue, fft):
     kshape = fft.shape(True)
     data = np.random.rand(*kshape) + 1j * np.random.rand(*kshape)
-    if isinstance(fft, gDFT):
+    if isinstance(fft, pyclDFT):
         from pystella.fourier.rayleigh import make_hermitian
         data = make_hermitian(data).astype(np.complex128)
 
@@ -150,7 +150,7 @@ def test_vector_projector(ctx_factory, grid_shape, proc_shape, h, dtype,
     minus = make_data(queue, fft).astype(cdtype)
     project.pol_to_vec(queue, plus, minus, vector)
 
-    if isinstance(fft, gDFT):
+    if isinstance(fft, pyclDFT):
         assert all(is_hermitian(vector[i]) for i in range(3)), \
             f"pol->vec is non-hermitian for {grid_shape=}, {h=}"
 
@@ -173,7 +173,7 @@ def test_vector_projector(ctx_factory, grid_shape, proc_shape, h, dtype,
     minus1 = cla.zeros_like(minus)
     project.vec_to_pol(queue, plus1, minus1, vector)
 
-    if isinstance(fft, gDFT):
+    if isinstance(fft, pyclDFT):
         assert is_hermitian(plus1) and is_hermitian(minus1), \
             f"polarizations aren't hermitian for {grid_shape=}, {h=}"
 
@@ -322,7 +322,7 @@ def test_tensor_projector(ctx_factory, grid_shape, proc_shape, h, dtype,
     project.transverse_traceless(queue, hij)
     hij_h = hij.get()
 
-    if isinstance(fft, gDFT):
+    if isinstance(fft, pyclDFT):
         assert all(is_hermitian(hij_h[i]) for i in range(6)), \
             f"TT projection is non-hermitian for {grid_shape=}, {h=}"
 
@@ -340,7 +340,7 @@ def test_tensor_projector(ctx_factory, grid_shape, proc_shape, h, dtype,
     minus = make_data(queue, fft).astype(cdtype)
     project.pol_to_tensor(queue, plus, minus, hij)
 
-    if isinstance(fft, gDFT):
+    if isinstance(fft, pyclDFT):
         assert all(is_hermitian(hij[i]) for i in range(6)), \
             f"pol->tensor is non-hermitian for {grid_shape=}, {h=}"
 
@@ -368,7 +368,7 @@ def test_tensor_projector(ctx_factory, grid_shape, proc_shape, h, dtype,
     minus1 = cla.zeros_like(minus)
     project.tensor_to_pol(queue, plus1, minus1, hij)
 
-    if isinstance(fft, gDFT):
+    if isinstance(fft, pyclDFT):
         assert is_hermitian(plus1) and is_hermitian(minus1), \
             f"polarizations aren't hermitian for {grid_shape=}, {h=}"
 

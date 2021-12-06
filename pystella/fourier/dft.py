@@ -33,19 +33,19 @@ __doc__ = """
 .. currentmodule:: pystella.fourier
 .. autoclass:: pystella.fourier.dft.BaseDFT
 .. autoclass:: pDFT
-.. autoclass:: gDFT
+.. autoclass:: pyclDFT
 .. currentmodule:: pystella
 """
 
 
-def DFT(decomp, context, queue, grid_shape, dtype, **kwargs):
+def DFT(decomp, context, queue, grid_shape, dtype, backend=None, **kwargs):
     """
     A wrapper to the creation of various FFT class options which determines
-    whether to use :class:`pystella.fourier.gDFT` (for single-device, OpenCL-based
-    FFTs via :mod:`gpyfft`) or :class:`pystella.fourier.pDFT`
-    (for distributed, CPU FFTs via :class:`mpi4py_fft.mpifft.PFFT`),
-    based on the processor shape ``proc_shape`` attribute of ``decomp``
-    and a flag ``use_fftw``.
+    whether to use :class:`pystella.fourier.pyclDFT`
+    (for single-device, OpenCL-based FFTs via :mod:`VkFFT` or :mod:`clfft`) or
+    :class:`pystella.fourier.pDFT` (for distributed, CPU FFTs via
+    :class:`mpi4py_fft.mpifft.PFFT`), based on the processor shape ``proc_shape``
+    attribute of ``decomp`` and a flag ``backend``.
 
     :arg decomp: A :class:`DomainDecomposition`.
 
@@ -61,20 +61,36 @@ def DFT(decomp, context, queue, grid_shape, dtype, **kwargs):
 
     The following keyword-only arguments are recognized:
 
-    :arg use_fftw: A :class:`bool` dictating whether to use
-        :class:`pystella.fourier.pDFT`.
-        Defaults to *False*, i.e., this flag must be set to *True* to override the
-        default choice to use :class:`pystella.fourier.gDFT` on a single rank.
+    :arg backend: A :class:`str` specifying the FFT backend to use.
+        Valid options are ``"vkfft"``, ``"fftw"``, or ``"clfft"``.
+        Defaults to *None*, in which case ``"vkfft"`` is selected for single-rank
+        :class:`DomainDecomposition`\\ s and ``"fftw"`` otherwise.
 
     Any remaining keyword arguments are passed to :class:`pystella.fourier.pDFT`,
     should this function return such an object.
+
+    .. versionchanged:: 2020.1
+
+        Keyword argument ``use_fftw`` deprecated in favor of ``backend``.
+
     """
 
-    use_fftw = kwargs.pop("use_fftw", False)
-    if tuple(decomp.proc_shape) == (1, 1, 1) and not use_fftw:
-        return gDFT(decomp, context, queue, grid_shape, dtype)
-    else:
+    if "use_fftw" in kwargs:
+        from warnings import warn
+        warn("Passing use_fftw is deprecated. Pass backend instead.",
+             DeprecationWarning, stacklevel=2)
+        if kwargs["use_fftw"]:
+            backend = "fftw"
+
+    if backend is None:
+        backend = "vkfft" if tuple(decomp.proc_shape) == (1, 1, 1) else "fftw"
+
+    if backend in ("vkfft", "clfft"):
+        return pyclDFT(decomp, context, queue, grid_shape, dtype, backend=backend)
+    elif backend == "fftw":
         return pDFT(decomp, queue, grid_shape, dtype, **kwargs)
+    else:
+        raise NotImplementedError(f"{backend} backend for DFTs.")
 
 
 def _transfer_array(a, b):
@@ -403,18 +419,18 @@ class pDFT(BaseDFT):
     def shape(self, forward_output=True):
         return self.fft.shape(forward_output=forward_output)
 
-    def forward_transform(self, fx, fk, **kwargs):
-        kwargs["normalize"] = kwargs.get("normalize", False)
-        return self.fft.forward(input_array=fx, output_array=fk, **kwargs)
+    def forward_transform(self, fx, fk, normalize=False, **kwargs):
+        return self.fft.forward(
+            input_array=fx, output_array=fk, normalize=normalize, **kwargs)
 
     def backward_transform(self, fk, fx, **kwargs):
         return self.fft.backward(input_array=fk, output_array=fx, **kwargs)
 
 
-class gDFT(BaseDFT):
+class pyclDFT(BaseDFT):
     """
-    A wrapper to :mod:`gpyfft` to compute Fast Fourier transforms with
-    :mod:`clfft`.
+    A wrapper to :mod:`pycl_fft` to compute Fast Fourier transforms with
+    :mod:`VkFFT` or :mod:`clFFT`.
 
     See :class:`pystella.fourier.dft.BaseDFT`.
 
@@ -431,29 +447,42 @@ class gDFT(BaseDFT):
         The complex datatype for momentum-space arrays is chosen to have
         the same precision.
 
+    :arg backend: Which :mod:`pycl_fft` backend to use.
+        One of ``"vkfft"`` or ``"clfft"``.
+
+    .. versionadded:: 2021.1
+
+        Supereseded the now-deprecated :class:`~pystella.fourier.dft.gDFT`.
+
     .. versionchanged:: 2020.1
 
         Support for complex-to-complex transforms.
     """
 
-    def __init__(self, decomp, context, queue, grid_shape, dtype):
+    def __init__(self, decomp, context, queue, grid_shape, dtype, backend):
         self.decomp = decomp
         self.grid_shape = grid_shape
         self.dtype = np.dtype(dtype)
         self.is_real = is_real = self.dtype.kind == "f"
+        self.backend = backend
 
         from pystella.fourier import get_complex_dtype_with_matching_prec
         self.cdtype = cdtype = get_complex_dtype_with_matching_prec(self.dtype)
         from pystella.fourier import get_real_dtype_with_matching_prec
         self.rdtype = get_real_dtype_with_matching_prec(self.dtype)
 
-        self.fx = cla.zeros(queue, grid_shape, dtype)
-        self.fk = cla.zeros(queue, self.shape(is_real), cdtype)
-        from gpyfft import FFT
-        self.forward = FFT(context, queue, self.fx, out_array=self.fk, real=is_real,
-                           scale_forward=1, scale_backward=1)
-        self.backward = FFT(context, queue, self.fk, out_array=self.fx, real=is_real,
-                            scale_forward=1, scale_backward=1)
+        self.fx = cla.empty(queue, grid_shape, dtype)
+        self.fk = cla.empty(queue, self.shape(is_real), cdtype)
+        self.temp = None if not is_real else cla.empty_like(self.fk)
+
+        from pycl_fft import get_transform_class
+        Transform = get_transform_class(backend)
+        self.ftransform = Transform(
+            context, grid_shape, dtype, type="r2c" if is_real else "c2c",
+            in_place=False)
+        self.btransform = Transform(
+            context, grid_shape, dtype, type="c2r" if is_real else "c2c",
+            in_place=False)
 
         slc = ((), (), (),)
         self.sub_k = get_sliced_momenta(grid_shape, self.dtype, slc, queue)
@@ -471,13 +500,15 @@ class gDFT(BaseDFT):
             return self.grid_shape
 
     def forward_transform(self, fx, fk, **kwargs):
-        event, = self.forward.enqueue_arrays(data=fx, result=fk, forward=True)
-        fx.add_event(event)
-        fk.add_event(event)
-        return fk
+        return self.ftransform.forward(input=fx, output=fk)
 
     def backward_transform(self, fk, fx, **kwargs):
-        event, = self.backward.enqueue_arrays(data=fk, result=fx, forward=False)
-        fx.add_event(event)
-        fk.add_event(event)
-        return fx
+        return self.btransform.backward(input=fk, output=fx, temp=self.temp)
+
+
+class gDFT(pyclDFT):
+    def __init__(self, decomp, context, queue, grid_shape, dtype):
+        from warnings import warn
+        warn('gDFT is deprecated. Use pyclDFT with backend=="clfft" instead.',
+             DeprecationWarning, stacklevel=2)
+        super().__init__(decomp, context, queue, grid_shape, dtype, backend="clfft")
