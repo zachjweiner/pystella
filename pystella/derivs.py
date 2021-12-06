@@ -198,24 +198,36 @@ knl_h_arch_lsizes = {
     ("gradlap", 1, "pascal"): (32, 16, 1),
     ("grad", 1, "pascal"): (32, 16, 1),
     ("lap", 1, "pascal"): (32, 16, 4),
+    ("gradlap", 1, "ampere"): (32, 16, 8),
+    ("grad", 1, "ampere"): (32, 8, 1),
+    ("lap", 1, "ampere"): (32, 16, 2),
     ("gradlap", 2, "volta"): (32, 16, 1),
     ("grad", 2, "volta"): (32, 16, 1),
     ("lap", 2, "volta"): (32, 16, 2),
     ("gradlap", 2, "pascal"): (32, 8, 2),
     ("grad", 2, "pascal"): (32, 8, 2),
     ("lap", 2, "pascal"): (16, 8, 4),
+    ("gradlap", 2, "ampere"): (32, 16, 4),
+    ("grad", 2, "ampere"): (32, 16, 4),
+    ("lap", 2, "ampere"): (32, 8, 8),
     ("gradlap", 3, "volta"): (32, 8, 1),
     ("grad", 3, "volta"): (32, 8, 2),
     ("lap", 3, "volta"): (32, 8, 4),
     ("gradlap", 3, "pascal"): (16, 8, 4),
     ("grad", 3, "pascal"): (16, 8, 4),
     ("lap", 3, "pascal"): (16, 8, 4),
+    ("gradlap", 3, "ampere"): (32, 8, 2),
+    ("grad", 3, "ampere"): (32, 4, 4),
+    ("lap", 3, "ampere"): (32, 4, 8),
     ("gradlap", 4, "volta"): (32, 4, 4),
     ("grad", 4, "volta"): (32, 4, 4),
     ("lap", 4, "volta"): (16, 8, 4),
     ("gradlap", 4, "pascal"): (16, 8, 2),
     ("grad", 4, "pascal"): (16, 8, 2),
-    ("lap", 4, "pascal"): (16, 8, 4)
+    ("lap", 4, "pascal"): (16, 8, 4),
+    ("gradlap", 4, "ampere"): (16, 4, 4),
+    ("grad", 4, "ampere"): (16, 8, 4),
+    ("lap", 4, "ampere"): (16, 8, 4),
 }
 
 
@@ -265,14 +277,13 @@ class FiniteDifferencer:
     .. automethod:: divergence
     """
 
-    def __init__(self, decomp, halo_shape, dx, **kwargs):
+    def __init__(self, decomp, halo_shape, dx, stream=False, rank_shape=None,
+                 **kwargs):
         self.decomp = decomp
-        stream = kwargs.pop("stream", False)
         first_stencil = kwargs.pop("first_stencil",
                                    FirstCenteredDifference(halo_shape))
         second_stencil = kwargs.pop("second_stencil",
                                     SecondCenteredDifference(halo_shape))
-        rank_shape = kwargs.pop("rank_shape", None)
 
         fx = Field("fx", offset="h")
         pd = tuple(Field(pdi) for pdi in ("pdx", "pdy", "pdz"))
@@ -300,14 +311,12 @@ class FiniteDifferencer:
         _h = max(max(first_stencil.coefs.keys()), max(second_stencil.coefs.keys()))
 
         if stream:
-            arch = "volta"
-            if "target" in kwargs:
+            try:
+                arch_map = {6: "pascal", 7: "volta", 8: "ampere"}
                 dev = kwargs["target"].device
-                try:
-                    arch_map = {6: "pascal", 7: "volta"}
-                    arch = arch_map[dev.compute_capability_major_nv]
-                except (KeyError, AttributeError):
-                    pass
+                arch = arch_map[dev.compute_capability_major_nv]
+            except (KeyError, AttributeError):
+                arch = "volta"
 
             gradlap_lsize = kwargs.get(
                 "gradlap_lsize", knl_h_arch_lsizes[("gradlap", _h, arch)])
