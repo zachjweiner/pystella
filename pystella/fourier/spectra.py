@@ -170,9 +170,14 @@ class PowerSpectra:
         """
 
         queue = queue or fk.queue
-
-        result = self.knl(queue, allocator=allocator, fk=fk,
-                          k_power=k_power, **self.fft.sub_k)
+        if isinstance(fk, np.ndarray):
+            # the generated kernel wrapper will send fk to device with the passed
+            # allocator, so do it manually
+            _fk = cla.to_device(queue, fk)
+        else:
+            _fk = fk
+        result = self.knl(
+            queue, allocator=allocator, fk=_fk, k_power=k_power, **self.fft.sub_k)
         return result["spectrum"] / self.bin_counts
 
     def __call__(self, fx, queue=None, k_power=3, allocator=None):
