@@ -133,7 +133,14 @@ class RayleighGenerator:
         )
         return knl
 
-    def __init__(self, context, fft, dk, volume, **kwargs):
+    def parallelize(self, knl):
+        knl = lp.fix_parameters(knl, pi=np.pi, sqrt2=np.sqrt(2.))
+        knl = lp.split_iname(knl, "k", 32, inner_tag="l.0", outer_tag="g.0")
+        knl = lp.split_iname(knl, "j", 1, inner_tag="unr", outer_tag="g.1")
+        knl = lp.split_iname(knl, "i", 1, inner_tag="unr", outer_tag="g.2")
+        return knl
+
+    def __init__(self, context, fft, dk, volume, seed=13298):
         self.fft = fft
         self.dtype = fft.dtype
         self.rdtype = fft.rdtype
@@ -144,18 +151,10 @@ class RayleighGenerator:
         kvecs = np.meshgrid(*sub_k, indexing="ij", sparse=False)
         self.kmags = np.sqrt(sum((dki * ki)**2 for dki, ki in zip(dk, kvecs)))
 
-        seed = kwargs.pop("seed", 13298)
         self.rng = clr.ThreefryGenerator(context, seed=seed)
 
-        def parallelize(knl):
-            knl = lp.fix_parameters(knl, pi=np.pi, sqrt2=np.sqrt(2.))
-            knl = lp.split_iname(knl, "k", 32, inner_tag="l.0", outer_tag="g.0")
-            knl = lp.split_iname(knl, "j", 1, inner_tag="unr", outer_tag="g.1")
-            knl = lp.split_iname(knl, "i", 1, inner_tag="unr", outer_tag="g.2")
-            return knl
-
-        self.wkb_knl = parallelize(self.get_wkb_knl())
-        self.non_wkb_knl = parallelize(self.get_non_wkb_knl())
+        self.wkb_knl = self.parallelize(self.get_wkb_knl())
+        self.non_wkb_knl = self.parallelize(self.get_non_wkb_knl())
 
     def _post_process(self, fk):
         from pystella.fourier import pyclDFT
