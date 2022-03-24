@@ -327,7 +327,8 @@ class PowerSpectra:
 
     def gw(self, hij, projector, hubble, queue=None, k_power=3, allocator=None):
         """
-        Computes the present, transverse-traceless gravitational wave power spectrum.
+        Computes the spectral abundance of (transverse-traceless) gravitational
+        waves,
 
         .. math::
 
@@ -377,8 +378,8 @@ class PowerSpectra:
     def gw_polarization(self, hij, projector, hubble, queue=None, k_power=3,
                         allocator=None):
         """
-        Computes the polarization components of the present gravitational wave
-        power spectrum.
+        Computes the spectral abundance of gravitational waves decomposed onto a
+        circular polarization basis.
 
         .. math::
 
