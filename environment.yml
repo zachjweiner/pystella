@@ -2,13 +2,12 @@ name: pystella
 
 channels:
 - conda-forge
-- defaults
 
 dependencies:
-- python=3
+- python
 - pip
-- conda-forge::numpy
-- conda-forge::scipy
+- numpy
+- scipy
 - sympy
 - h5py
 - pyopencl

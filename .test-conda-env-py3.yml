@@ -1,14 +1,12 @@
 name: test-conda-env
 channels:
 - conda-forge
-- defaults
-
 dependencies:
 - python=3
 - pip
 - git
-- conda-forge::numpy
-- conda-forge::scipy
+- numpy
+- scipy
 - sympy
 - h5py
 - pyopencl
@@ -18,6 +16,7 @@ dependencies:
 - mpi4py
 - mpi4py-fft
 - clfft
+- loopy  # for dependencies, should be overwritten by pip
 
 - pip:
     - git+https://github.com/inducer/loopy.git
