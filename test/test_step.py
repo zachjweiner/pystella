@@ -24,7 +24,6 @@ THE SOFTWARE.
 import numpy as np
 import pyopencl as cl
 import pyopencl.array as cla
-import pyopencl.clmath as clm
 import loopy as lp
 import pystella as ps
 import pytest
@@ -42,54 +41,44 @@ def test_step(ctx_factory, proc_shape, dtype, Stepper):
     if proc_shape != (1, 1, 1):
         pytest.skip("test step only on one rank")
 
-    ctx = ctx_factory()
-
-    queue = cl.CommandQueue(ctx)
+    dtype = np.dtype(dtype).type
 
     from pystella.step import LowStorageRKStepper
     is_low_storage = LowStorageRKStepper in Stepper.__bases__
 
-    rank_shape = (1, 1, 8)
-    init_vals = np.linspace(1, 3, 8)
+    from pymbolic import var
+
     if is_low_storage:
-        y = cla.zeros(queue, rank_shape, dtype)
-        y[0, 0, :] = init_vals
-        y0 = y.copy()
+        y = np.zeros((1,), dtype=dtype)
+        _y = ps.Field("y", indices=[], shape=(1,))
+        rhs_dict = {_y[0]: _y[0]**var("n")}
     else:
-        num_copies = Stepper.num_copies
-        y = cla.zeros(queue, (num_copies,)+rank_shape, dtype)
-        y[0, 0, 0, :] = init_vals
-        y0 = y[0].copy()
+        y = np.zeros((Stepper.num_copies,), dtype=dtype)
+        _y = ps.Field("y", indices=[])
+        rhs_dict = {_y: _y**var("n")}
 
-    dtlist = [.1, .05, .025]
+    stepper = Stepper(
+        rhs_dict, halo_shape=0, rank_shape=(0, 0, 0),
+        target=lp.ExecutableCTarget())
 
+    y0 = dtype(1.)
+
+    def sol(t, n):
+        return ((-1 + n)*(-t + y0**(1 - n)/(-1 + n)))**(1/(1 - n))
+
+    dtlist = [1/10, 1/20, 1/40, 1/80]
     for n in [-1., -2., -3., -4.]:
         max_errs = {}
         for dt in dtlist:
-            def sol(y0, t):
-                return ((-1 + n)*(-t + y0**(1 - n)/(-1 + n)))**(1/(1 - n))
-
-            _y = ps.Field("y")
-            rhs_dict = {_y: _y**n}
-
-            stepper = Stepper(rhs_dict, dt=dt, halo_shape=0, rank_shape=rank_shape)
-
-            if is_low_storage:
-                y[0, 0, :] = init_vals
-            else:
-                y[0, 0, 0, :] = init_vals
+            y[0] = y0
 
             t = 0
             errs = []
             while t < .1:
                 for s in range(stepper.num_stages):
-                    stepper(s, queue=queue, y=y, filter_args=True)
+                    stepper(s, y=y, dt=dtype(dt), n=dtype(n))
                 t += dt
-
-                if is_low_storage:
-                    errs.append(cla.max(clm.fabs(1. - sol(y0, t)/y)).get())
-                else:
-                    errs.append(cla.max(clm.fabs(1. - sol(y0, t)/y[0])).get())
+                errs.append(np.max(np.abs(1. - sol(t, n) / y[0])))
 
             max_errs[dt] = np.max(errs)
 
