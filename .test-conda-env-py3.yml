@@ -1,23 +1,25 @@
 name: test-conda-env
 channels:
-- conda-forge
+  - conda-forge
 dependencies:
-- python=3
-- pip
-- git
-- numpy
-- scipy
-- sympy
-- h5py
-- pyopencl
-- pocl
-- fftw
-- openmpi
-- mpi4py
-- mpi4py-fft
-- clfft
-- loopy  # for dependencies, should be overwritten by pip
-
-- pip:
+  - python=3.10
+  - pip
+  - git
+  - numpy
+  - scipy
+  - sympy
+  - h5py
+  - pyopencl
+  - pocl
+  - fftw
+  - openmpi=4.1.2  # pinned until conda-forge 4.1.3 build fixed
+  - mpi4py
+  - mpi4py-fft
+  - clfft
+  - loopy  # for dependencies, should be overwritten by pip
+  - pytest
+  - pytest-xdist
+  - pylint
+  - pip:
     - git+https://github.com/inducer/loopy.git
     - git+https://github.com/zachjweiner/pycl-fft.git
