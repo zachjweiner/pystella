@@ -63,7 +63,7 @@ You can also clone the repository from GitHub::
     cd pystella; pip install -e .
 
 To test that installation was successful, try running an example
-(e.g., :code:`python examples/scalar-preheating.py`) or run the tests with :mod:`pytest`
+(e.g., :code:`python examples/scalar_preheating.py`) or run the tests with :mod:`pytest`
 (if you cloned the source).
 
 Running on other devices (GPUs, etc.)

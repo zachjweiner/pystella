@@ -27,7 +27,7 @@ import pyopencl.clrandom as clr
 import pystella as ps
 
 # set parameters
-grid_shape = (128, 128, 128)
+grid_shape = (32, 32, 32)
 proc_shape = (1, 1, 1)
 rank_shape = tuple(Ni // pi for Ni, pi in zip(grid_shape, proc_shape))
 halo_shape = 1
@@ -58,7 +58,7 @@ derivs = ps.FiniteDifferencer(decomp, halo_shape, dx)
 
 t = 0.
 # loop over time
-while t < 10.:
+while t < 1.:
     for s in range(stepper.num_stages):
         derivs(queue, fx=f, lap=lap_f)
         stepper(s, queue=queue, f=f, dfdt=dfdt, lap_f=lap_f)

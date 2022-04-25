@@ -30,7 +30,7 @@ from pyopencl.tools import (  # noqa
 
 examples = {
     "examples/wave_equation.py": None,
-    "examples/scalar_preheating.py": 3e-8,
+    "examples/scalar_preheating.py": 5.5725530301309334e-08,
 }
 
 
@@ -39,11 +39,17 @@ def test_examples(ctx_factory, grid_shape, proc_shape, filename, expected):
     if proc_shape[0] * proc_shape[1] * proc_shape[2] > 1:
         pytest.skip("run examples on only one rank")
 
-    on_github = os.environ.get("GITHUB_WORKSPACE", False)
-    if on_github:
-        filename = os.environ.get("GITHUB_WORKSPACE") + "/" + filename
+    github_ws = os.environ.get("GITHUB_WORKSPACE", None)
+    if github_ws:
+        filename = github_ws + "/" + filename
 
-    result = subprocess.run(["python", filename], stdout=subprocess.PIPE)
+    # flags are ignored by wave-equation.py
+    cmd = [
+        "python", filename,
+        "--grid-shape", "32", "32", "32",
+        "--end-time", "1",
+    ]
+    result = subprocess.run(cmd, stdout=subprocess.PIPE)
 
     assert result.returncode == 0, f"{filename} failed"
 
@@ -57,7 +63,8 @@ def test_examples(ctx_factory, grid_shape, proc_shape, filename, expected):
         f.close()
         os.remove(files[-1])
 
-        assert constraint < expected, f"{filename} constraint is wrong"
+        assert abs(constraint / expected - 1) < 1e-3, \
+            f"{filename} {constraint=:.6e} is wrong"
 
 
 if __name__ == "__main__":

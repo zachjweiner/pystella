@@ -25,229 +25,258 @@ import numpy as np
 import pyopencl as cl
 import pyopencl.array as cla
 import pystella as ps
+from argparse import ArgumentParser
 
-# set parameters
-grid_shape = (64, 64, 64)
-proc_shape = (1, 1, 1)
-rank_shape = tuple(Ni // pi for Ni, pi in zip(grid_shape, proc_shape))
-grid_size = np.product(grid_shape)
-
-halo_shape = 2  # will be interpreted as (2, 2, 2)
-pencil_shape = tuple(ni + 2 * halo_shape for ni in rank_shape)
-
-box_dim = (5, 5, 5)
-volume = np.product(box_dim)
-dx = tuple(Li / Ni for Li, Ni in zip(box_dim, grid_shape))
-dk = tuple(2 * np.pi / Li for Li in box_dim)
-kappa = 1/10
-dt = kappa * min(dx)
-
-dtype = np.float64
-nscalars = 2
-mpl = 1  # change to np.sqrt(8 * np.pi) for reduced Planck mass units
-mphi = 1.20e-6 * mpl
-mchi = 0.
-gsq = 2.5e-7
-sigma = 0.
-lambda4 = 0.
-f0 = [.193 * mpl, 0]  # units of mpl
-df0 = [-.142231 * mpl, 0]  # units of mpl
-end_time = 1
-end_scale_factor = 20
-Stepper = ps.LowStorageRK54
-gravitational_waves = True  # whether to simulate gravitational waves
-
-ctx = ps.choose_device_and_make_context()
-queue = cl.CommandQueue(ctx)
-
-decomp = ps.DomainDecomposition(proc_shape, halo_shape, rank_shape)
-fft = ps.DFT(decomp, ctx, queue, grid_shape, dtype)
-if halo_shape == 0:
-    derivs = ps.SpectralCollocator(fft, dk)
-else:
-    derivs = ps.FiniteDifferencer(decomp, halo_shape, dx, rank_shape=rank_shape)
+# create command line interface
+parser = ArgumentParser()
+parser.add_argument("--grid-shape", "-grid", type=int, nargs=3,
+                    metavar=("Nx", "Ny", "Nz"), default=(128, 128, 128),
+                    help="the number of gridpoints in each dimensions")
+parser.add_argument("--proc-shape", "-proc", type=int, nargs=3,
+                    metavar=("Npx", "Npy", "Npz"), default=(1, 1, 1),
+                    help="the processor grid dimension")
+parser.add_argument("--dtype", type=np.dtype, default=np.float64,
+                    help="the simulation datatype")
+parser.add_argument("--halo-shape", type=int, default=2, metavar="h",
+                    help="the halo shape; determines stencil order")
+parser.add_argument("--box-dim", "-box", type=float, nargs=3,
+                    metavar=("Lx", "Ly", "Lz"), default=(5, 5, 5),
+                    help="the box length in each dimension")
+parser.add_argument("--kappa", type=float, default=1/10,
+                    help="the timestep to grid spacing ratio")
+parser.add_argument("--mpl", type=float, default=1,
+                    help="the unreduced Planck mass in desired units")
+parser.add_argument("--mphi", type=float, default=1.20e-6,
+                    help="the rescaling mass; in units of --mpl")
+parser.add_argument("--mchi", type=float, nargs="*", default=0.,
+                    help="the mass(es) of coupled scalars")
+parser.add_argument("--gsq", type=float, nargs="*", default=2.5e-7,
+                    help="the 2-2 coupling of phi to other scalars")
+parser.add_argument("--sigma", type=float, nargs="*", default=0.,
+                    help="the trilinear coupling of phi to other scalars")
+parser.add_argument("--lambda4", type=float, nargs="*", default=0.,
+                    help="the quartic self-coupling of other scalars")
+parser.add_argument("--end-time", "-end-t", type=float, default=20,
+                    help="the (conformal) time at which to end the simulation")
+parser.add_argument("--end-scale-factor", "-end-a", type=float, default=20,
+                    help="the scale factor (relative to the end of inflation)"
+                         " at which to end the simulation")
+parser.add_argument("--gravitational-waves", "-gws", action="store_true",
+                    help="pass to simulate gravitational waves")
 
 
-def potential(f):
-    phi, chi = f[0], f[1]
-    unscaled = (mphi**2 / 2 * phi**2
-                + mchi**2 / 2 * chi**2
-                + gsq / 2 * phi**2 * chi**2
-                + sigma / 2 * phi * chi**2
-                + lambda4 / 4 * chi**4)
-    return unscaled / mphi**2
+def main():
+    p = parser.parse_args()
+    # process args
+    p.grid_shape = tuple(p.grid_shape)
+    p.grid_size = np.product(p.grid_shape)
+    p.proc_shape = tuple(p.proc_shape)
+    p.rank_shape = tuple(Ni // pi for Ni, pi in zip(p.grid_shape, p.proc_shape))
+    p.pencil_shape = tuple(ni + 2 * p.halo_shape for ni in p.rank_shape)
+    p.box_dim = tuple(p.box_dim)
+    p.volume = np.product(p.box_dim)
+    p.dx = tuple(Li / Ni for Li, Ni in zip(p.box_dim, p.grid_shape))
+    p.dk = tuple(2 * np.pi / Li for Li in p.box_dim)
+    dt = p.kappa * min(p.dx)
 
+    p.nscalars = 2
+    f0 = [.193 * p.mpl, 0]  # units of mpl
+    df0 = [-.142231 * p.mpl, 0]  # units of mpl
+    Stepper = ps.LowStorageRK54
 
-scalar_sector = ps.ScalarSector(nscalars, potential=potential)
-sectors = [scalar_sector]
-if gravitational_waves:
-    gw_sector = ps.TensorPerturbationSector([scalar_sector])
-    sectors += [gw_sector]
+    ctx = ps.choose_device_and_make_context()
+    queue = cl.CommandQueue(ctx)
 
-stepper = Stepper(sectors, halo_shape=halo_shape, rank_shape=rank_shape, dt=dt)
-
-# create energy computation function
-from pystella.sectors import get_rho_and_p
-reduce_energy = ps.Reduction(decomp, scalar_sector, halo_shape=halo_shape,
-                             callback=get_rho_and_p,
-                             rank_shape=rank_shape, grid_size=grid_size)
-
-
-def compute_energy(f, dfdt, lap_f, dfdx, a):
-    if gravitational_waves:
-        derivs(queue, fx=f, lap=lap_f, grd=dfdx)
+    decomp = ps.DomainDecomposition(p.proc_shape, p.halo_shape, p.rank_shape)
+    fft = ps.DFT(decomp, ctx, queue, p.grid_shape, p.dtype)
+    if p.halo_shape == 0:
+        derivs = ps.SpectralCollocator(fft, p.dk)
     else:
-        derivs(queue, fx=f, lap=lap_f)
+        derivs = ps.FiniteDifferencer(
+            decomp, p.halo_shape, p.dx, rank_shape=p.rank_shape)
 
-    return reduce_energy(queue, f=f, dfdt=dfdt, lap_f=lap_f, a=np.array(a))
+    def potential(f):
+        phi, chi = f[0], f[1]
+        unscaled = (p.mphi**2 / 2 * phi**2
+                    + p.mchi**2 / 2 * chi**2
+                    + p.gsq / 2 * phi**2 * chi**2
+                    + p.sigma / 2 * phi * chi**2
+                    + p.lambda4 / 4 * chi**4)
+        return unscaled / p.mphi**2
 
+    scalar_sector = ps.ScalarSector(p.nscalars, potential=potential)
+    sectors = [scalar_sector]
+    if p.gravitational_waves:
+        gw_sector = ps.TensorPerturbationSector([scalar_sector])
+        sectors += [gw_sector]
 
-# create output function
-if decomp.rank == 0:
-    from pystella.output import OutputFile
-    out = OutputFile(ctx=ctx, runfile=__file__)
-else:
-    out = None
-statistics = ps.FieldStatistics(decomp, halo_shape, rank_shape=rank_shape,
-                                grid_size=grid_size)
-spectra = ps.PowerSpectra(decomp, fft, dk, volume)
-projector = ps.Projector(fft, halo_shape, dk, dx)
-hist = ps.FieldHistogrammer(decomp, 1000, dtype, rank_shape=rank_shape)
+    stepper = Stepper(
+        sectors, halo_shape=p.halo_shape, rank_shape=p.rank_shape, dt=dt)
 
-a_sq_rho = (3 * mpl**2 * ps.Field("hubble", indices=[])**2 / 8 / np.pi)
-rho_dict = {ps.Field("rho"): scalar_sector.stress_tensor(0, 0) / a_sq_rho}
-compute_rho = ps.ElementWiseMap(rho_dict, halo_shape=halo_shape,
-                                rank_shape=rank_shape)
+    # create energy computation function
+    from pystella.sectors import get_rho_and_p
+    reduce_energy = ps.Reduction(
+        decomp, scalar_sector, halo_shape=p.halo_shape,
+        callback=get_rho_and_p, rank_shape=p.rank_shape, grid_size=p.grid_size)
 
+    def compute_energy(f, dfdt, lap_f, dfdx, a):
+        if p.gravitational_waves:
+            derivs(queue, fx=f, lap=lap_f, grd=dfdx)
+        else:
+            derivs(queue, fx=f, lap=lap_f)
 
-def output(step_count, t, energy, expand,
-           f, dfdt, lap_f, dfdx, hij, dhijdt, lap_hij):
-    if step_count % 4 == 0:
-        f_stats = statistics(f)
+        return reduce_energy(queue, f=f, dfdt=dfdt, lap_f=lap_f, a=np.array(a))
 
-        if decomp.rank == 0:
-            out.output("energy", t=t, a=expand.a[0],
-                       adot=expand.adot[0]/expand.a[0],
-                       hubble=expand.hubble[0]/expand.a[0],
-                       **energy,
-                       eos=energy["pressure"]/energy["total"],
-                       constraint=expand.constraint(energy["total"])
-                       )
+    # create output function
+    if decomp.rank == 0:
+        from pystella.output import OutputFile
+        out = OutputFile(ctx=ctx, runfile=__file__)
+    else:
+        out = None
+    statistics = ps.FieldStatistics(
+        decomp, p.halo_shape, rank_shape=p.rank_shape, grid_size=p.grid_size)
+    spectra = ps.PowerSpectra(decomp, fft, p.dk, p.volume)
+    projector = ps.Projector(fft, p.halo_shape, p.dk, p.dx)
+    hist = ps.FieldHistogrammer(decomp, 1000, p.dtype, rank_shape=p.rank_shape)
 
-            out.output("statistics/f", t=t, a=expand.a[0], **f_stats)
+    a_sq_rho = (3 * p.mpl**2 * ps.Field("hubble", indices=[])**2 / 8 / np.pi)
+    rho_dict = {ps.Field("rho"): scalar_sector.stress_tensor(0, 0) / a_sq_rho}
+    compute_rho = ps.ElementWiseMap(
+        rho_dict, halo_shape=p.halo_shape, rank_shape=p.rank_shape)
 
-    if expand.a[0] / output.a_last_spec >= 1.05:
-        output.a_last_spec = expand.a[0]
+    def output(step_count, t, energy, expand,
+               f, dfdt, lap_f, dfdx, hij, dhijdt, lap_hij):
+        if step_count % 4 == 0:
+            f_stats = statistics(f)
 
-        if not gravitational_waves:
-            derivs(queue, fx=f, grd=dfdx)
+            if decomp.rank == 0:
+                out.output(
+                    "energy", t=t, a=expand.a[0],
+                    adot=expand.adot[0]/expand.a[0],
+                    hubble=expand.hubble[0]/expand.a[0],
+                    **energy,
+                    eos=energy["pressure"]/energy["total"],
+                    constraint=expand.constraint(energy["total"])
+                )
 
-        tmp = cla.empty(queue, shape=rank_shape, dtype=dtype)
-        compute_rho(queue, a=expand.a, hubble=expand.hubble, rho=tmp,
-                    f=f, dfdt=dfdt, dfdx=dfdx)
-        rho_hist = hist(tmp)
+                out.output("statistics/f", t=t, a=expand.a[0], **f_stats)
 
-        spec_out = dict(scalar=spectra(f), rho=spectra(tmp))
+        if expand.a[0] / output.a_last_spec >= 1.05:
+            output.a_last_spec = expand.a[0]
 
-        if gravitational_waves:
-            Hnow = expand.hubble
-            spec_out["gw_transfer"] = 4.e-5 / 100**(1/3)
-            a = expand.a[0]
-            spec_out["df"] = (spectra.bin_width * mphi
-                              * 6.e10 / np.sqrt(mphi * a * Hnow))
-            spec_out["gw"] = spectra.gw(dhijdt, projector, Hnow)
+            if not p.gravitational_waves:
+                derivs(queue, fx=f, grd=dfdx)
 
-        if decomp.rank == 0:
-            out.output("rho_histogram", t=t, a=expand.a[0], **rho_hist)
-            out.output("spectra", t=t, a=expand.a[0], **spec_out)
+            tmp = cla.empty(queue, shape=p.rank_shape, dtype=p.dtype)
+            compute_rho(queue, a=expand.a, hubble=expand.hubble, rho=tmp,
+                        f=f, dfdt=dfdt, dfdx=dfdx)
+            rho_hist = hist(tmp)
 
+            spec_out = {"scalar": spectra(f), "rho": spectra(tmp)}
 
-output.a_last_spec = .1  # to ensure spectra on the first slice
+            if p.gravitational_waves:
+                Hnow = expand.hubble
+                spec_out["gw_transfer"] = 4.e-5 / 100**(1/3)
+                a = expand.a[0]
+                spec_out["df"] = (
+                    spectra.bin_width * p.mphi * 6.e10 / np.sqrt(p.mphi * a * Hnow))
+                spec_out["gw"] = spectra.gw(dhijdt, projector, Hnow)
 
-print("Initializing fields")
+            if decomp.rank == 0:
+                out.output("rho_histogram", t=t, a=expand.a[0], **rho_hist)
+                out.output("spectra", t=t, a=expand.a[0], **spec_out)
 
-# create cl arrays
-f = cla.empty(queue, (nscalars,)+pencil_shape, dtype)
-dfdt = cla.empty(queue, (nscalars,)+pencil_shape, dtype)
-dfdx = cla.empty(queue, (nscalars, 3,)+rank_shape, dtype)
-lap_f = cla.empty(queue, (nscalars,)+rank_shape, dtype)
+    output.a_last_spec = .1  # to ensure spectra on the first slice
 
-if gravitational_waves:
-    hij = cla.empty(queue, (6,)+pencil_shape, dtype)
-    dhijdt = cla.empty(queue, (6,)+pencil_shape, dtype)
-    lap_hij = cla.empty(queue, (6,)+rank_shape, dtype)
-else:
-    hij, dhijdt, lap_hij = None, None, None
+    print("Initializing fields")
 
-# set field means
-for i in range(nscalars):
-    f[i] = f0[i]
-    dfdt[i] = df0[i]
+    # create cl arrays
+    f = cla.empty(queue, (p.nscalars,)+p.pencil_shape, p.dtype)
+    dfdt = cla.empty(queue, (p.nscalars,)+p.pencil_shape, p.dtype)
+    dfdx = cla.empty(queue, (p.nscalars, 3,)+p.rank_shape, p.dtype)
+    lap_f = cla.empty(queue, (p.nscalars,)+p.rank_shape, p.dtype)
 
-# compute energy of background fields and initialize expansion
-energy = compute_energy(f, dfdt, lap_f, dfdx, 1.)
-expand = ps.Expansion(energy["total"], Stepper, mpl=mpl)
+    if p.gravitational_waves:
+        hij = cla.empty(queue, (6,)+p.pencil_shape, p.dtype)
+        dhijdt = cla.empty(queue, (6,)+p.pencil_shape, p.dtype)
+        lap_hij = cla.empty(queue, (6,)+p.rank_shape, p.dtype)
+    else:
+        hij, dhijdt, lap_hij = None, None, None
 
-# compute hubble correction to scalar field effective mass
-addot = expand.addot_friedmann_2(expand.a, energy["total"], energy["pressure"])
-hubbleCorrection = - addot / expand.a
+    # set field means
+    for i in range(p.nscalars):
+        f[i] = f0[i]
+        dfdt[i] = df0[i]
 
-# effective masses of scalar fields
-from pymbolic import var
-from pymbolic.mapper.evaluator import evaluate_kw
-fields = [var("f0")[i] for i in range(nscalars)]
-d2Vd2f = [ps.diff(potential(fields), field, field) for field in fields]
-eff_mass = [evaluate_kw(x, f0=f0) + hubbleCorrection for x in d2Vd2f]
+    # compute energy of background fields and initialize expansion
+    energy = compute_energy(f, dfdt, lap_f, dfdx, 1.)
+    expand = ps.Expansion(energy["total"], Stepper, mpl=p.mpl)
 
-modes = ps.RayleighGenerator(ctx, fft, dk, volume, seed=49279*(decomp.rank+1))
+    # compute hubble correction to scalar field effective mass
+    addot = expand.addot_friedmann_2(expand.a, energy["total"], energy["pressure"])
+    hubbleCorrection = - addot / expand.a
 
-for fld in range(nscalars):
-    modes.init_WKB_fields(f[fld], dfdt[fld], norm=mphi**2,
-                          omega_k=lambda k: np.sqrt(k**2 + eff_mass[fld]),
-                          hubble=expand.hubble[0])
+    # effective masses of scalar fields
+    from pymbolic import var
+    from pymbolic.mapper.evaluator import evaluate_kw
+    fields = [var("f0")[i] for i in range(p.nscalars)]
+    d2Vd2f = [ps.diff(potential(fields), field, field) for field in fields]
+    eff_mass = [evaluate_kw(x, f0=f0) + hubbleCorrection for x in d2Vd2f]
 
-for i in range(nscalars):
-    f[i] += f0[i]
-    dfdt[i] += df0[i]
+    modes = ps.RayleighGenerator(
+        ctx, fft, p.dk, p.volume, seed=49279*(decomp.rank+1))
 
-# re-initialize energy and expansion
-energy = compute_energy(f, dfdt, lap_f, dfdx, expand.a[0])
-expand = ps.Expansion(energy["total"], Stepper, mpl=mpl)
+    for fld in range(p.nscalars):
+        modes.init_WKB_fields(
+            f[fld], dfdt[fld], norm=p.mphi**2,
+            omega_k=lambda k: np.sqrt(k**2 + eff_mass[fld]), hubble=expand.hubble[0])
 
-# output first slice
-output(0, 0., energy, expand, f=f, dfdt=dfdt, lap_f=lap_f, dfdx=dfdx,
-       hij=hij, dhijdt=dhijdt, lap_hij=lap_hij)
+    for i in range(p.nscalars):
+        f[i] += f0[i]
+        dfdt[i] += df0[i]
 
-# evolution
-t = 0.
-step_count = 0
+    # re-initialize energy and expansion
+    energy = compute_energy(f, dfdt, lap_f, dfdx, expand.a[0])
+    expand = ps.Expansion(energy["total"], Stepper, mpl=p.mpl)
 
-if decomp.rank == 0:
-    print("Time evolution beginning")
-    print("time", "scale factor", "ms/step\t", "steps/second", sep="\t\t")
+    t = 0.
+    step_count = 0
 
-from time import time
-start = time()
-last_out = time()
-
-while t < end_time and expand.a[0] < end_scale_factor:
-    for s in range(stepper.num_stages):
-        stepper(s, queue=queue, a=expand.a, hubble=expand.hubble,
-                f=f, dfdt=dfdt, dfdx=dfdx, lap_f=lap_f,
-                hij=hij, dhijdt=dhijdt, lap_hij=lap_hij, filter_args=True)
-        expand.step(s, energy["total"], energy["pressure"], dt)
-        energy = compute_energy(f, dfdt, lap_f, dfdx, expand.a)
-        if gravitational_waves:
-            derivs(queue, fx=hij, lap=lap_hij)
-
-    t += dt
-    step_count += 1
-    output(step_count, t, energy, expand, f=f, dfdt=dfdt, lap_f=lap_f, dfdx=dfdx,
+    # output first slice
+    output(t, step_count, energy, expand, f=f, dfdt=dfdt, lap_f=lap_f, dfdx=dfdx,
            hij=hij, dhijdt=dhijdt, lap_hij=lap_hij)
-    if time() - last_out > 30 and decomp.rank == 0:
-        last_out = time()
-        ms_per_step = (last_out - start) * 1e3 / step_count
-        print(t, expand.a[0], ms_per_step, 1e3/ms_per_step, sep="\t")
 
-if decomp.rank == 0:
-    print("Simulation complete")
+    if decomp.rank == 0:
+        print("Time evolution beginning")
+        print("time\t", "scale factor", "ms/step\t", "steps/second", sep="\t")
+
+    from time import time
+    start = time()
+    last_out = time()
+
+    while t < p.end_time and expand.a[0] < p.end_scale_factor:
+        for s in range(stepper.num_stages):
+            stepper(s, queue=queue, a=expand.a, hubble=expand.hubble,
+                    f=f, dfdt=dfdt, dfdx=dfdx, lap_f=lap_f,
+                    hij=hij, dhijdt=dhijdt, lap_hij=lap_hij, filter_args=True)
+            expand.step(s, energy["total"], energy["pressure"], dt)
+            energy = compute_energy(f, dfdt, lap_f, dfdx, expand.a)
+            if p.gravitational_waves:
+                derivs(queue, fx=hij, lap=lap_hij)
+
+        t += dt
+        step_count += 1
+        output(step_count, t, energy, expand, f=f, dfdt=dfdt, lap_f=lap_f, dfdx=dfdx,
+               hij=hij, dhijdt=dhijdt, lap_hij=lap_hij)
+        if time() - last_out > 30 and decomp.rank == 0:
+            last_out = time()
+            ms_per_step = (last_out - start) * 1e3 / step_count
+            print(f"{t:<15.3f}", f"{expand.a[0]:<15.3f}",
+                  f"{ms_per_step:<15.3f}", f"{1e3 / ms_per_step:<15.3f}")
+
+    if decomp.rank == 0:
+        print("Simulation complete")
+
+
+if __name__ == "__main__":
+    main()
