@@ -12,7 +12,7 @@ dependencies:
   - pyopencl
   - pocl
   - fftw
-  - openmpi=4.1.2  # pinned until conda-forge 4.1.3 build fixed
+  - openmpi
   - mpi4py
   - mpi4py-fft
   - clfft
