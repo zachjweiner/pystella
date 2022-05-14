@@ -149,12 +149,11 @@ class Projector:
 
         args = [lp.TemporaryVariable("kmag"), lp.TemporaryVariable("Kappa"),
                 lp.TemporaryVariable("eps", shape=(3,)), ...]
+        common_kwargs = dict(args=args, lsize=(32, 1, 1), rank_shape=fft.shape(True))
 
         self.vec_to_pol_knl = ElementWiseMap(
             {plus: plus_tmp, minus: minus_tmp},
-            tmp_instructions=eps_insns+pol_isns, args=args,
-            lsize=(32, 1, 1), rank_shape=fft.shape(True),
-        )
+            tmp_instructions=eps_insns+pol_isns, **common_kwargs)
 
         vector_tmp = var("vector_tmp")
         vec_insns = [(vector_tmp[mu], plus * eps[mu] + minus * conj(eps[mu]))
@@ -162,23 +161,32 @@ class Projector:
 
         self.pol_to_vec_knl = ElementWiseMap(
             {vector[mu]: vector_tmp[mu] for mu in range(3)},
-            tmp_instructions=eps_insns+vec_insns, args=args,
-            lsize=(32, 1, 1), rank_shape=fft.shape(True),
-        )
+            tmp_instructions=eps_insns+vec_insns, **common_kwargs)
+
+        vec_insns_2 = [
+            (lhs, rhs + If(kvec_zero, 0, 1j * eff_k[mu] / kmag * lng))
+            for mu, (lhs, rhs) in enumerate(vec_insns)]
+        self.decomp_to_vec_knl = ElementWiseMap(
+            {vector[mu]: vector_tmp[mu] for mu in range(3)},
+            tmp_instructions=eps_insns+vec_insns_2, **common_kwargs)
+
+        vec_insns_2 = [
+            (lhs, rhs + If(kvec_zero, 0, 1j * eff_k[mu] * lng))
+            for mu, (lhs, rhs) in enumerate(vec_insns)]
+        self.decomp_to_vec_knl_times_abs_k = ElementWiseMap(
+            {vector[mu]: vector_tmp[mu] for mu in range(3)},
+            tmp_instructions=eps_insns+vec_insns_2, **common_kwargs)
 
         ksq = sum(kk**2 for kk in eff_k)
         lng_rhs = If(kvec_zero, 0, - div / ksq * 1j)
         self.vec_decomp_knl = ElementWiseMap(
             {plus: plus_tmp, minus: minus_tmp, lng: lng_rhs},
-            tmp_instructions=eps_insns+pol_isns+div_insn, args=args,
-            lsize=(32, 1, 1), rank_shape=fft.shape(True),
-        )
+            tmp_instructions=eps_insns+pol_isns+div_insn, **common_kwargs)
+
         lng_rhs = If(kvec_zero, 0, - div / ksq**.5 * 1j)
         self.vec_decomp_knl_times_abs_k = ElementWiseMap(
             {plus: plus_tmp, minus: minus_tmp, lng: lng_rhs},
-            tmp_instructions=eps_insns+pol_isns+div_insn, args=args,
-            lsize=(32, 1, 1), rank_shape=fft.shape(True),
-        )
+            tmp_instructions=eps_insns+pol_isns+div_insn, **common_kwargs)
 
         from pystella.sectors import tensor_index as tid
 
@@ -208,8 +216,7 @@ class Projector:
                        for a in range(1, 4) for b in range(a, 4)]
         self.tt_knl = ElementWiseMap(
             write_insns, tmp_instructions=Pab_insns+TT_insns,
-            lsize=(32, 1, 1), rank_shape=fft.shape(True),
-        )
+            lsize=(32, 1, 1), rank_shape=fft.shape(True))
 
         tensor_to_pol_insns = {
             plus: sum(hij[tid(c, d)] * conj(eps[c-1]) * conj(eps[d-1])
@@ -218,9 +225,7 @@ class Projector:
                        for c in range(1, 4) for d in range(1, 4))
         }
         self.tensor_to_pol_knl = ElementWiseMap(
-            tensor_to_pol_insns, tmp_instructions=eps_insns, args=args,
-            lsize=(32, 1, 1), rank_shape=fft.shape(True),
-        )
+            tensor_to_pol_insns, tmp_instructions=eps_insns, **common_kwargs)
 
         pol_to_tensor_insns = {
             hij[tid(a, b)]: (plus * eps[a-1] * eps[b-1]
@@ -228,9 +233,7 @@ class Projector:
             for a in range(1, 4) for b in range(a, 4)
         }
         self.pol_to_tensor_knl = ElementWiseMap(
-            pol_to_tensor_insns, tmp_instructions=eps_insns, args=args,
-            lsize=(32, 1, 1), rank_shape=fft.shape(True),
-        )
+            pol_to_tensor_insns, tmp_instructions=eps_insns, **common_kwargs)
 
     def transversify(self, queue, vector, vector_T=None):
         """
@@ -253,8 +256,8 @@ class Projector:
 
         if vector_T is None:
             vector_T = vector
-        evt, _ = self.transversify_knl(queue, **self.eff_mom,
-                                       vector=vector, vector_T=vector_T)
+        evt, _ = self.transversify_knl(
+            queue, **self.eff_mom, vector=vector, vector_T=vector_T)
         return evt
 
     def pol_to_vec(self, queue, plus, minus, vector):
@@ -278,8 +281,8 @@ class Projector:
         :returns: The :class:`pyopencl.Event` associated with the kernel invocation.
         """
 
-        evt, _ = self.pol_to_vec_knl(queue, **self.eff_mom,
-                                     vector=vector, plus=plus, minus=minus)
+        evt, _ = self.pol_to_vec_knl(
+            queue, **self.eff_mom, vector=vector, plus=plus, minus=minus)
         return evt
 
     def vec_to_pol(self, queue, plus, minus, vector):
@@ -303,8 +306,8 @@ class Projector:
         :returns: The :class:`pyopencl.Event` associated with the kernel invocation.
         """
 
-        evt, _ = self.vec_to_pol_knl(queue, **self.eff_mom,
-                                     vector=vector, plus=plus, minus=minus)
+        evt, _ = self.vec_to_pol_knl(
+            queue, **self.eff_mom, vector=vector, plus=plus, minus=minus)
         return evt
 
     def decompose_vector(self, queue, vector, plus, minus, lng,
@@ -337,13 +340,48 @@ class Projector:
         if not times_abs_k:
             evt, _ = self.vec_decomp_knl(
                 queue, **self.eff_mom, lng=lng, vector=vector,
-                plus=plus, minus=minus
-            )
+                plus=plus, minus=minus)
         else:
             evt, _ = self.vec_decomp_knl_times_abs_k(
                 queue, **self.eff_mom, lng=lng, vector=vector,
-                plus=plus, minus=minus
-            )
+                plus=plus, minus=minus)
+
+        return evt
+
+    def decomp_to_vec(self, queue, plus, minus, lng, vector, *, times_abs_k=False):
+        """
+        Projects the plus, minus, and longitudinal polarizations of a vector field
+        onto its vector components.
+
+        :arg queue: A :class:`pyopencl.CommandQueue`.
+
+        :arg plus: The array containing the
+            momentum-space field of the plus polarization.
+
+        :arg minus: The array containing the
+            momentum-space field of the minus polarization.
+
+        :arg lng: The array containing the
+            momentum-space field of the longitudinal polarization.
+
+        :arg vector: The array into which the vector
+            field will be stored.
+            Must have shape ``(3,)+k_shape``, where ``k_shape`` is the shape of a
+            single momentum-space field array.
+
+        :returns: The :class:`pyopencl.Event` associated with the kernel invocation.
+
+        .. versionadded:: 2021.1
+        """
+
+        if not times_abs_k:
+            evt, _ = self.decomp_to_vec_knl(
+                queue, **self.eff_mom, lng=lng, vector=vector,
+                plus=plus, minus=minus)
+        else:
+            evt, _ = self.decomp_to_vec_knl_times_abs_k(
+                queue, **self.eff_mom, lng=lng, vector=vector,
+                plus=plus, minus=minus)
 
         return evt
 
@@ -394,8 +432,8 @@ class Projector:
         .. versionadded:: 2020.1
         """
 
-        evt, _ = self.tensor_to_pol_knl(queue, **self.eff_mom,
-                                        hij=hij, plus=plus, minus=minus)
+        evt, _ = self.tensor_to_pol_knl(
+            queue, **self.eff_mom, hij=hij, plus=plus, minus=minus)
         return evt
 
     def pol_to_tensor(self, queue, plus, minus, hij):
@@ -421,6 +459,6 @@ class Projector:
         .. versionadded:: 2020.1
         """
 
-        evt, _ = self.pol_to_tensor_knl(queue, **self.eff_mom,
-                                        hij=hij, plus=plus, minus=minus)
+        evt, _ = self.pol_to_tensor_knl(
+            queue, **self.eff_mom, hij=hij, plus=plus, minus=minus)
         return evt

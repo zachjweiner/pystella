@@ -228,6 +228,19 @@ def test_vector_projector(ctx_factory, grid_shape, proc_shape, h, dtype,
         f"lap(longitudinal) != div vector for {grid_shape=}, {h=}" \
         f": {max_err=}, {avg_err=}"
 
+    vector[...] = 0.
+    project.decomp_to_vec(queue, plus1, minus1, long, vector, times_abs_k=True)
+    for mu in range(3):
+        fft.idft(vector[mu], vector_x[mu])
+
+    div_test = cla.empty_like(div_true)
+    derivs.divergence(queue, vector_x, div_test)
+
+    max_err, avg_err = get_errs(div_test.get(), div_true.get())
+    assert max_err < 1e-6 and avg_err < 1e-11, \
+        f"decomp_to_vec: lap(longitudinal) != div vector for {grid_shape=}, {h=}" \
+        f": {max_err=}, {avg_err=}"
+
     if timing:
         from common import timer
         ntime = 10
