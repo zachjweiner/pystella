@@ -23,7 +23,7 @@ THE SOFTWARE.
 
 import pymbolic.primitives as pp
 from pymbolic import parse
-from pymbolic.mapper import Collector
+from pymbolic.mapper import Mapper, Collector
 import loopy as lp
 from loopy.symbolic import (
     IdentityMapper as IdentityMapperBase,
@@ -300,7 +300,23 @@ class DynamicField(Field):
     mapper_method = "map_dynamic_field"
 
 
-class IdentityMapperMixin:
+class UnhashableTypeHandlingMixin:
+    def __call__(self, expr, *args, **kwargs):
+        try:
+            cache_key = self.get_cache_key(expr, *args, **kwargs)
+            return self._cache[cache_key]
+        except TypeError:
+            # not hashable, oh well
+            return Mapper.rec(self, expr, *args, **kwargs)
+        except KeyError:
+            result = super().rec(expr, *args, **kwargs)
+            self._cache[cache_key] = result
+            return result
+
+    rec = __call__
+
+
+class IdentityMapperMixin(UnhashableTypeHandlingMixin):
     def map_field(self, expr, *args, **kwargs):
         return expr.copy(
             child=self.rec(expr.child, *args, **kwargs),
@@ -352,7 +368,7 @@ class IdentityMapper(IdentityMapperMixin, IdentityMapperBase):
     pass
 
 
-class CombineMapperMixin:
+class CombineMapperMixin(UnhashableTypeHandlingMixin):
     def map_field(self, expr, *args, **kwargs):
         return set()
 
