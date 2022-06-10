@@ -171,11 +171,13 @@ class RayleighGenerator:
 
     # wrapper to remove 1/0 and set homogeneous power to zero
     def _ps_wrapper(self, ps_func, wk, kmags):
-        if kmags[0, 0, 0] == 0.:
+        found_zero = kmags[0, 0, 0] == 0.  # kmags and wk might be same array
+        if found_zero:
             wk0 = wk[0, 0, 0]
-            wk[0, 0, 0] = 1.
+            # just get a valid value, result will be overwritten
+            wk[0, 0, 0] = wk[0, 0, 1]
         power = ps_func(wk)
-        if kmags[0, 0, 0] == 0.:
+        if found_zero:
             power[0, 0, 0] = 0.
             wk[0, 0, 0] = wk0
         return power
