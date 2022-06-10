@@ -55,7 +55,7 @@ def expand_stencil(f, coefs):
         f[i + h + 1, j + h, k + h] + (-1)*f[i + h + -1, j + h, k + h]
     """
 
-    return sum([c * shift_fields(f, shift=offset) for offset, c in coefs.items()])
+    return sum(c * shift_fields(f, shift=offset) for offset, c in coefs.items())
 
 
 def centered_diff(f, coefs, direction, order):

@@ -419,7 +419,7 @@ class FullApproximationScheme:
             depth = int(np.log2(min(grid_shape) / 8))
             cycle = v_cycle(25, 50, depth)
 
-        depth = max([i for i, nu in cycle])
+        depth = max(i for i, nu in cycle)
         self.setup(decomp0, queue, dx0, depth, **kwargs)
 
         nu0 = cycle[0][1]
