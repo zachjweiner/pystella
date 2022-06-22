@@ -45,9 +45,6 @@ def make_hermitian(data, fft):
     return data
 
 
-@pytest.mark.filterwarnings(
-    "ignore::pyopencl.characterize.CLCharacterizationWarning")
-@pytest.mark.filterwarnings("ignore::loopy.diagnostic.LoopyAdvisory")
 @pytest.mark.parametrize("dtype", ["float64", "complex128"])
 @pytest.mark.parametrize("L", [(10,)*3, (10, 7, 8), (3, 8, 19), (13.2, 5.71, 9.4),
                                (11, 11, 4), (4, 11, 11), (11, 4, 11)])
@@ -117,9 +114,6 @@ def test_spectra(ctx_factory, grid_shape, proc_shape, dtype, L, timing=False):
         print(f"power spectrum took {t:.3f} ms for {grid_shape=}, {dtype=}")
 
 
-@pytest.mark.filterwarnings(
-    "ignore::pyopencl.characterize.CLCharacterizationWarning")
-@pytest.mark.filterwarnings("ignore::loopy.diagnostic.LoopyAdvisory")
 @pytest.mark.parametrize("dtype", ["float64", "float32"])
 def test_pol_spectra(ctx_factory, grid_shape, proc_shape, dtype, timing=False):
     ctx = ctx_factory()

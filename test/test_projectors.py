@@ -84,9 +84,6 @@ def make_data(queue, fft):
     return cla.to_device(queue, data)
 
 
-@pytest.mark.filterwarnings(
-    "ignore::pyopencl.characterize.CLCharacterizationWarning")
-@pytest.mark.filterwarnings("ignore::loopy.diagnostic.LoopyAdvisory")
 @pytest.mark.parametrize("h", [0, 2])
 @pytest.mark.parametrize("dtype", [np.float64])
 def test_vector_projector(ctx_factory, grid_shape, proc_shape, h, dtype,
@@ -265,9 +262,6 @@ def tensor_id(i, j):
     return (7 - a) * a // 2 - 4 + b
 
 
-@pytest.mark.filterwarnings(
-    "ignore::pyopencl.characterize.CLCharacterizationWarning")
-@pytest.mark.filterwarnings("ignore::loopy.diagnostic.LoopyAdvisory")
 @pytest.mark.parametrize("h", [0, 2])
 @pytest.mark.parametrize("dtype", [np.float64])
 def test_tensor_projector(ctx_factory, grid_shape, proc_shape, h, dtype,

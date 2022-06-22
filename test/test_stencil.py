@@ -32,9 +32,6 @@ from pyopencl.tools import (  # noqa
     pytest_generate_tests_for_pyopencl as pytest_generate_tests)
 
 
-@pytest.mark.filterwarnings(
-    "ignore::pyopencl.characterize.CLCharacterizationWarning")
-@pytest.mark.filterwarnings("ignore::loopy.diagnostic.LoopyAdvisory")
 @pytest.mark.parametrize("dtype", [np.float64, np.float32])
 @pytest.mark.parametrize("stream", [True, False])
 def test_stencil(ctx_factory, grid_shape, proc_shape, dtype, stream, h=1,

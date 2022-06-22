@@ -26,10 +26,6 @@ import pyopencl.array as cla
 import loopy as lp
 from pystella.elementwise import ElementWiseMap
 
-from warnings import filterwarnings
-from loopy.diagnostic import ParameterFinderWarning
-filterwarnings("ignore", category=ParameterFinderWarning)
-
 __doc__ = """
 .. currentmodule:: pystella
 .. autoclass:: Reduction

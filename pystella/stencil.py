@@ -24,12 +24,6 @@ THE SOFTWARE.
 import loopy as lp
 from pystella.elementwise import ElementWiseMap
 
-from warnings import filterwarnings
-filterwarnings("ignore", category=lp.diagnostic.LoopyAdvisory,
-               message="could not find a conflict-free mem layout")
-from pyopencl.characterize import CLCharacterizationWarning
-filterwarnings("ignore", category=CLCharacterizationWarning)
-
 __doc__ = """
 .. currentmodule:: pystella
 .. autoclass:: Stencil

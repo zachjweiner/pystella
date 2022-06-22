@@ -32,9 +32,6 @@ from pyopencl.tools import (  # noqa
     pytest_generate_tests_for_pyopencl as pytest_generate_tests)
 
 
-@pytest.mark.filterwarnings(
-    "ignore::pyopencl.characterize.CLCharacterizationWarning")
-@pytest.mark.filterwarnings("ignore::loopy.diagnostic.LoopyAdvisory")
 @pytest.mark.parametrize("dtype", ["float64"])
 @pytest.mark.parametrize("num_bins", [123, 1024, 1493])
 @pytest.mark.parametrize("_N", [256, 1200])
@@ -66,9 +63,6 @@ def test_trivial_histogram(ctx_factory, grid_shape, proc_shape, dtype,
         assert np.all(res[res != res[b]] == 0.)
 
 
-@pytest.mark.filterwarnings(
-    "ignore::pyopencl.characterize.CLCharacterizationWarning")
-@pytest.mark.filterwarnings("ignore::loopy.diagnostic.LoopyAdvisory")
 @pytest.mark.parametrize("dtype", ["float64", "float32"])
 @pytest.mark.parametrize("num_bins", [123, 1024, 1493])
 def test_histogram(ctx_factory, grid_shape, proc_shape, dtype, num_bins,
@@ -128,9 +122,6 @@ def test_histogram(ctx_factory, grid_shape, proc_shape, dtype, num_bins,
         print(f"histogram took {t:.3f} ms for {grid_shape=}, {dtype=}")
 
 
-@pytest.mark.filterwarnings(
-    "ignore::pyopencl.characterize.CLCharacterizationWarning")
-@pytest.mark.filterwarnings("ignore::loopy.diagnostic.LoopyAdvisory")
 @pytest.mark.parametrize("dtype", ["float64", "float32"])
 def test_field_histogram(ctx_factory, grid_shape, proc_shape, dtype, timing=False):
     ctx = ctx_factory()

@@ -32,9 +32,6 @@ from pyopencl.tools import (  # noqa
     pytest_generate_tests_for_pyopencl as pytest_generate_tests)
 
 
-@pytest.mark.filterwarnings(
-    "ignore::pyopencl.characterize.CLCharacterizationWarning")
-@pytest.mark.filterwarnings("ignore::loopy.diagnostic.LoopyAdvisory")
 @pytest.mark.parametrize("h", [0, 1, 2, 3, 4])
 @pytest.mark.parametrize("dtype", [np.float64])
 @pytest.mark.parametrize("stream", [True, False])

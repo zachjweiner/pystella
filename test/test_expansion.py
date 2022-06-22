@@ -29,6 +29,8 @@ from pyopencl.tools import (  # noqa
     pytest_generate_tests_for_pyopencl as pytest_generate_tests)
 
 
+# for deprecated call to logger.warn in loopy c_execution
+@pytest.mark.filterwarnings("ignore::DeprecationWarning")
 @pytest.mark.parametrize("dtype", [np.float64])
 @pytest.mark.parametrize("Stepper", [ps.RungeKutta4, ps.LowStorageRK54])
 def test_expansion(ctx_factory, proc_shape, dtype, Stepper, timing=False):

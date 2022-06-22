@@ -35,6 +35,8 @@ from pyopencl.tools import (  # noqa
 from pystella.step import all_steppers
 
 
+# for deprecated call to logger.warn in loopy c_execution
+@pytest.mark.filterwarnings("ignore::DeprecationWarning")
 @pytest.mark.parametrize("dtype", [np.float64])
 @pytest.mark.parametrize("Stepper", all_steppers)
 def test_step(ctx_factory, proc_shape, dtype, Stepper):

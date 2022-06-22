@@ -59,9 +59,6 @@ def test_generate_WKB(ctx_factory, grid_shape, proc_shape, dtype, random,
         print(f"{random=} set_modes took {t:.3f} ms for {grid_shape=}")
 
 
-@pytest.mark.filterwarnings(
-    "ignore::pyopencl.characterize.CLCharacterizationWarning")
-@pytest.mark.filterwarnings("ignore::loopy.diagnostic.LoopyAdvisory")
 @pytest.mark.parametrize("dtype", ["float64", "complex128"])
 @pytest.mark.parametrize("random", [True, False])
 def test_generate(ctx_factory, grid_shape, proc_shape, dtype, random, timing=False):

@@ -25,12 +25,6 @@ import numpy as np
 import pyopencl.array as cla
 import loopy as lp
 
-from warnings import filterwarnings
-filterwarnings("ignore", category=lp.diagnostic.LoopyAdvisory,
-               message="could not find a conflict-free mem layout")
-from pyopencl.characterize import CLCharacterizationWarning
-filterwarnings("ignore", category=CLCharacterizationWarning)
-
 
 class PowerSpectra:
     """

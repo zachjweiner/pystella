@@ -34,9 +34,6 @@ from pystella.multigrid import (FullApproximationScheme, MultiGridSolver,
                                 NewtonIterator)
 
 
-@pytest.mark.filterwarnings(
-    "ignore::pyopencl.characterize.CLCharacterizationWarning")
-@pytest.mark.filterwarnings("ignore::loopy.diagnostic.LoopyAdvisory")
 @pytest.mark.filterwarnings("ignore::loopy.diagnostic.ParameterFinderWarning")
 @pytest.mark.parametrize("h", [1])
 @pytest.mark.parametrize("dtype", [np.float64])
