@@ -273,17 +273,20 @@ class FiniteDifferencer:
         :arg stream: Whether to use :class:`StreamingStencil`.
             Defaults to *False*.
 
+        :arg device: A :class:`pyopencl.Device`; used to choose (manually
+            predetermined) optimal workgroup sizes (currently only for
+            NVIDIA's Pascal, Volta, and Ampere architectures).
+
     .. automethod:: __call__
     .. automethod:: divergence
     """
 
     def __init__(self, decomp, halo_shape, dx, stream=False, rank_shape=None,
-                 **kwargs):
+                 device=None, first_stencil=None, second_stencil=None,
+                 gradlap_lsize=None, grad_lsize=None, lap_lsize=None):
         self.decomp = decomp
-        first_stencil = kwargs.pop("first_stencil",
-                                   FirstCenteredDifference(halo_shape))
-        second_stencil = kwargs.pop("second_stencil",
-                                    SecondCenteredDifference(halo_shape))
+        first_stencil = first_stencil or FirstCenteredDifference(halo_shape)
+        second_stencil = second_stencil or SecondCenteredDifference(halo_shape)
 
         fx = Field("fx", offset="h")
         pd = tuple(Field(pdi) for pdi in ("pdx", "pdy", "pdz"))
@@ -311,24 +314,21 @@ class FiniteDifferencer:
         _h = max(max(first_stencil.coefs.keys()), max(second_stencil.coefs.keys()))
 
         if stream:
+            from pyopencl import LogicError
             try:
                 arch_map = {6: "pascal", 7: "volta", 8: "ampere"}
-                dev = kwargs["target"].device
-                arch = arch_map[dev.compute_capability_major_nv]
-            except (KeyError, AttributeError):
+                arch = arch_map[device.compute_capability_major_nv]
+            except (KeyError, AttributeError, LogicError):
                 arch = "volta"
 
-            gradlap_lsize = kwargs.get(
-                "gradlap_lsize", knl_h_arch_lsizes[("gradlap", _h, arch)])
-            grad_lsize = kwargs.get(
-                "grad_lsize", knl_h_arch_lsizes[("grad", _h, arch)])
-            lap_lsize = kwargs.get(
-                "lap_lsize", knl_h_arch_lsizes[("lap", _h, arch)])
+            gradlap_lsize = gradlap_lsize or knl_h_arch_lsizes[("gradlap", _h, arch)]
+            grad_lsize = grad_lsize or knl_h_arch_lsizes[("grad", _h, arch)]
+            lap_lsize = lap_lsize or knl_h_arch_lsizes[("lap", _h, arch)]
         else:
             lsize = {1: (8, 8, 8), 2: (8, 4, 4), 3: (4, 4, 4), 4: (2, 2, 2)}[_h]
-            gradlap_lsize = kwargs.get("gradlap_lsize", lsize)
-            grad_lsize = kwargs.get("grad_lsize", lsize)
-            lap_lsize = kwargs.get("lap_lsize", lsize)
+            gradlap_lsize = gradlap_lsize or lsize
+            grad_lsize = grad_lsize or lsize
+            lap_lsize = lap_lsize or lsize
 
         SS = StreamingStencil if stream else Stencil
         self.grad_lap_knl = SS({**pdx, **pdy, **pdz, **lap}, lsize=gradlap_lsize,

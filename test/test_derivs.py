@@ -40,7 +40,7 @@ from pyopencl.tools import (  # noqa
 @pytest.mark.parametrize("stream", [True, False])
 def test_gradient_laplacian(ctx_factory, grid_shape, proc_shape, h, dtype,
                             stream, timing=False):
-    if h == 0 and stream is True:
+    if h == 0 and stream:
         pytest.skip("no streaming spectral")
 
     ctx = ctx_factory()
@@ -69,11 +69,12 @@ def test_gradient_laplacian(ctx_factory, grid_shape, proc_shape, h, dtype,
         if stream:
             try:
                 derivs = ps.FiniteDifferencer(mpi, h, dx, rank_shape=rank_shape,
-                                              stream=stream)
+                                              stream=stream, device=queue.device)
             except:  # noqa
                 pytest.skip("StreamingStencil unavailable")
         else:
-            derivs = ps.FiniteDifferencer(mpi, h, dx, rank_shape=rank_shape)
+            derivs = ps.FiniteDifferencer(mpi, h, dx, rank_shape=rank_shape,
+                                          device=queue.device)
 
     pencil_shape = tuple(ni + 2*h for ni in rank_shape)
 
