@@ -39,9 +39,6 @@ from pystella.expansion import Expansion
 from pystella.fourier import (DFT, RayleighGenerator, Projector, PowerSpectra,
                               SpectralCollocator, SpectralPoissonSolver)
 
-from loopy import set_caching_enabled
-set_caching_enabled(True)
-
 import logging
 logger = logging.getLogger(__name__)
 
