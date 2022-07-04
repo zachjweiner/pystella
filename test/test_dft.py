@@ -129,7 +129,7 @@ def test_dft(ctx_factory, grid_shape, proc_shape, dtype, backend, timing=False):
     # run all of these to ensure no runtime errors even if no timing
     for (a, input_), (b, output) in product(fx_types.items(), fk_types.items()):
         ntime = 200 if ("cl" in a and "cl" in b) else 20 if timing else 1
-        t = timer(lambda: fft.dft(input_, output), ntime=ntime)
+        t = timer(lambda: fft.dft(input_, output), ntime=ntime)  # noqa: B023
         if mpi.rank == 0:
             print(f"dft({a}, {b}) took {t:.3f} ms")
 
@@ -137,7 +137,7 @@ def test_dft(ctx_factory, grid_shape, proc_shape, dtype, backend, timing=False):
         ntime = 200 if ("cl" in a and "cl" in b) else 20 if timing else 1
         if "cl" in a and "cl" in b:
             ntime = 200
-        t = timer(lambda: fft.idft(input_, output), ntime=ntime)
+        t = timer(lambda: fft.idft(input_, output), ntime=ntime)  # noqa: B023
         if mpi.rank == 0:
             print(f"idft({a}, {b}) took {t:.3f} ms")
 

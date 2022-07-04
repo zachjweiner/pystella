@@ -46,10 +46,10 @@ def test_expansion(ctx_factory, proc_shape, dtype, Stepper, timing=False):
 
     for w in [0, 1/3, 1/2, 1, -1/4]:
         def energy(a):
-            return a**(-3-3*w)
+            return a**(-3-3*w)  # noqa: B023
 
         def pressure(a):
-            return w * energy(a)
+            return w * energy(a)  # noqa: B023
 
         t = 0
         dt = .005

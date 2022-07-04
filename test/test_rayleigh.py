@@ -83,7 +83,7 @@ def test_generate(ctx_factory, grid_shape, proc_shape, dtype, random, timing=Fal
 
     for exp in [-1, -2, -3]:
         def power(k):
-            return k**exp
+            return k**exp  # noqa: B023
 
         fk = modes.generate(queue, random=random, norm=1, field_ps=power)
 

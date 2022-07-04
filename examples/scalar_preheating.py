@@ -229,7 +229,8 @@ def main():
     for fld in range(p.nscalars):
         modes.init_WKB_fields(
             f[fld], dfdt[fld], norm=p.mphi**2,
-            omega_k=lambda k: np.sqrt(k**2 + eff_mass[fld]), hubble=expand.hubble[0])
+            omega_k=lambda k, fld=fld: np.sqrt(k**2 + eff_mass[fld]),
+            hubble=expand.hubble[0])
 
     for i in range(p.nscalars):
         f[i] += f0[i]

@@ -76,8 +76,10 @@ class Stencil(ElementWiseMap):
                 fetch_bounding_box=True, default_tag=None, temporary_name=f"_{name}",
             )
 
-            prefetch_inames = filter(
-                lambda i: f"{name}_dim" in i, knl.default_entrypoint.all_inames())
+            prefetch_inames = [
+                iname for iname in knl.default_entrypoint.all_inames()
+                if f"{name}_dim" in iname
+            ]
             for axis, iname in enumerate(sorted(prefetch_inames, reverse=True)):
                 if axis < 3:
                     knl = lp.tag_inames(knl, f"{iname}:l.{axis}")
@@ -121,8 +123,10 @@ class StreamingStencil(Stencil):
                 fetch_bounding_box=True, default_tag=None, temporary_name=f"_{name}",
             )
 
-            prefetch_inames = filter(
-                lambda i: f"{name}_dim" in i, knl.default_entrypoint.all_inames())
+            prefetch_inames = [
+                iname for iname in knl.default_entrypoint.all_inames()
+                if f"{name}_dim" in iname
+            ]
             for axis, iname in enumerate(sorted(prefetch_inames, reverse=True)):
                 if axis < 2:
                     knl = lp.tag_inames(knl, f"{iname}:l.{axis}")
