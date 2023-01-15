@@ -47,7 +47,7 @@ class UnaryOpenCLCallable(OpenCLCallable):
 
         for id in arg_id_to_dtype:
             if not -1 <= id <= 0:
-                raise LoopyError(f"'{name}' can take only one argument.")
+                raise LoopyError(f"{name!r} can take only one argument.")
 
         if 0 not in arg_id_to_dtype or arg_id_to_dtype[0] is None:
             # the types provided aren't mature enough to specialize the callable
