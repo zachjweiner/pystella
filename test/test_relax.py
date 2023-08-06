@@ -54,7 +54,7 @@ def test_relax(ctx_factory, grid_shape, proc_shape, h, dtype, Solver, timing=Fal
     fft = ps.DFT(mpi, ctx, queue, grid_shape, dtype)
     spectra = ps.PowerSpectra(mpi, fft, (dk,)*3, L**3)
     statistics = ps.FieldStatistics(mpi, h, rank_shape=rank_shape,
-                                    grid_size=np.product(grid_shape))
+                                    grid_size=np.prod(grid_shape))
 
     def get_laplacian(f):
         from pystella.derivs import _lap_coefs, centered_diff

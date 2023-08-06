@@ -61,10 +61,10 @@ def test_spectra(ctx_factory, grid_shape, proc_shape, dtype, L, timing=False):
     L = L or (3, 5, 7)
     dk = tuple(2 * np.pi / Li for Li in L)
     cdtype = fft.cdtype
-    spec = ps.PowerSpectra(mpi, fft, dk, np.product(L), bin_width=min(dk)+.001)
+    spec = ps.PowerSpectra(mpi, fft, dk, np.prod(L), bin_width=min(dk)+.001)
     # FIXME: bin_width=min(dk) sometimes disagrees to O(.1%) with numpy...
 
-    assert int(np.sum(spec.bin_counts)) == np.product(grid_shape), \
+    assert int(np.sum(spec.bin_counts)) == np.prod(grid_shape), \
         "bin counts don't sum to total number of points/modes"
 
     k_power = 2.
@@ -132,7 +132,7 @@ def test_pol_spectra(ctx_factory, grid_shape, proc_shape, dtype, timing=False):
     dk = tuple(2 * np.pi / Li for Li in L)
     dx = tuple(Li / Ni for Li, Ni in zip(L, grid_shape))
     cdtype = fft.cdtype
-    spec = ps.PowerSpectra(mpi, fft, dk, np.product(L))
+    spec = ps.PowerSpectra(mpi, fft, dk, np.prod(L))
 
     k_power = 2.
 

@@ -36,7 +36,7 @@ from pyopencl.tools import (  # noqa
 @pytest.mark.parametrize("dtype", ["float64", "complex128"])
 @pytest.mark.parametrize("backend", ["fftw", "clfft", "vkfft"])
 def test_dft(ctx_factory, grid_shape, proc_shape, dtype, backend, timing=False):
-    if backend != "fftw" and np.product(proc_shape) > 1:
+    if backend != "fftw" and np.prod(proc_shape) > 1:
         pytest.skip("Must use mpi4py-fft on more than one rank.")
 
     ctx = ctx_factory()
@@ -48,7 +48,7 @@ def test_dft(ctx_factory, grid_shape, proc_shape, dtype, backend, timing=False):
     rank_shape, _ = mpi.get_rank_shape_start(grid_shape)
 
     fft = ps.DFT(mpi, ctx, queue, grid_shape, dtype, backend=backend)
-    grid_size = np.product(grid_shape)
+    grid_size = np.prod(grid_shape)
     rdtype = fft.rdtype
 
     if fft.is_real:
@@ -146,7 +146,7 @@ if __name__ == "__main__":
     from common import parser
     parser.add_argument("--backend", type=str, default="vkfft")
     args = parser.parse_args()
-    if np.product(args.proc_shape) > 1:
+    if np.prod(args.proc_shape) > 1:
         args.backend = "fftw"
 
     test_dft(

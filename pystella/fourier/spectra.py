@@ -71,7 +71,7 @@ class PowerSpectra:
         self.dk = dk
         self.bin_width = kwargs.pop("bin_width", min(dk))
 
-        d3x = volume / np.product(self.grid_shape)
+        d3x = volume / np.prod(self.grid_shape)
         self.norm = (1 / 2 / np.pi**2 / volume) * d3x**2
 
         sub_k = list(x.get() for x in self.fft.sub_k.values())

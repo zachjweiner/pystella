@@ -55,7 +55,7 @@ def test_reduction(ctx_factory, grid_shape, proc_shape, dtype, op,
     if pass_grid_dims:
         reducer = ps.Reduction(mpi, reducers, rank_shape=rank_shape,
                                tmp_instructions=tmp_insns,
-                               grid_size=np.product(grid_shape))
+                               grid_size=np.prod(grid_shape))
     else:
         reducer = ps.Reduction(mpi, reducers, tmp_instructions=tmp_insns)
 
@@ -69,7 +69,7 @@ def test_reduction(ctx_factory, grid_shape, proc_shape, dtype, op,
 
     avg_test = reducer.reduce_array(f / 2 + .31, op)
     if op == "avg":
-        avg_test /= np.product(grid_shape)
+        avg_test /= np.prod(grid_shape)
 
     rtol = 5e-14 if dtype == np.float64 else 1e-5
     assert np.allclose(avg, avg_test, rtol=rtol, atol=0), \
@@ -109,7 +109,7 @@ def test_reduction_with_new_shape(ctx_factory, grid_shape, proc_shape, dtype, op
 
     avg_test = reducer.reduce_array(f, op)
     if op == "avg":
-        avg_test /= np.product(grid_shape)
+        avg_test /= np.prod(grid_shape)
 
     rtol = 5e-14 if dtype == np.float64 else 1e-5
     assert np.allclose(avg, avg_test, rtol=rtol, atol=0), \
@@ -124,7 +124,7 @@ def test_reduction_with_new_shape(ctx_factory, grid_shape, proc_shape, dtype, op
 
     avg_test = reducer.reduce_array(f, op)
     if op == "avg":
-        avg_test /= np.product(grid_shape)
+        avg_test /= np.prod(grid_shape)
 
     rtol = 5e-14 if dtype == np.float64 else 1e-5
     assert np.allclose(avg, avg_test, rtol=rtol, atol=0), \
@@ -150,7 +150,7 @@ def test_field_statistics(ctx_factory, grid_shape, proc_shape, dtype, _grid_shap
 
     if pass_grid_dims:
         statistics = ps.FieldStatistics(mpi, h, rank_shape=rank_shape,
-                                        grid_size=np.product(grid_shape))
+                                        grid_size=np.prod(grid_shape))
     else:
         statistics = ps.FieldStatistics(mpi, h)
 
@@ -163,10 +163,10 @@ def test_field_statistics(ctx_factory, grid_shape, proc_shape, dtype, _grid_shap
 
     f_h = f.get()
     rank_sum = np.sum(f_h[..., h:-h, h:-h, h:-h], axis=(-3, -2, -1))
-    avg_test = mpi.allreduce(rank_sum) / np.product(grid_shape)
+    avg_test = mpi.allreduce(rank_sum) / np.prod(grid_shape)
 
     rank_sum = np.sum(f_h[..., h:-h, h:-h, h:-h]**2, axis=(-3, -2, -1))
-    var_test = mpi.allreduce(rank_sum) / np.product(grid_shape) - avg_test**2
+    var_test = mpi.allreduce(rank_sum) / np.prod(grid_shape) - avg_test**2
 
     rtol = 5e-14 if dtype == np.float64 else 1e-5
 

@@ -51,7 +51,7 @@ def test_multigrid(ctx_factory, grid_shape, proc_shape, h, dtype, Solver, MG,
     dx = L / grid_shape[0]
 
     statistics = ps.FieldStatistics(mpi, h, rank_shape=rank_shape,
-                                    grid_size=np.product(grid_shape))
+                                    grid_size=np.prod(grid_shape))
 
     def get_laplacian(f):
         from pystella.derivs import _lap_coefs, centered_diff

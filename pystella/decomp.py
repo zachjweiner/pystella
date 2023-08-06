@@ -270,8 +270,8 @@ class DomainDecomposition:
     def get_displs_and_counts(self, full_shape, x_slice):
         NX, NY, NZ = full_shape
 
-        displs = np.ones(np.product(self.proc_shape[:2]), dtype="int")
-        counts = np.ones(np.product(self.proc_shape[:2]), dtype="int")
+        displs = np.ones(np.prod(self.proc_shape[:2]), dtype="int")
+        counts = np.ones(np.prod(self.proc_shape[:2]), dtype="int")
         for ri in range(self.proc_shape[0]):
             for rj in range(self.proc_shape[1]):
                 (Nx, Ny, Nz), (sx, sy, sz) = self.get_rank_shape_start(

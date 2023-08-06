@@ -63,7 +63,7 @@ def test_spectral_poisson(ctx_factory, grid_shape, proc_shape, h, dtype,
     pencil_shape = tuple(ni + 2*h for ni in rank_shape)
 
     statistics = ps.FieldStatistics(mpi, 0, rank_shape=rank_shape,
-                                    grid_size=np.product(grid_shape))
+                                    grid_size=np.prod(grid_shape))
 
     fx = cla.empty(queue, pencil_shape, dtype)
     rho = clr.rand(queue, rank_shape, dtype)

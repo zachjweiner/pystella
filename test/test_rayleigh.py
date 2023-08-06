@@ -45,7 +45,7 @@ def test_generate_WKB(ctx_factory, grid_shape, proc_shape, dtype, random,
     fft = ps.DFT(mpi, ctx, queue, grid_shape, dtype)
 
     L = (10,)*3
-    volume = np.product(L)
+    volume = np.prod(L)
     dk = tuple(2 * np.pi / Li for Li in L)
     modes = ps.RayleighGenerator(ctx, fft, dk, volume)
 
@@ -73,13 +73,13 @@ def test_generate(ctx_factory, grid_shape, proc_shape, dtype, random, timing=Fal
 
     num_bins = int(sum(Ni**2 for Ni in grid_shape)**.5 / 2 + .5) + 1
     L = (10,)*3
-    volume = np.product(L)
+    volume = np.prod(L)
     dk = tuple(2 * np.pi / Li for Li in L)
     spectra = ps.PowerSpectra(mpi, fft, dk, volume)
     modes = ps.RayleighGenerator(ctx, fft, dk, volume, seed=5123)
 
     kbins = min(dk) * np.arange(0, num_bins)
-    test_norm = 1 / 2 / np.pi**2 / np.product(grid_shape)**2
+    test_norm = 1 / 2 / np.pi**2 / np.prod(grid_shape)**2
 
     for exp in [-1, -2, -3]:
         def power(k):
@@ -101,7 +101,7 @@ def test_generate(ctx_factory, grid_shape, proc_shape, dtype, random, timing=Fal
             if isinstance(fx, cla.Array):
                 fx = fx.get()
 
-            grid_size = np.product(grid_shape)
+            grid_size = np.prod(grid_shape)
 
             avg = mpi.allreduce(np.sum(fx)) / grid_size
             var = mpi.allreduce(np.sum(fx**2)) / grid_size - avg**2

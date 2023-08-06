@@ -57,7 +57,7 @@ def test_trivial_histogram(ctx_factory, grid_shape, proc_shape, dtype,
     for key, (_b, weight) in histograms.items():
         res = result[key]
         b = int(np.floor(_b))
-        expected = weight * np.product(grid_shape)
+        expected = weight * np.prod(grid_shape)
         assert res[b] == expected, \
             f"{key}: result={res[b]}, {expected=}, ratio={res[b]/expected}"
         assert np.all(res[res != res[b]] == 0.)
@@ -94,7 +94,7 @@ def test_histogram(ctx_factory, grid_shape, proc_shape, dtype, num_bins,
     result = hist(queue, fx=fx)
 
     res = result["count"]
-    assert np.sum(res.astype("int64")) == np.product(grid_shape), \
+    assert np.sum(res.astype("int64")) == np.prod(grid_shape), \
         f"Count histogram doesn't sum to grid_size ({np.sum(res)})"
 
     bins = np.linspace(0, 1, num_bins+1).astype(dtype)

@@ -257,7 +257,7 @@ class RelaxationBase:
 
         padded_shape = kwargs.get(self.unknown_args[0].name).shape
         rank_shape = tuple(i - 2 * self.halo_shape for i in padded_shape)
-        grid_size = np.product(self.decomp.proc_shape) * np.product(rank_shape)
+        grid_size = np.prod(self.decomp.proc_shape) * np.prod(rank_shape)
         errs = self.resid_stats(queue, **kwargs, filter_args=True,
                                 rank_shape=rank_shape, grid_size=grid_size)
         for k, v in errs.items():
@@ -285,7 +285,7 @@ class RelaxationBase:
 
         padded_shape = kwargs.get(self.unknown_args[0].name).shape
         rank_shape = tuple(i - 2 * self.halo_shape for i in padded_shape)
-        grid_size = np.product(self.decomp.proc_shape) * np.product(rank_shape)
+        grid_size = np.prod(self.decomp.proc_shape) * np.prod(rank_shape)
 
         args_to_avg_resid = kwargs.copy()
         for arg in self.unknown_args:

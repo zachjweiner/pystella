@@ -245,7 +245,7 @@ class Reduction(ElementWiseMap):
                 if op == "avg":
                     if self.grid_size is None:
                         Nx = output["Nx_"].get()
-                        sub_grid_size = Nx * np.product(tmp[j].shape)
+                        sub_grid_size = Nx * np.prod(tmp[j].shape)
                         grid_size = self.decomp.allreduce(sub_grid_size)
                     else:
                         grid_size = self.grid_size
