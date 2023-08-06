@@ -253,6 +253,20 @@ class DomainDecomposition:
         self.gather_knl = make_G_S_knl("arr[i, j, k] = subarr[i+hx, j+hy, k+hz]")
         self.scatter_knl = make_G_S_knl("subarr[i+hx, j+hy, k+hz] = arr[i, j, k]")
 
+        self._kernels_bound = False
+
+    def _bind_kernels(self, queue_or_context):
+        self.pack_x_knl = self.pack_x_knl.executor(queue_or_context)
+        self.unpack_x_knl = self.unpack_x_knl.executor(queue_or_context)
+        self.pack_unpack_x_knl = self.pack_unpack_x_knl.executor(queue_or_context)
+        self.pack_y_knl = self.pack_y_knl.executor(queue_or_context)
+        self.unpack_y_knl = self.unpack_y_knl.executor(queue_or_context)
+        self.pack_unpack_y_knl = self.pack_unpack_y_knl.executor(queue_or_context)
+        self.pack_unpack_z_knl = self.pack_unpack_z_knl.executor(queue_or_context)
+        self.gather_knl = self.gather_knl.executor(queue_or_context)
+        self.scatter_knl = self.scatter_knl.executor(queue_or_context)
+        self._kernels_bound = True
+
     def get_displs_and_counts(self, full_shape, x_slice):
         NX, NY, NZ = full_shape
 
@@ -363,6 +377,9 @@ class DomainDecomposition:
             is only fixed if ``rank_shape`` or ``grid_shape`` were
             passed at object creation).
         """
+
+        if not self._kernels_bound:
+            self._bind_kernels(queue)
 
         h = self.halo_shape
         rank_shape = tuple(ni - 2 * hi for ni, hi in zip(fx.shape, h))
@@ -492,6 +509,9 @@ class DomainDecomposition:
             :class:`numpy.ndarray`.
         """
 
+        if not self._kernels_bound:
+            self._bind_kernels(queue)
+
         dtype = out_array.dtype
         if in_array.dtype != dtype:
             raise ValueError("in_array and out_array have different dtypes")
@@ -530,6 +550,9 @@ class DomainDecomposition:
 
         :arg root: The rank to which ``in_array`` is gathered.
         """
+
+        if not self._kernels_bound:
+            self._bind_kernels(queue)
 
         h = self.halo_shape
         dtype = None if self.rank != root else out_array.dtype
@@ -601,6 +624,9 @@ class DomainDecomposition:
             :class:`numpy.ndarray`.
         """
 
+        if not self._kernels_bound:
+            self._bind_kernels(queue)
+
         dtype = in_array.dtype
         if out_array.dtype != dtype:
             raise ValueError("in_array and out_array have different dtypes")
@@ -648,6 +674,9 @@ class DomainDecomposition:
 
         :arg root: The rank from which ``in_array`` is scattered.
         """
+
+        if not self._kernels_bound:
+            self._bind_kernels(queue)
 
         h = self.halo_shape
         dtype = None if self.rank != root else in_array.dtype

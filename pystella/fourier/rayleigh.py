@@ -153,8 +153,8 @@ class RayleighGenerator:
 
         self.rng = clr.ThreefryGenerator(context, seed=seed)
 
-        self.wkb_knl = self.parallelize(self.get_wkb_knl())
-        self.non_wkb_knl = self.parallelize(self.get_non_wkb_knl())
+        self.wkb_knl = self.parallelize(self.get_wkb_knl()).executor(context)
+        self.non_wkb_knl = self.parallelize(self.get_non_wkb_knl()).executor(context)
 
     def _post_process(self, fk):
         from pystella.fourier import pyclDFT

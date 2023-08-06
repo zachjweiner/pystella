@@ -294,6 +294,7 @@ class ElementWiseMap:
                 knl, Nx=rank_shape[0], Ny=rank_shape[1], Nz=rank_shape[2]
             )
         self.knl = lp.remove_unused_inames(knl)
+        self.executor = None
 
     def __call__(self, queue=None, filter_args=False, **kwargs):
         """
@@ -324,6 +325,7 @@ class ElementWiseMap:
             See :mod:`loopy`'s tutorial for details.
         """
 
+        is_pyopencl = isinstance(self.knl.target, lp.PyOpenCLTarget)
         input_args = kwargs.copy()
         if filter_args:
             kernel_args = [arg.name for arg in self.knl.default_entrypoint.args]
@@ -332,15 +334,21 @@ class ElementWiseMap:
                     input_args.pop(arg)
 
             # add back PyOpenCLExecuter arguments
-            if isinstance(self.knl.target, lp.PyOpenCLTarget):
+            if is_pyopencl:
                 for arg in ["allocator", "wait_for", "out_host"]:
                     if arg in kwargs:
                         input_args[arg] = kwargs.get(arg)
 
-        if isinstance(self.knl.target, lp.PyOpenCLTarget):
+        if is_pyopencl:
             input_args["queue"] = queue
 
-        knl_output = self.knl(**input_args)
+        if self.executor is None:
+            if is_pyopencl:
+                self.executor = self.knl.executor(queue)
+            else:
+                self.executor = self.knl.executor()
+
+        knl_output = self.executor(**input_args)
 
         return knl_output
 
